@@ -1,0 +1,106 @@
+# Полный стек системы. Запуск: make up
+# Сервисы, которых ещё нет в services/, добавляются сюда по мере готовности —
+# gateway резолвит апстримы в рантайме и не падает из-за отсутствующего контейнера.
+
+name: lct
+
+x-service-base: &service-base
+  restart: unless-stopped
+  env_file: [.env]
+  networks: [lct]
+
+x-python-env: &python-env
+  ENV: ${ENV}
+  LOG_LEVEL: ${LOG_LEVEL}
+  API_KEY: ${API_KEY}
+  TZ: ${TZ}
+  RUN_MIGRATIONS: ${RUN_MIGRATIONS}
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PLAN_DB_PASSWORD: ${PLAN_DB_PASSWORD}
+      SITE_DB_PASSWORD: ${SITE_DB_PASSWORD}
+      ANALYSIS_DB_PASSWORD: ${ANALYSIS_DB_PASSWORD}
+      TZ: ${TZ}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER} -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [lct]
+
+  minio:
+    image: minio/minio:RELEASE.2024-09-22T00-33-43Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+    volumes:
+      - miniodata:/data
+    ports: ["9000:9000", "9001:9001"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [lct]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [lct]
+
+  plan-service:
+    <<: *service-base
+    build:
+      context: .
+      dockerfile: services/plan-service/Dockerfile
+    environment:
+      <<: *python-env
+      PLAN_DB_DSN: ${PLAN_DB_DSN}
+      POS_URL: ${POS_URL}
+    ports: ["8001:8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  gateway:
+    <<: *service-base
+    build:
+      context: services/gateway
+    ports: ["8080:80"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+volumes:
+  pgdata:
+  miniodata:
+
+networks:
+  lct:
+    driver: bridge

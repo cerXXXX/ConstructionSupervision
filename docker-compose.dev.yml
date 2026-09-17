@@ -1,0 +1,15 @@
+# Оверлей для разработки: горячая перезагрузка и монтирование исходников сервиса.
+# Запуск: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# packages/py-common сюда намеренно не монтируется: он меняется редко,
+# и его правка требует пересборки образа — это защита от «работает только у меня».
+
+services:
+
+  plan-service:
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./services/plan-service/src:/app/services/plan-service/src:ro
+    environment:
+      ENV: dev
+      LOG_LEVEL: DEBUG

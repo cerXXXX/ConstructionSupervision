@@ -1,0 +1,86 @@
+"""Рабочий календарь: арифметика в рабочих днях (ТЗ, п. 8).
+
+Чистые функции: ни БД, ни сети, ни FastAPI. Именно так выглядит всё, что лежит
+в core/ — это то, что покрывается тестами и что мы показываем жюри.
+
+Все плановые длительности считаются в рабочих днях, а не в календарных:
+нормативы МРР заданы для рабочих дней, и срок, посчитанный по календарным,
+завысил бы выработку примерно на четверть.
+"""
+
+from dataclasses import dataclass
+from datetime import date, timedelta
+
+DEFAULT_WEEKEND_DAYS = (6, 7)  # суббота и воскресенье, нумерация ISO: понедельник = 1
+
+
+@dataclass(frozen=True)
+class WorkCalendar:
+    """Календарь объекта: какие дни считаются рабочими."""
+
+    weekend_days: tuple[int, ...] = DEFAULT_WEEKEND_DAYS
+    holidays: frozenset[date] = frozenset()
+
+    def is_working_day(self, day: date) -> bool:
+        return day.isoweekday() not in self.weekend_days and day not in self.holidays
+
+
+def next_working_day(calendar: WorkCalendar, day: date) -> date:
+    """Ближайший рабочий день, начиная с указанного включительно."""
+    current = day
+    while not calendar.is_working_day(current):
+        current += timedelta(days=1)
+    return current
+
+
+def add_working_days(calendar: WorkCalendar, start: date, days: int) -> date:
+    """Дата через `days` рабочих дней от `start`.
+
+    Ноль означает «сам день начала, сдвинутый вперёд до рабочего»: этап,
+    начинающийся в субботу, фактически стартует в понедельник.
+
+    Отрицательное значение отсчитывает назад — это нужно для обратного прохода
+    при расчёте поздних сроков (CPM).
+    """
+    current = next_working_day(calendar, start) if days >= 0 else start
+    step = timedelta(days=1 if days >= 0 else -1)
+    remaining = abs(days)
+
+    while remaining:
+        current += step
+        if calendar.is_working_day(current):
+            remaining -= 1
+    return current
+
+
+def count_working_days(calendar: WorkCalendar, start: date, end: date) -> int:
+    """Число рабочих дней в полуинтервале [start, end).
+
+    Полуинтервал, а не отрезок: так длительности складываются без двойного
+    учёта граничного дня, а `end` совпадает с началом следующего этапа.
+    """
+    if end <= start:
+        return 0
+
+    days = 0
+    current = start
+    while current < end:
+        if calendar.is_working_day(current):
+            days += 1
+        current += timedelta(days=1)
+    return days
+
+
+def working_progress(calendar: WorkCalendar, start: date, end: date, today: date) -> float:
+    """Плановая доля выполнения на сегодня, 0…1 — знаменатель SPI.
+
+    До начала этапа — 0, после планового окончания — 1. Этап нулевой
+    длительности считается выполненным, как только наступила его дата:
+    иначе SPI делился бы на ноль (docs/methodology.md, п. 9.4).
+    """
+    total = count_working_days(calendar, start, end)
+    if total == 0:
+        return 1.0 if today >= start else 0.0
+
+    elapsed = count_working_days(calendar, start, min(today, end))
+    return max(0.0, min(1.0, elapsed / total))

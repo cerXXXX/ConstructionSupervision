@@ -93,6 +93,11 @@ GET /api/v1/plan/objects/0f3a.../stages?active_on=2026-10-20
 }
 ```
 
+**Реализовано на сегодня:** объекты (`POST`, `GET` список, `GET` карточка, `PATCH`,
+`DELETE` → архив), `/health`, `/health/ready`, клиент `pos-engine` и чистое ядро
+рабочего календаря. Остальные эндпоинты таблиц выше — следующие задачи трека A;
+схема БД под них уже создана миграцией `0001`, придумывать её заново не нужно.
+
 ### Коды ошибок
 
 `OBJECT_NOT_FOUND`, `STAGE_NOT_FOUND`, `STAGE_RULE_NOT_FOUND`, `EQUIPMENT_CLASS_NOT_FOUND`,
@@ -134,10 +139,16 @@ PostgreSQL (`plandb`), `pos-engine`. При недоступности `pos-engi
 ## 7. Запуск и тесты
 
 ```bash
-docker compose up -d plan-service        # в составе стека
+make up                                   # весь стек
+docker compose up -d plan-service         # только этот сервис
 make test s=plan                          # тесты
-make migrate s=plan m="add stage_rule"    # новая миграция
+make logs s=plan f=1                      # логи
+make migrate s=plan m="описание"          # новая миграция
 ```
+
+Unit-тесты на `src/core/` запускаются без докера и без зависимостей сервиса:
+`PYTHONPATH=. pytest tests/unit`. API-тесты требуют PostgreSQL и без него
+пропускаются с понятным сообщением, а не падают.
 
 Обязательное покрытие `src/core/`: парсер справочника (включая испорченные коды),
 валидация графика (даты, связи, циклы), построение правил из матрицы техники,
