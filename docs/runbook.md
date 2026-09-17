@@ -10,16 +10,20 @@
 | GNU Make | любая | Все команды проекта |
 | Python | 3.12 | Локальная разработка сервисов вне докера |
 | Node.js | 20+ | Локальная разработка фронтенда |
-| Свободная память | 6 ГБ (без LLM) / 12 ГБ (с локальной LLM) | CV-модель + Postgres + MinIO |
-| Диск | ~8 ГБ | Образы, веса моделей, демо-снимки |
+| Оперативная память | 8 ГБ минимум, 16+ комфортно | CV-сервис + Postgres + MinIO + воркеры |
+| Диск | ~20 ГБ | Образ с CUDA весит 6–8 ГБ, плюс остальные образы, веса и демо-снимки |
+| GPU | NVIDIA, 4+ ГБ VRAM | Не обязателен, но целевой стенд — с ним |
 
-GPU не требуется. При наличии — `VISION_DEVICE=cuda` и профиль `gpu` в compose.
+**Целевой стенд:** ноутбук Ryzen 5 5600H, 32 ГБ, RTX 3060 Laptop 6 ГБ. На нём
+`VISION_DEVICE=cuda` и профиль `gpu`; нужен установленный `nvidia-container-toolkit`,
+иначе контейнер карту не увидит. Без GPU система работает целиком, но распознавание
+идёт секунды вместо миллисекунд — для отладки этого достаточно, для показа нет.
 
 ## 2. Первый запуск
 
 ```bash
 cp .env.example .env     # при необходимости поменять пароли и ключ API
-make models              # скачать веса YOLO и OpenCLIP в data/models (~200 МБ)
+make models              # скачать веса детектора и OpenCLIP в data/models (~200 МБ)
 make up                  # docker compose up -d --build
 make health              # все сервисы должны ответить healthy
 make seed                # демо-объект, график, камеры, зоны, снимки, прогон анализа
@@ -104,10 +108,10 @@ make seed                # демо-объект, график, камеры, з
 
 | Переменная | По умолчанию | Смысл |
 | :--- | :--- | :--- |
-| `VISION_DEVICE` | `cpu` | `cpu` / `cuda` |
-| `VISION_DET_WEIGHTS` | `/models/yolo11s-lct.onnx` | Веса детектора |
+| `VISION_DEVICE` | `cuda` | `cuda` на демо-стенде, `cpu` — запасной путь |
+| `VISION_DET_WEIGHTS` | `/models/yolov8s-worldv2.pt` | Веса детектора; дообученные подставляются сюда же |
 | `VISION_DET_CONF` | `0.35` | Порог уверенности |
-| `VISION_DET_IMGSZ` | `1280` | Размер входа |
+| `VISION_DET_IMGSZ` | `1280` | Размер входа; на GPU можно поднять до 1536 |
 | `VISION_STAGE_MODEL` | `openclip-vit-b32` | Классификатор стадии |
 | `VISION_BATCH_SIZE` | `4` | |
 
@@ -130,18 +134,27 @@ make seed                # демо-объект, график, камеры, з
 | Переменная | По умолчанию | Смысл |
 | :--- | :--- | :--- |
 | `LLM_ENABLED` | `true` | `false` → шаблонные резюме без модели |
-| `LLM_PROVIDER` | `ollama` | `ollama` / `openai_compatible` |
-| `LLM_BASE_URL` | `http://ollama:11434` | |
-| `LLM_MODEL` | `qwen2.5:7b-instruct` | |
-| `LLM_TIMEOUT_S` | `60` | По истечении — шаблонное резюме |
+| `LLM_PROVIDER` | `openai_compatible` | `openai_compatible` (по умолчанию) / `ollama` для закрытого контура |
+| `LLM_BASE_URL` | — | Адрес провайдера |
+| `LLM_API_KEY` | — | **Настоящий секрет.** Только в `.env`, никогда в git |
+| `LLM_MODEL` | — | Имя модели у провайдера |
+| `LLM_TIMEOUT_S` | `30` | По истечении — шаблонное резюме |
+
+LLM внешняя: видеопамять полностью отдана распознаванию. Наружу уходят только
+структурированные факты — названия вех, даты, числа, коды отклонений; ни снимков,
+ни персональных данных. Для закрытого контура заказчика предусмотрен профиль `llm`
+с локальной моделью, переключение — одной переменной `LLM_PROVIDER`.
+
+Прямой доступ к OpenAI и Anthropic из РФ без прокси не работает. Проверьте выбранного
+провайдера **с той машины, на которой будет демонстрация**, заранее.
 
 ## 5. Профили compose
 
 | Профиль | Что добавляет | Когда |
 | :--- | :--- | :--- |
 | по умолчанию | gateway, все сервисы, postgres, minio, redis | Обычная работа |
-| `llm` | Ollama + загрузка модели | Нужны LLM-резюме локально |
-| `gpu` | `vision-service` с пробросом GPU | Есть NVIDIA |
+| `llm` | Ollama + загрузка модели | Закрытый контур без внешнего API |
+| `gpu` | `vision-service` с пробросом GPU | Целевой стенд; нужен `nvidia-container-toolkit` |
 | `dev` | Hot-reload, проброс портов, Vite вместо статики | Разработка |
 
 ```bash
@@ -176,9 +189,10 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 | Снимки в статусе `NEEDS_TIME` | Нет EXIF и время не распознано из имени файла | Указать время при загрузке или переименовать по шаблону `cam_YYYYMMDD_HHMMSS.jpg` |
 | Анализ не находит отклонений | Нет активных вех на дату снимков либо зоны не размечены | Проверить `GET /api/v1/plan/objects/{id}/stages?active_on=...` и наличие зон у камер |
 | Все зоны `BLIND` | Не размечены зоны или снимки не привязаны к камерам | Разметить зоны на эталонном кадре в UI |
-| Отчёт без LLM-резюме | Ollama не поднята или таймаут | Профиль `llm` либо `LLM_ENABLED=false` — резюме станет шаблонным |
+| Отчёт без LLM-резюме | Нет сети, неверный ключ или таймаут | Проверить `LLM_BASE_URL` и `LLM_API_KEY`; `LLM_ENABLED=false` — резюме станет шаблонным |
+| Распознавание идёт на CPU, хотя есть карта | Не установлен `nvidia-container-toolkit` | `docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`; проверить `GET /api/v1/vision/model` |
 | `409 IMAGE_ALREADY_EXISTS` | Повторная загрузка того же файла | Это защита от дублей, не ошибка |
-| Медленная обработка на CPU | Большой размер входа | Уменьшить `VISION_DET_IMGSZ`, увеличить `WORKER_CONCURRENCY` |
+| Медленная обработка | Работа идёт на CPU вместо GPU либо большой размер входа | Проверить `VISION_DEVICE` и вывод `GET /api/v1/vision/model`; уменьшить `VISION_DET_IMGSZ` |
 
 **Куда смотреть в первую очередь:** `request_id` из ответа об ошибке —
 `docker compose logs | grep <request_id>` показывает всю цепочку вызовов через все сервисы.
@@ -210,7 +224,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 | `vision-service` | `services/vision-service` | `uvicorn src.main:app` | — | `data/models` → `/models` (только чтение) |
 | `report-service` | `services/report-service` | `uvicorn src.main:app` | `analysis-service`, `plan-service`, `minio` | — |
 | `gateway` | `services/gateway` | nginx | все API-сервисы | собранная статика `apps/web` |
-| `ollama` (профиль `llm`) | `ollama/ollama` | — | — | `ollamadata` |
+| `ollama` (профиль `llm`) | `ollama/ollama` | — | — | `ollamadata`; только закрытый контур, по умолчанию не поднимается |
 
 Особенности:
 

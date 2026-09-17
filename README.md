@@ -74,7 +74,7 @@ flowchart LR
 | [`vision-service`](services/vision-service/README.md) | Компьютерное зрение: детекция техники, стадия объекта, качество кадра | нет |
 | [`pos-engine`](services/pos-engine/README.md) | Нормативный расчёт ПОС: название объекта → WBS, сроки, потребность в технике | нет |
 | [`report-service`](services/report-service/README.md) | PDF/XLSX-отчёты и LLM-резюме строго по фактам | нет (MinIO) |
-| [`apps/web`](apps/web/README.md) | Дашборд, Гант, лента предупреждений, просмотр камер, редакторы | нет |
+| [`apps/web`](apps/web/README.md) | Дашборд, Гант план-факт, лента предупреждений, просмотр камер, редакторы | нет |
 
 Почему границы проведены именно так — [ADR-0002](docs/decisions/0002-service-boundaries.md).
 Коротко: **план / факт / сверка** — три разные предметные области с разными владельцами данных

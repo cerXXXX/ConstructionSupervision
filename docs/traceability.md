@@ -16,9 +16,9 @@
 | F7 | Сопоставление сессии с активными вехами графика | `analysis-service` | `core/matching.py` | Must | — |
 | F8 | Выявление отклонений D1–D10 с объяснением | `analysis-service` | `core/predicates.py`, `core/explain.py` | Must | — |
 | F9 | Прогноз задержки и даты окончания | `analysis-service` | `core/forecast.py` | Must | — |
-| F10 | Отчёт план-факт, Гант, экспорт PDF | `report-service`, `web` | `core/render.py`, `features/gantt` | Must | — |
+| F10 | Отчёт план-факт, Гант план-факт, экспорт PDF | `report-service`, `web` | `core/render.py`, `features/gantt` | Must | — |
 | F11 | Редактирование графика, правил и зон с пересчётом | `plan-service`, `site-service`, `web` | `api/routes/stages.py`, `api/routes/zones.py` | Should | — |
-| F12 | LLM-резюме строго по фактам | `report-service` | `core/summary.py` | Should | — |
+| F12 | LLM-резюме строго по фактам (внешний LLM-API) | `report-service` | `core/summary.py` | Should | — |
 | F13 | Оценка % готовности объекта по снимку | `analysis-service` | `core/progress.py` | Could | — |
 | F14 | Опасные зоны | `analysis-service` | `core/predicates.py` (D6) | Could | — |
 | F15 | REST API + Swagger для интеграции | все | `api/`, `gateway` | Must | — |
