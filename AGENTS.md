@@ -272,12 +272,10 @@ make health        # опросить /health всех сервисов
 
 **Завести новый сервис** (только после ADR, см. раздел 6):
 1. каталог по образцу `services/plan-service` — структура из раздела 3, `README.md` с контрактом;
-2. `requirements.txt` и `Dockerfile` — по ним CI сам начнёт тестировать и собирать сервис,
-   правки `ci.yml` не нужны;
-3. **матрица в `.github/workflows/release.yml` — руками**: не добавишь, образ не публикуется,
-   а CI останется зелёным и не подскажет;
-4. сервис в `docker-compose.yml` и в `SERVICES`, `NAME_*`, `PORT_*` в `Makefile`;
-5. строка в `docs/architecture.md` и в карте раздела 3.
+2. `requirements.txt` и `Dockerfile` — по ним CI сам начнёт тестировать, собирать
+   и публиковать сервис; конвейер править не нужно;
+3. сервис в `docker-compose.yml` и в `SERVICES`, `NAME_*`, `PORT_*` в `Makefile`;
+4. строка в `docs/architecture.md` и в карте раздела 3.
 
 **Добавить таблицу**:
 1. модель в `dal/models.py`, репозиторий в `dal/repositories/`;

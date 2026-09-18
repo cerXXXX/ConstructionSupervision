@@ -13,8 +13,30 @@ on:
     tags: ["v*"]
 
 jobs:
+
+  # Список сервисов не перечисляется руками: забытая строка здесь означала бы
+  # не опубликованный образ при зелёном конвейере — ошибку, о которой никто
+  # не узнает. Признак сервиса тот же, что в ci.yml: у него есть Dockerfile.
+  discover:
+    name: Найти сервисы
+    runs-on: ubuntu-latest
+    outputs:
+      buildable: ${{ steps.list.outputs.buildable }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: |
+          buildable=$(for d in services/*/; do
+            s=$(basename "$d")
+            [ -f "$d/Dockerfile" ] && echo "$s"
+          done | jq -R . | jq -sc .)
+          echo "buildable=$buildable" >> "$GITHUB_OUTPUT"
+          echo "публикуются: $buildable"
+
   publish:
     name: Публикация · ${{ matrix.service }}
+    needs: discover
+    if: needs.discover.outputs.buildable != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -22,7 +44,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [gateway, plan-service]
+        service: ${{ fromJson(needs.discover.outputs.buildable) }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
