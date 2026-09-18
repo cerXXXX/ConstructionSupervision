@@ -68,6 +68,9 @@ services:
 
   plan-service:
     <<: *service-base
+    # Имя образа задано вместе с build: собранный локально образ получает то же
+    # имя, что опубликованный, поэтому docker compose pull и up взаимозаменяемы.
+    image: ${IMAGE_REGISTRY:-lct}/plan-service:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/plan-service/Dockerfile
@@ -88,6 +91,7 @@ services:
 
   gateway:
     <<: *service-base
+    image: ${IMAGE_REGISTRY:-lct}/gateway:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: services/gateway/Dockerfile

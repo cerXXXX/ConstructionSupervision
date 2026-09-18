@@ -21,10 +21,13 @@ NAME_report := report-service
 NAME_pos := pos-engine
 NAME_gateway := gateway
 
-.PHONY: help up down dev restart logs ps health seed demo reset test lint fmt contracts migrate models backup e2e
+.PHONY: help up down dev restart logs ps health seed demo reset test lint fmt contracts migrate models backup e2e pull
 
 help: ## Показать список команд
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
+
+pull: .env ## Забрать опубликованные образы из ghcr (нужен docker login ghcr.io)
+	$(COMPOSE) pull
 
 up: .env ## Поднять весь стек
 	$(COMPOSE) up -d --build
