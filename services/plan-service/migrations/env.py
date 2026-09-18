@@ -15,14 +15,17 @@ if config.config_file_name:
 
 # DSN берётся из настроек сервиса, а не из alembic.ini: конфигурация читается
 # в одном месте, и пароль не попадает в файл под контролем версий.
-config.set_main_option("sqlalchemy.url", settings.plan_db_dsn)
+# Исключение — тесты: они подставляют адрес тестовой базы в конфиг заранее,
+# и затирать его нельзя, иначе прогон уедет в рабочую базу.
+if not config.get_main_option("sqlalchemy.url", None):
+    config.set_main_option("sqlalchemy.url", settings.plan_db_dsn)
 
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
     context.configure(
-        url=settings.plan_db_dsn,
+        url=config.get_main_option("sqlalchemy.url"),
         target_metadata=target_metadata,
         literal_binds=True,
         compare_type=True,

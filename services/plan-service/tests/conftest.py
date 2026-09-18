@@ -10,12 +10,15 @@ unit-тесты на core/ должны проходить всегда и бе�
 
 import os
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import pytest
 
 # Зависимости API-тестов (httpx, sqlalchemy) импортируются внутри фикстур,
 # а не здесь: unit-тесты на core/ обязаны запускаться без окружения сервиса —
 # это и есть смысл правила «доменная логика не знает про БД и сеть».
+
+SERVICE_ROOT = Path(__file__).resolve().parents[1]
 
 # Одна переменная на все сервисы: CI не должен знать про каждый в отдельности.
 TEST_DSN = os.getenv(
@@ -24,23 +27,64 @@ TEST_DSN = os.getenv(
 )
 
 
-@pytest.fixture
-async def engine() -> AsyncIterator:
+def _database_is_reachable() -> bool:
+    import asyncio
+
     from lct_common.db import create_engine
     from sqlalchemy import text
-    from src.dal.models import Base
 
-    engine = create_engine(TEST_DSN)
-    try:
-        async with engine.connect() as connection:
-            await connection.execute(text("SELECT 1"))
-    except Exception:  # noqa: BLE001 — причина недоступности БД здесь не важна
-        await engine.dispose()
+    async def probe() -> bool:
+        engine = create_engine(TEST_DSN)
+        try:
+            async with engine.connect() as connection:
+                await connection.execute(text("SELECT 1"))
+            return True
+        except Exception:  # noqa: BLE001 — причина недоступности БД здесь не важна
+            return False
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(probe())
+
+
+@pytest.fixture(scope="session")
+def alembic_config():
+    """Конфиг Alembic, нацеленный на тестовую базу.
+
+    Пути абсолютные: тесты запускаются и из каталога сервиса, и из корня репозитория.
+    """
+    from alembic.config import Config
+
+    config = Config(str(SERVICE_ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(SERVICE_ROOT / "migrations"))
+    config.set_main_option("sqlalchemy.url", TEST_DSN)
+    return config
+
+
+@pytest.fixture(scope="session")
+def migrated_database(alembic_config) -> str:
+    """Схема поднимается миграциями, а не `create_all`.
+
+    Так каждый прогон тестов заодно проверяет, что миграции применяются: иначе
+    о сломанном `upgrade` узнают при старте контейнера, а не в CI.
+
+    Фикстура синхронная намеренно: Alembic внутри поднимает свой event loop,
+    и вызывать его из уже работающего цикла нельзя.
+    """
+    from alembic import command
+
+    if not _database_is_reachable():
         pytest.skip("нужен PostgreSQL: make up postgres (или задайте TEST_DB_DSN)")
 
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all)
+    command.upgrade(alembic_config, "head")
+    return TEST_DSN
 
+
+@pytest.fixture
+async def engine(migrated_database) -> AsyncIterator:
+    from lct_common.db import create_engine
+
+    engine = create_engine(migrated_database)
     yield engine
     await engine.dispose()
 
