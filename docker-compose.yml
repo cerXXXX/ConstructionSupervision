@@ -109,6 +109,26 @@ services:
       retries: 12
       start_period: 20s
 
+  analysis-service:
+    <<: *service-base
+    image: ${IMAGE_REGISTRY:-lct}/analysis-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/analysis-service/Dockerfile
+    environment:
+      <<: *python-env
+      ANALYSIS_DB_DSN: ${ANALYSIS_DB_DSN}
+    ports: ["8003:8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
   gateway:
     <<: *service-base
     image: ${IMAGE_REGISTRY:-lct}/gateway:${IMAGE_TAG:-latest}

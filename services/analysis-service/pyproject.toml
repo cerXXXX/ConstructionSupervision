@@ -1,0 +1,11 @@
+[project]
+name = "analysis-service"
+version = "0.1.0"
+description = "Сервис сверки план-факт: отклонения D1–D10, прогресс, SPI, прогноз"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-q"

@@ -108,8 +108,7 @@ D1/D2, UI показывает объект и ленту отклонений. 
 
 - [ ] `C-01` фикстуры контрактов: ответ плана на дату и факта сессии в `tests/fixtures/`
       спец: docs/roadmap.md §4 · **делается первым** — снимает ожидание треков A и B
-- [ ] `C-02` analysis-service: каркас, схема `analysisdb`, миграция `0001`
-      спец: services/analysis-service/README.md · блокирует C-03
+- [x] `C-02` analysis-service: каркас, схема `analysisdb`, миграция `0001`
 - [ ] `C-03` analysis-service: `core/deviations.py` — D1 «нет требуемой техники» на фикстурах
       спец: docs/methodology.md · unit-тесты на границы обязательны · ждёт: C-01, C-02
 - [ ] `C-04` analysis-service: D2 + реестр правил, чтобы новый тип отклонения был строкой

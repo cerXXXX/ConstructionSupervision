@@ -81,6 +81,11 @@ flowchart LR
 }
 ```
 
+**Реализовано на сегодня:** каркас сервиса, `/health`, `/health/ready` и схема
+`analysisdb` (миграция `0001`). Эндпоинтов и методики пока нет — это задачи C-03…C-05;
+таблица `deviation_rule` создана, но пуста: пороги D1–D10 заполняются вместе
+с предикатами, которые их читают.
+
 ### Коды ошибок
 
 `OBJECT_NOT_FOUND`, `DEVIATION_NOT_FOUND`, `NO_PLAN_FOR_OBJECT`, `NO_FACTS_FOR_PERIOD`,
