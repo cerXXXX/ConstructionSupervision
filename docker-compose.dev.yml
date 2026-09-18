@@ -13,3 +13,41 @@ services:
     environment:
       ENV: dev
       LOG_LEVEL: DEBUG
+
+  site-service:
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./services/site-service/src:/app/services/site-service/src:ro
+    environment:
+      ENV: dev
+      LOG_LEVEL: DEBUG
+
+  analysis-service:
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./services/analysis-service/src:/app/services/analysis-service/src:ro
+    environment:
+      ENV: dev
+      LOG_LEVEL: DEBUG
+
+  vision-service:
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./services/vision-service/src:/app/services/vision-service/src:ro
+    environment:
+      ENV: dev
+      LOG_LEVEL: DEBUG
+
+  # Интерфейс в разработке отдаётся Vite, а не статикой из образа gateway:
+  # пересобирать образ на каждую правку кнопки — потерянные минуты.
+  # Запросы /api проксируются на gateway внутри сети compose.
+  web:
+    image: node:22-alpine
+    working_dir: /web
+    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
+    volumes:
+      - ./apps/web:/web
+    environment:
+      VITE_API_PROXY: http://gateway:80
+    ports: ["5173:5173"]
+    networks: [lct]
