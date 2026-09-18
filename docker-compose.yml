@@ -129,6 +129,23 @@ services:
       retries: 12
       start_period: 20s
 
+  vision-service:
+    <<: *service-base
+    image: ${IMAGE_REGISTRY:-lct}/vision-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/vision-service/Dockerfile
+    environment:
+      <<: *python-env
+      VISION_DEVICE: ${VISION_DEVICE}
+    ports: ["8004:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
   gateway:
     <<: *service-base
     image: ${IMAGE_REGISTRY:-lct}/gateway:${IMAGE_TAG:-latest}

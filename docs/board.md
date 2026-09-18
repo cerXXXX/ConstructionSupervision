@@ -95,9 +95,10 @@ D1/D2, UI показывает объект и ленту отклонений. 
       спец: services/site-service/README.md §3 · ждёт: B-01
 - [ ] `B-03` site-service: сессии — группировка снимков объекта, `GET /sessions/{id}/facts`
       спец: docs/api-guidelines.md §11.2 · **ключевой контракт**, блокирует C-05
-- [ ] `B-04` vision-service: каркас + `POST /vision/analyze` на open-vocabulary детекторе,
+- [ ] `B-04` vision-service: `POST /vision/analyze` на open-vocabulary детекторе,
       маппинг классов в `data/class_map.yaml`
       спец: services/vision-service/README.md · docs/decisions/ · ждёт: A-03 (коды классов)
+      каркас сервиса уже поднят и стоит в compose — осталось распознавание
 - [ ] `B-05` site-service: конвейер снимок → vision-service → детекции в БД
       спец: services/site-service/README.md §4 · ждёт: B-02, B-04
 - [ ] `B-06` инфраструктура GPU: `nvidia-container-toolkit` на демо-ноутбуке, проброс карты
