@@ -1,0 +1,163 @@
+# Конвейер проверки: линт → тесты и контракты → сборка образов.
+#
+# Сервисы обнаруживаются автоматически: добавление нового сервиса не требует
+# правки этого файла — достаточно requirements.txt и Dockerfile на своих местах.
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  # Новый пуш в ту же ветку отменяет предыдущий прогон: очередь на хакатоне
+  # дороже лишней проверки устаревшего коммита.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+
+  discover:
+    name: Найти сервисы
+    runs-on: ubuntu-latest
+    outputs:
+      testable: ${{ steps.list.outputs.testable }}
+      buildable: ${{ steps.list.outputs.buildable }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: |
+          testable=$(for d in services/*/; do
+            s=$(basename "$d")
+            [ -f "$d/requirements.txt" ] && echo "$s"
+          done | jq -R . | jq -sc .)
+          buildable=$(for d in services/*/; do
+            s=$(basename "$d")
+            [ -f "$d/Dockerfile" ] && echo "$s"
+          done | jq -R . | jq -sc .)
+          echo "testable=$testable"   >> "$GITHUB_OUTPUT"
+          echo "buildable=$buildable" >> "$GITHUB_OUTPUT"
+          echo "тестируются: $testable"
+          echo "собираются:  $buildable"
+
+  lint:
+    name: Линт
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      # Версия зафиксирована: правило UP046 в tools/ruff.toml существует только
+      # начиная с ruff 0.9 — на более старой версии конфиг не разбирается вовсе.
+      - run: pip install ruff==0.16.8
+      - name: ruff check
+        run: ruff check --config tools/ruff.toml --output-format=github packages services scripts
+      - name: ruff format
+        run: ruff format --check --config tools/ruff.toml packages services scripts
+
+  test:
+    name: Тесты · ${{ matrix.service }}
+    needs: discover
+    if: needs.discover.outputs.testable != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.discover.outputs.testable) }}
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      # Одно имя переменной на все сервисы: CI не знает про каждый в отдельности.
+      TEST_DB_DSN: postgresql+asyncpg://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Установка зависимостей
+        working-directory: services/${{ matrix.service }}
+        run: |
+          pip install ../../packages/py-common
+          if [ -f requirements-dev.txt ]; then
+            pip install -r requirements-dev.txt
+          else
+            pip install -r requirements.txt pytest pytest-asyncio
+          fi
+
+      - name: Тесты
+        working-directory: services/${{ matrix.service }}
+        run: PYTHONPATH=. pytest
+
+      # Контракт нельзя протащить незаметно: снапшот OpenAPI обязан совпадать
+      # с кодом (packages/contracts/README.md). Снапшота ещё нет — предупреждаем,
+      # расходится — падаем.
+      - name: Снапшот OpenAPI совпадает с кодом
+        run: |
+          snapshot="packages/contracts/openapi/${{ matrix.service }}.json"
+          if [ ! -f "$snapshot" ]; then
+            echo "::warning::снапшот $snapshot отсутствует — выполните make contracts и закоммитьте"
+            exit 0
+          fi
+          python scripts/openapi_dump.py "services/${{ matrix.service }}" > /tmp/current.json
+          if ! diff -u "$snapshot" /tmp/current.json; then
+            echo "::error::контракт разошёлся со снапшотом — выполните make contracts"
+            exit 1
+          fi
+
+  build:
+    name: Образ · ${{ matrix.service }}
+    needs: [discover, lint]
+    if: needs.discover.outputs.buildable != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.discover.outputs.buildable) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Сборка
+        uses: docker/build-push-action@v6
+        with:
+          # Контекст — корень репозитория для всех сервисов: одно правило на всех.
+          context: .
+          file: services/${{ matrix.service }}/Dockerfile
+          push: false
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+
+  green:
+    name: Всё зелено
+    needs: [lint, test, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Проверка результатов
+        run: |
+          # Один обязательный статус для защиты ветки: не придётся вносить
+          # в настройки каждый динамический job матрицы по отдельности.
+          for result in "${{ needs.lint.result }}" "${{ needs.test.result }}" "${{ needs.build.result }}"; do
+            case "$result" in
+              success|skipped) ;;
+              *) echo "провалено: $result"; exit 1 ;;
+            esac
+          done
+          echo "main можно поднимать"

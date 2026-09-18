@@ -76,12 +76,12 @@ test: ## Тесты: make test [s=plan]
 	fi
 
 lint: ## Линт всех Python-сервисов
-	ruff check --config tools/ruff.toml packages services
-	ruff format --check --config tools/ruff.toml packages services
+	ruff check --config tools/ruff.toml packages services scripts
+	ruff format --check --config tools/ruff.toml packages services scripts
 
 fmt: ## Автоформатирование
-	ruff format --config tools/ruff.toml packages services
-	ruff check --fix --config tools/ruff.toml packages services
+	ruff format --config tools/ruff.toml packages services scripts
+	ruff check --fix --config tools/ruff.toml packages services scripts
 
 contracts: ## Пересобрать снапшоты OpenAPI и TS-клиент
 	./scripts/contracts.sh
