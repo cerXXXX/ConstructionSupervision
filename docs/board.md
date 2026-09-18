@@ -123,8 +123,9 @@ D1/D2, UI показывает объект и ленту отклонений. 
 
 - [x] `D-01` docker compose, gateway, `.env.example`, Makefile
 - [x] `D-02` CI: линт, тесты по сервисам, сборка образов, сверка снапшота OpenAPI, шаблон PR
-- [ ] `D-03` apps/web: каркас SPA, экран списка объектов на реальном `GET /plan/objects`
+- [ ] `D-03` apps/web: экран списка объектов на реальном `GET /plan/objects`
       спец: docs/architecture.md · ждёт: ничего, A-02 уже готов
+      каркас SPA готов и собирается в образ gateway — остался сам экран
 - [ ] `D-04` packages/ts-api-client: генерация клиента из снапшотов, `make contracts` проходит
       целиком и кладёт снапшоты в `packages/contracts/openapi/`
       спец: packages/contracts/README.md · блокирует зелёный CI на шаге контрактов

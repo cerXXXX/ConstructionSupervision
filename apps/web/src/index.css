@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* Палитра интерфейса: та же, что на заглушке gateway, чтобы переход
+   со статики на SPA не выглядел сменой продукта. */
+@theme {
+  --color-canvas: #ecede9;
+  --color-ink: #15181a;
+  --color-muted: #5e6763;
+  --color-accent: #c2451a;
+}
