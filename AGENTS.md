@@ -112,8 +112,11 @@ make seed          # загрузить демо-данные и прогнат�
 make demo          # seed + сценарий показа (3 «дня» объекта)
 make test          # тесты всех сервисов
 make test s=plan   # тесты одного сервиса
-make lint          # ruff + mypy + eslint
+make lint          # ruff: линт и проверка формата
 make fmt           # автоформат
+make dev           # стек с hot-reload (оверлей docker-compose.dev.yml)
+make e2e           # сквозной сценарий на поднятом стеке
+make backup        # дамп баз и зеркало бакетов
 make contracts     # пересобрать снапшоты OpenAPI и TS-клиент
 make migrate s=plan m="add stage_rule"   # создать миграцию
 make health        # опросить /health всех сервисов

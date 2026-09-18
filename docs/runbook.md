@@ -54,7 +54,8 @@ make seed                # демо-объект, график, камеры, з
 | `make contracts` | Пересобрать снапшоты OpenAPI и TS-клиент |
 | `make migrate s=plan m="описание"` | Создать миграцию Alembic |
 | `make models` | Скачать веса моделей |
-| `make report o=<object_id>` | Сформировать PDF-отчёт из командной строки |
+| `make dev` | Стек с hot-reload (оверлей `docker-compose.dev.yml`) |
+| `make backup` | Дамп баз и зеркало бакетов MinIO |
 
 ## 4. Переменные окружения
 
@@ -148,19 +149,25 @@ LLM внешняя: видеопамять полностью отдана ра�
 Прямой доступ к OpenAI и Anthropic из РФ без прокси не работает. Проверьте выбранного
 провайдера **с той машины, на которой будет демонстрация**, заранее.
 
-## 5. Профили compose
+## 5. Профили и оверлеи compose
 
-| Профиль | Что добавляет | Когда |
-| :--- | :--- | :--- |
-| по умолчанию | gateway, все сервисы, postgres, minio, redis | Обычная работа |
-| `llm` | Ollama + загрузка модели | Закрытый контур без внешнего API |
-| `gpu` | `vision-service` с пробросом GPU | Целевой стенд; нужен `nvidia-container-toolkit` |
-| `dev` | Hot-reload, проброс портов, Vite вместо статики | Разработка |
+Разработка — это **оверлей**, а не профиль: отдельный файл поверх основного.
 
 ```bash
-docker compose --profile llm up -d
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+make dev   # docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
+
+Он добавляет hot-reload и монтирование исходников; `packages/py-common` намеренно
+не монтируется — его правка требует пересборки образа, иначе получается «работает
+только у меня».
+
+| Профиль | Что добавит | Когда | Состояние |
+| :--- | :--- | :--- | :--- |
+| `llm` | Ollama + загрузка модели | Закрытый контур без внешнего API | появится вместе с `report-service` |
+| `gpu` | `vision-service` с пробросом GPU | Целевой стенд; нужен `nvidia-container-toolkit` | появится вместе с `vision-service` |
+
+Профилей в `docker-compose.yml` сейчас нет: `docker compose --profile llm up -d`
+поднимет обычный стек и промолчит. Появятся они вместе с сервисами, которые им нужны.
 
 ## 6. Демо-сценарий (5 минут)
 
@@ -210,6 +217,10 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 Один файл `docker-compose.yml` на весь стек, оверлей `docker-compose.dev.yml` для разработки.
 Порядок запуска задаётся через `depends_on: condition: service_healthy` — сервис поднимается
 только после готовности своих зависимостей.
+
+Ниже — **целевой** состав стека. В `docker-compose.yml` контейнер появляется, когда написан
+сам сервис: сегодня это `postgres`, `minio`, `redis`, `plan-service` и `gateway`.
+Что именно осталось и за кем — [docs/board.md](board.md).
 
 | Контейнер | Образ / сборка | Команда | Зависит от | Тома |
 | :--- | :--- | :--- | :--- | :--- |

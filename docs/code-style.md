@@ -55,17 +55,13 @@ src/
 
 ## 3. Python: конкретика
 
-**Версия и инструменты:** Python 3.12, `ruff` (линт + формат), `mypy` в нестрогом режиме
-на `core/` и `services/`, `pytest` + `pytest-asyncio`.
+**Версия и инструменты:** Python 3.12, `ruff` (линт + формат), `pytest` + `pytest-asyncio`.
+`mypy` пока не подключён — появится вместе с `tools/mypy.ini` и джобом в CI.
 
-```toml
-# фрагмент pyproject.toml, одинаковый во всех сервисах
-[tool.ruff]
-line-length = 100
-target-version = "py312"
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RUF"]
-```
+Настройки линтера живут **только** в [`tools/ruff.toml`](../tools/ruff.toml) — один файл
+на весь репозиторий. В `pyproject.toml` сервиса секции `[tool.ruff]` быть не должно:
+два источника правил расходятся в первый же день, и «у меня линт проходит» перестаёт
+что-либо значить. Нужно исключение — оно добавляется в общий файл с обоснованием.
 
 **Асинхронность.** Весь ввод-вывод асинхронный: `async def` эндпоинты, `AsyncSession`
 SQLAlchemy, `httpx.AsyncClient`. Блокирующий вызов (inference, WeasyPrint, работа с файлом)

@@ -119,7 +119,7 @@ flowchart LR
 ```bash
 docker compose up -d report-service            # внешний LLM-API по умолчанию
 docker compose --profile llm up -d ollama      # только для закрытого контура
-make report o=<object_id>
+make report o=<object_id>   # цель появится вместе с сервисом
 make test s=report
 ```
 

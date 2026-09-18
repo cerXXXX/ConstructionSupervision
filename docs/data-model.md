@@ -80,7 +80,7 @@ erDiagram
 | :--- | :--- | :--- |
 | `code` | text PK | `excavator`, `dump_truck`, `tower_crane`, `concrete_pump`, `concrete_mixer`, `bulldozer`, `roller`, `truck`, `truck_crane`, `manipulator_crane`, `pile_driver`, `loader`, `asphalt_paver`, `grader`, `person` |
 | `name_ru` | text | «Экскаватор», «Самосвал» |
-| `group` | text | `EARTHWORKS` / `LIFTING` / `CONCRETE` / `TRANSPORT` / `ROAD` / `OTHER` |
+| `group_code` | text | `EARTHWORKS` / `LIFTING` / `CONCRETE` / `TRANSPORT` / `ROAD` / `OTHER` |
 | `aliases` | jsonb | Маппинг меток внешних датасетов: `["excavator", "digger", "backhoe"]` |
 | `is_active` | bool | Выключение класса без удаления истории |
 | `icon` | text | Имя иконки в UI |
@@ -146,6 +146,7 @@ erDiagram
 | Поле | Тип | Описание |
 | :--- | :--- | :--- |
 | `id` | uuid PK | |
+| `code` | text unique | `moscow-6day`; на него ссылается `DEFAULT_CALENDAR` |
 | `name` | text | «Москва, 2026, 6-дневка» |
 | `weekend_days` | jsonb | `[6, 7]` |
 | `holidays` | jsonb | Список дат |
