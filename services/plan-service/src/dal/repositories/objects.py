@@ -30,9 +30,7 @@ class ObjectRepository:
         if object_type:
             query = query.where(ConstructionObject.object_type == object_type)
 
-        total = await self._session.scalar(
-            select(func.count()).select_from(query.subquery())
-        )
+        total = await self._session.scalar(select(func.count()).select_from(query.subquery()))
         rows = await self._session.scalars(
             query.order_by(ConstructionObject.created_at.desc()).limit(limit).offset(offset)
         )

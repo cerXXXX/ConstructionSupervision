@@ -119,9 +119,7 @@ def upgrade() -> None:
         sa.Column("free_float_days", sa.Integer, server_default=sa.text("0"), nullable=False),
         sa.Column("shifts_per_day", sa.Integer, server_default=sa.text("2"), nullable=False),
         sa.Column("source", sa.String(16), server_default=sa.text("'POS_ENGINE'"), nullable=False),
-        sa.Column(
-            "regulatory_basis", JSONB, server_default=sa.text("'[]'::jsonb"), nullable=False
-        ),
+        sa.Column("regulatory_basis", JSONB, server_default=sa.text("'[]'::jsonb"), nullable=False),
         *_timestamps(),
         sa.CheckConstraint(
             "phase IN ('PREPARATORY', 'SUBSTRUCTURE', 'SUPERSTRUCTURE', "
@@ -133,9 +131,7 @@ def upgrade() -> None:
             "'STORAGE', 'DANGER', 'ROAD')",
             name="ck_stage_zone_type",
         ),
-        sa.CheckConstraint(
-            "source IN ('POS_ENGINE', 'IMPORT', 'MANUAL')", name="ck_stage_source"
-        ),
+        sa.CheckConstraint("source IN ('POS_ENGINE', 'IMPORT', 'MANUAL')", name="ck_stage_source"),
         sa.CheckConstraint("plan_end >= plan_start", name="ck_stage_dates"),
     )
     op.create_index("ix_stage_object_plan_start", "stage", ["object_id", "plan_start"])

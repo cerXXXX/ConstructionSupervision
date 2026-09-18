@@ -8,7 +8,6 @@
 from datetime import date
 
 import pytest
-
 from src.core.calendar import (
     WorkCalendar,
     add_working_days,

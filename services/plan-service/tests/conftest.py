@@ -17,8 +17,9 @@ import pytest
 # а не здесь: unit-тесты на core/ обязаны запускаться без окружения сервиса —
 # это и есть смысл правила «доменная логика не знает про БД и сеть».
 
+# Одна переменная на все сервисы: CI не должен знать про каждый в отдельности.
 TEST_DSN = os.getenv(
-    "PLAN_DB_TEST_DSN",
+    "TEST_DB_DSN",
     "postgresql+asyncpg://plan_user:plan-change-me@localhost:5432/plandb",
 )
 
@@ -27,16 +28,15 @@ TEST_DSN = os.getenv(
 async def engine() -> AsyncIterator:
     from lct_common.db import create_engine
     from sqlalchemy import text
-
     from src.dal.models import Base
 
     engine = create_engine(TEST_DSN)
     try:
         async with engine.connect() as connection:
             await connection.execute(text("SELECT 1"))
-    except Exception:
+    except Exception:  # noqa: BLE001 — причина недоступности БД здесь не важна
         await engine.dispose()
-        pytest.skip("нужен PostgreSQL: make up postgres (или задайте PLAN_DB_TEST_DSN)")
+        pytest.skip("нужен PostgreSQL: make up postgres (или задайте TEST_DB_DSN)")
 
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
@@ -65,7 +65,6 @@ async def session(engine) -> AsyncIterator:
 async def client(session) -> AsyncIterator:
     """HTTP-клиент поверх приложения, с подменённой сессией и рабочим ключом."""
     from httpx import ASGITransport, AsyncClient
-
     from src.api.deps import get_session
     from src.config import settings
     from src.main import app

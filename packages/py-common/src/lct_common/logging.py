@@ -33,9 +33,7 @@ def setup_logging(service_name: str, level: str = "INFO", *, pretty: bool = Fals
     """
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level.upper())
 
-    renderer = (
-        structlog.dev.ConsoleRenderer() if pretty else structlog.processors.JSONRenderer()
-    )
+    renderer = structlog.dev.ConsoleRenderer() if pretty else structlog.processors.JSONRenderer()
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
