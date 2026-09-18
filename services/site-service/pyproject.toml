@@ -1,0 +1,11 @@
+[project]
+name = "site-service"
+version = "0.1.0"
+description = "Сервис площадки: камеры, зоны, снимки, сессии наблюдения, детекции техники"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+addopts = "-q"

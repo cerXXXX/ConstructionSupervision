@@ -69,6 +69,10 @@ flowchart LR
 
 Пример ответа `/sessions/{id}/facts` — [api-guidelines.md, п. 11.2](../../docs/api-guidelines.md).
 
+**Реализовано на сегодня:** каркас сервиса, `/health`, `/health/ready` и схема `sitedb`
+(миграция `0001`). Эндпоинтов из таблиц выше пока нет — это следующие задачи трека B;
+схема под них уже создана, придумывать её заново не нужно.
+
 ### Коды ошибок
 
 `CAMERA_NOT_FOUND`, `ZONE_NOT_FOUND`, `IMAGE_NOT_FOUND`, `IMAGE_ALREADY_EXISTS` (409, с ID

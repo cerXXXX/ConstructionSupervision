@@ -89,8 +89,7 @@ D1/D2, UI показывает объект и ленту отклонений. 
 
 ## 5. Трек B — площадка и зрение
 
-- [ ] `B-01` site-service: каркас по образцу plan-service, схема `sitedb`, миграция `0001`
-      спец: services/site-service/README.md · AGENTS.md §3 · блокирует B-02
+- [x] `B-01` site-service: каркас по образцу plan-service, схема `sitedb`, миграция `0001`
 - [ ] `B-02` site-service: `POST /images` — приём снимка, укладка в MinIO, дедупликация по
       sha256, время из EXIF → имени файла → статус `NEEDS_TIME`
       спец: services/site-service/README.md §3 · ждёт: B-01

@@ -89,6 +89,26 @@ services:
       retries: 12
       start_period: 20s
 
+  site-service:
+    <<: *service-base
+    image: ${IMAGE_REGISTRY:-lct}/site-service:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: services/site-service/Dockerfile
+    environment:
+      <<: *python-env
+      SITE_DB_DSN: ${SITE_DB_DSN}
+    ports: ["8002:8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
   gateway:
     <<: *service-base
     image: ${IMAGE_REGISTRY:-lct}/gateway:${IMAGE_TAG:-latest}
