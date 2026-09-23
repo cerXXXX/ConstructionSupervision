@@ -213,8 +213,8 @@ analysis решает сам, чистой функцией. Поэтому от
       "window_end": "2026-10-20T06:30:00Z",
       "updated_at": "2026-10-20T06:41:12Z",
       "cameras": [
-        {"code": "cam-north", "images": 1, "usable": true, "reason": null},
-        {"code": "cam-gate", "images": 1, "usable": false, "reason": "DARK"}
+        {"code": "cam-north", "images": 1, "usable": true, "reason": null, "image_ids": ["9e41…"]},
+        {"code": "cam-gate", "images": 1, "usable": false, "reason": "DARK", "image_ids": ["b07c…"]}
       ],
       "stage_observation": {
         "stage_label": "PIT", "conf": 0.78,
@@ -256,6 +256,7 @@ analysis решает сам, чистой функцией. Поэтому от
 | `window_start`, `window_end` | UTC | Окно 30 минут, выровненное по :00 и :30 |
 | `updated_at` | UTC | Когда факт окна пересчитан в последний раз. Пересчёт идёт после каждого обработанного снимка окна |
 | `cameras[]` | object[] | Все активные камеры объекта. Камера без снимков в окне: `images: 0`, `usable: false`, `reason: NO_IMAGES` |
+| `cameras[].image_ids` | uuid[] | Распознанные снимки камеры в окне. Нужны как доказательство там, где рамок нет: «на участке нет обязательной техники» (D1) показывается снимком пустого участка. Добавлено 23.09 |
 | `stage_observation` | object или `null` | Стадия по фото за окно: метка с наибольшей суммой уверенности по пригодным кадрам |
 | `areas[]` | object[] | Все участки объекта, даже пустые и невидимые. Участок — все зоны с одинаковыми типом и названием ([ADR-0013](../../docs/decisions/0013-zones-and-areas.md)) |
 | `areas[].area` | string | Ключ участка `ТИП:Название`, например `PIT:Котлован` |

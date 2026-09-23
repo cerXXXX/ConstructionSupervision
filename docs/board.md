@@ -245,7 +245,7 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       спец: [methodology.md](methodology.md) §6 · ждёт: T08
       что: `core/equipment_state.py` по таблице §6 с обоснованием статуса строкой
       готово, когда: тест на каждую строку таблицы для транзитного и нетранзитного класса и для `person`
-- [ ] `T10` analysis: реестр предикатов, D1, D2, объяснение
+- [~] `T10` analysis: реестр предикатов, D1, D2, объяснение
       спец: [methodology.md](methodology.md) §9, §12 · ждёт: T09
       что: `core/predicates.py` (реестр, ключ отклонения); D1, D2;
       `data/deviation_rules.yaml` — все десять кодов (предикат, серьёзность, `params`, шаблон);
@@ -349,7 +349,8 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       появляется
 - [ ] `T26` site: «факты за период» и пересчёты
       спец: [interservice.md](../packages/contracts/interservice.md) §2 · ждёт: T25
-      что: `GET /objects/{id}/facts` строго по контракту; `/sessions`, `/sessions/{id}`;
+      что: `GET /objects/{id}/facts` строго по контракту, включая `cameras[].image_ids`
+      (добавлено 23.09 для доказательств D1); `/sessions`, `/sessions/{id}`;
       `POST /zones/reapply`; `POST /images/reanalyze`
       готово, когда: ответ совпадает по форме с фикстурами T06; правка зоны пересчитывает факты
 - [ ] `T27` scripts: `seed.py` и `labelme_to_zones.py`

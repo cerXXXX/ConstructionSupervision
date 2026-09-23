@@ -336,6 +336,7 @@ erDiagram
 | `enabled` | bool | |
 | `severity` | text | Базовая серьёзность (может повышаться по параметрам эскалации) |
 | `params` | jsonb | Пороги: `{"min_sessions": 2, "escalate_after_days": 1}` |
+| `title_template` | text | Шаблон заголовка карточки с подстановкой из `facts` |
 | `message_template` | text | Шаблон текста с подстановкой из `facts` |
 
 ### 3.4. `stage_fact` — факт по вехе
