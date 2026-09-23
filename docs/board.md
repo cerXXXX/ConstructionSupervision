@@ -157,7 +157,9 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       `labelme_to_zones.py` — заготовки, которые печатают «не реализовано, задача Txx» и
       возвращают 1; цели Makefile вызывают `python scripts/…`; `*.sh` и `_not_implemented.sh` удалить
       готово, когда: `python scripts/health.py` печатает сводку по поднятым сервисам
-- [ ] `T03` plan-service: убрать клиент pos-engine, схема по data-model §1
+- [x] `T03` plan-service: убрать клиент pos-engine, схема по data-model §1 — сделано:
+      `dal/models.py` и миграция `0001` по data-model §1, `plan_version` в API объекта,
+      pos-engine удалён из клиентов, конфига и health; 21 тест зелёный в контейнере
       спец: [data-model.md](data-model.md) §1, [ADR-0011](decisions/0011-generator-and-reports-as-modules.md) · ждёт: —
       что: удалить `clients/pos_client.py`, `pos_url`, проверку pos в health, `PosDep`, упоминания
       в комментариях; `object.current_revision` → `plan_version`; `work_calendar.timezone`;
@@ -427,3 +429,7 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
 - YOLO-World в Ultralytics для `set_classes`, насколько известно, берёт текстовый энкодер CLIP
   и при первом вызове качает его из интернета (не проверено запуском). Для работы без сети в контейнере `vision-service` его тоже нужно
   положить в `data/models/` — проверить в T24.
+- Раздел 2 этого файла: `pytest -q` на хосте не работает — нет `lct_common`, `pytest-asyncio`
+  и зависимостей сервиса. Рабочий способ (T03): одноразовый контейнер из образа сервиса в сети
+  `lct_lct` с каталогом сервиса, смонтированным в `/app/services/<сервис>`, `pip install pytest
+  pytest-asyncio`, `TEST_DB_DSN` на `postgres:5432`. Стоит записать в §2 или в `scripts/`.

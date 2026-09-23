@@ -18,7 +18,6 @@ from lct_common import (
 from lct_common.db import create_engine, create_session_factory, make_db_check
 
 from src.api.routes import api_router
-from src.clients.pos_client import PosClient
 from src.config import settings
 
 setup_logging(settings.service_name, settings.log_level, pretty=settings.is_dev)
@@ -27,16 +26,14 @@ log = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ресурсы, живущие столько же, сколько процесс: пул БД и HTTP-клиенты."""
+    """Ресурсы, живущие столько же, сколько процесс: пул БД."""
     engine = create_engine(settings.plan_db_dsn, echo=settings.db_echo)
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
-    app.state.pos_client = PosClient(settings.pos_url, settings.api_key, settings.pos_timeout_s)
 
     log.info("service.started", version=settings.version, env=settings.env)
     yield
 
-    await app.state.pos_client.aclose()
     await engine.dispose()
     log.info("service.stopped")
 
@@ -62,12 +59,7 @@ app.include_router(
     make_health_router(
         settings.service_name,
         settings.version,
-        checks=[
-            HealthCheck("db", lambda: make_db_check(app.state.engine)()),
-            # pos-engine нужен только для генерации графика: импорт из файла
-            # и работа с объектами доступны и без него.
-            HealthCheck("pos-engine", lambda: app.state.pos_client.ping(), required=False),
-        ],
+        checks=[HealthCheck("db", lambda: make_db_check(app.state.engine)())],
     )
 )
 app.include_router(api_router)

@@ -21,9 +21,8 @@ class ObjectService:
     async def create(self, payload: ObjectCreate) -> ConstructionObject:
         obj = ConstructionObject(
             name=payload.name.strip(),
-            # Тип не указан — до генерации графика считаем объект монолитным жильём:
-            # это самый частый случай АИП Москвы. Распознавание по наименованию
-            # выполнит pos-engine, и значение будет уточнено.
+            # Тип не указан — считаем объект монолитным жильём: это самый частый
+            # случай АИП Москвы и тип демо-объекта. Разбора наименования нет (ADR-0011).
             object_type=payload.object_type or "RESIDENTIAL_MONOLITH",
             address=payload.address,
             plan_start=payload.plan_start,
@@ -49,13 +48,13 @@ class ObjectService:
         obj = await self.get(object_id)
         changes = payload.model_dump(exclude_unset=True)
 
-        if "plan_start" in changes and obj.current_revision > 0:
+        if "plan_start" in changes and obj.plan_version > 0:
             # Сдвиг даты начала после построения графика меняет все вехи,
             # поэтому выполняется перегенерацией плана, а не правкой поля.
             raise ValidationError(
                 "Дата начала меняется через перегенерацию плана, а не напрямую",
                 object_id=str(object_id),
-                current_revision=obj.current_revision,
+                plan_version=obj.plan_version,
             )
 
         for field, value in changes.items():
