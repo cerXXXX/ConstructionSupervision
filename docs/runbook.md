@@ -6,57 +6,74 @@
 
 | Что | Версия | Зачем |
 | :--- | :--- | :--- |
-| Docker + Docker Compose | 24+ / v2 | Единственный обязательный способ запуска |
-| GNU Make | любая | Все команды проекта |
-| Python | 3.12 | Локальная разработка сервисов вне докера |
+| Docker + Docker Compose | 24+ / v2; на Windows — Docker Desktop с бэкендом WSL2 | Единственный обязательный способ запуска |
+| Python | 3.12 | Скрипты `scripts/*.py`, локальные тесты сервисов |
+| ruff | **0.16.8** (как в `requirements-dev.txt`) | Линт. Другая версия ruff проверяет по другим правилам |
 | Node.js | 20+ | Локальная разработка фронтенда |
+| GNU Make + bash | любая | Удобные обёртки. На Windows без bash не работают — раздел 3 |
 | Оперативная память | 8 ГБ минимум, 16+ комфортно | CV-сервис + Postgres + MinIO + воркеры |
-| Диск | ~20 ГБ | Образ с CUDA весит 6–8 ГБ, плюс остальные образы, веса и демо-снимки |
+| Диск | ~20 ГБ | Образ с CUDA весит несколько гигабайт, плюс остальные образы, веса и демо-снимки |
 | GPU | NVIDIA, 4+ ГБ VRAM | Не обязателен, но целевой стенд — с ним |
 
-**Целевой стенд:** ноутбук Ryzen 5 5600H, 32 ГБ, RTX 3060 Laptop 6 ГБ. На нём
-`VISION_DEVICE=cuda` и профиль `gpu`; нужен установленный `nvidia-container-toolkit`,
-иначе контейнер карту не увидит. Без GPU система работает целиком, но распознавание
-идёт секунды вместо миллисекунд — для отладки этого достаточно, для показа нет.
+**Целевой стенд:** ноутбук Ryzen 5 5600H, 32 ГБ, RTX 3060 Laptop 6 ГБ, Windows 10, Docker Desktop.
+
+**GPU в Docker на Windows.** Docker Desktop с бэкендом WSL2 пробрасывает видеокарту сам. Нужен
+только свежий драйвер NVIDIA для Windows, а `nvidia-container-toolkit` отдельно не ставится.
+Проверка:
+
+```bash
+docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
+```
+
+Без GPU система работает целиком, но распознавание идёт секунды вместо миллисекунд. Для
+отладки этого достаточно, для показа нет.
 
 ## 2. Первый запуск
 
 ```bash
-cp .env.example .env     # при необходимости поменять пароли и ключ API
-make models              # скачать веса детектора и OpenCLIP в data/models (~200 МБ)
-make up                  # docker compose up -d --build
-make health              # все сервисы должны ответить healthy
-make seed                # демо-объект, график, камеры, зоны, снимки, прогон анализа
+cp .env.example .env               # при необходимости поменять пароли и ключ API
+python scripts/fetch_models.py     # веса детектора и OpenCLIP в data/models
+docker compose up -d --build       # весь стек
+python scripts/seed.py             # демо-объект, график, камеры, зоны, снимки, прогон анализа
 ```
 
 | Адрес | Что |
 | :--- | :--- |
 | <http://localhost:8080> | Интерфейс |
 | <http://localhost:8080/docs> | Сводный Swagger с выбором сервиса |
-| <http://localhost:8001/docs> … <http://localhost:8005/docs> | Swagger отдельных сервисов |
+| <http://localhost:8001/docs> … <http://localhost:8004/docs> | Swagger отдельных сервисов |
 | <http://localhost:9001> | Консоль MinIO |
 
-## 3. Команды Make
+## 3. Команды
 
-| Команда | Что делает |
-| :--- | :--- |
-| `make up` / `make down` | Поднять / остановить стек |
-| `make pull` | Забрать опубликованные образы из ghcr вместо локальной сборки |
-| `make restart s=site` | Перезапустить один сервис |
-| `make logs s=analysis` | Логи сервиса (`f=1` — следить) |
-| `make ps` | Состояние контейнеров |
-| `make health` | Опросить `/health/ready` всех сервисов |
-| `make seed` | Загрузить демо-данные |
-| `make demo` | `seed` + сценарий показа: три «дня» объекта с заложенными отклонениями |
-| `make reset` | Полная очистка: тома БД, бакеты MinIO, очередь |
-| `make test` / `make test s=plan` | Тесты всех сервисов / одного |
-| `make e2e` | Сквозной сценарий на поднятом стеке |
-| `make lint` / `make fmt` | Проверка / автоформатирование |
-| `make contracts` | Пересобрать снапшоты OpenAPI и TS-клиент |
-| `make migrate s=plan m="описание"` | Создать миграцию Alembic |
-| `make models` | Скачать веса моделей |
-| `make dev` | Стек с hot-reload (оверлей `docker-compose.dev.yml`) |
-| `make backup` | Дамп баз и зеркало бакетов MinIO |
+Все скрипты проекта написаны на Python и работают одинаково в Linux, macOS и Windows. Цели
+`Makefile` — короткие обёртки над теми же командами. Их рецепты требуют bash, поэтому на Windows
+(`make` из Chocolatey запускает рецепты через cmd) пользуйтесь правым столбцом.
+
+| `make` | PowerShell (Windows) | Что делает |
+| :--- | :--- | :--- |
+| `make up` / `make down` | `docker compose up -d --build` / `docker compose down` | Поднять / остановить стек |
+| `make pull` | `docker compose pull` | Забрать опубликованные образы из ghcr вместо локальной сборки |
+| `make restart s=site` | `docker compose restart site-service` | Перезапустить один сервис |
+| `make logs s=analysis f=1` | `docker compose logs -f --tail=200 analysis-service` | Логи сервиса |
+| `make ps` | `docker compose ps` | Состояние контейнеров |
+| `make health` | `python scripts/health.py` | Опросить `/health/ready` всех сервисов |
+| `make seed` | `python scripts/seed.py` | Загрузить демо-данные и прогнать анализ |
+| `make demo` | `python scripts/demo.py` | Сценарий показа: три «дня» объекта с заложенными отклонениями |
+| `make reset` | `docker compose down -v` | Полная очистка: тома БД, бакеты MinIO, очередь |
+| `make test s=plan` | `cd services/plan-service; $env:PYTHONPATH='.'; pytest -q; cd ../..` | Тесты одного сервиса |
+| `make lint` | `ruff check --config tools/ruff.toml packages services scripts; ruff format --check --config tools/ruff.toml packages services scripts` | Линт и проверка формата |
+| `make fmt` | `ruff format --config tools/ruff.toml packages services scripts` | Автоформатирование |
+| `make e2e` | `python scripts/e2e.py` | Сквозной сценарий на поднятом стеке |
+| `make contracts` | `python scripts/contracts.py` | Пересобрать снапшоты OpenAPI и TS-клиент |
+| `make migrate s=plan m="…"` | `cd services/plan-service; $env:PYTHONPATH='.'; alembic revision --autogenerate -m "…"` | Создать миграцию Alembic |
+| `make models` | `python scripts/fetch_models.py` | Скачать веса моделей |
+| `make dev` | `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build` | Стек с hot-reload |
+| `make backup` | `python scripts/backup.py` | Дамп баз и зеркало бакетов MinIO |
+
+Если локальный ruff другой версии: `python -m pip install ruff==0.16.8`. Если установка из
+сессии агента не видна в терминале пользователя (Windows Store Python хранит пакеты отдельно),
+установку делает человек.
 
 ## 4. Переменные окружения
 
@@ -71,6 +88,7 @@ make seed                # демо-объект, график, камеры, з
 | `API_KEY` | `dev-key-change-me` | Ключ для `X-API-Key`; в проде обязателен к замене |
 | `TZ` | `Europe/Moscow` | Отображение времени; хранение всегда UTC |
 | `RUN_MIGRATIONS` | `true` | Применять Alembic при старте контейнера |
+| `CONTRACTS_DIR` | `/contracts` | Куда смонтирован `packages/contracts` (классы техники, перечисления) |
 
 ### Образы
 
@@ -89,18 +107,19 @@ make seed                # демо-объект, график, камеры, з
 | `SITE_DB_DSN` | `postgresql+asyncpg://site_user:***@postgres:5432/sitedb` |
 | `ANALYSIS_DB_DSN` | `postgresql+asyncpg://analysis_user:***@postgres:5432/analysisdb` |
 
-Базы и роли создаются один раз скриптом инициализации Postgres. Роль имеет права
-только на свою базу — граница сервисов защищена самой СУБД.
+Базы и роли создаются один раз скриптом инициализации Postgres (`infra/postgres/init/`). Роль
+имеет права только на свою базу — граница сервисов защищена самой СУБД.
 
 ### Хранилище и очередь
 
-| Переменная | По умолчанию |
-| :--- | :--- |
-| `S3_ENDPOINT` | `http://minio:9000` |
-| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | задаются в `.env` |
-| `S3_BUCKET_IMAGES` / `S3_BUCKET_PREVIEWS` / `S3_BUCKET_REPORTS` | `images` / `previews` / `reports` |
-| `S3_PRESIGN_TTL_S` | `3600` |
-| `REDIS_URL` | `redis://redis:6379/0` |
+| Переменная | По умолчанию | Смысл |
+| :--- | :--- | :--- |
+| `S3_ENDPOINT` | `http://minio:9000` | MinIO внутри сети Docker |
+| `S3_PUBLIC_ENDPOINT` | `http://localhost:9000` | Адрес MinIO для браузера: на него подписываются ссылки, которые открывает интерфейс |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | задаются в `.env` | |
+| `S3_BUCKET_IMAGES` / `S3_BUCKET_REPORTS` | `images` / `reports` | |
+| `S3_PRESIGN_TTL_S` | `3600` | Срок жизни ссылок |
+| `REDIS_URL` | `redis://redis:6379/0` | Очередь задач site-worker |
 
 ### Адреса сервисов
 
@@ -110,8 +129,6 @@ make seed                # демо-объект, график, камеры, з
 | `SITE_URL` | `http://site-service:8000` |
 | `ANALYSIS_URL` | `http://analysis-service:8000` |
 | `VISION_URL` | `http://vision-service:8000` |
-| `POS_URL` | `http://pos-engine:8000` |
-| `REPORT_URL` | `http://report-service:8000` |
 
 ### Компьютерное зрение
 
@@ -120,23 +137,25 @@ make seed                # демо-объект, график, камеры, з
 | `VISION_DEVICE` | `cuda` | `cuda` на демо-стенде, `cpu` — запасной путь |
 | `VISION_DET_WEIGHTS` | `/models/yolov8s-worldv2.pt` | Веса детектора; дообученные подставляются сюда же |
 | `VISION_DET_CONF` | `0.35` | Порог уверенности |
-| `VISION_DET_IMGSZ` | `1280` | Размер входа; на GPU можно поднять до 1536 |
+| `VISION_DET_IMGSZ` | `1280` | Размер входа |
 | `VISION_STAGE_MODEL` | `openclip-vit-b32` | Классификатор стадии |
-| `VISION_BATCH_SIZE` | `4` | |
 
 ### Конвейер и методика
 
 | Переменная | По умолчанию | Смысл |
 | :--- | :--- | :--- |
 | `SESSION_WINDOW_MINUTES` | `30` | Длина окна сессии |
-| `SESSION_CLOSE_GRACE_MINUTES` | `10` | Ожидание опоздавших снимков перед агрегацией |
 | `MAX_IMAGE_MB` | `20` | Предел размера снимка |
 | `WORKER_CONCURRENCY` | `4` | Параллельных задач в воркере |
+| `MOVE_THRESHOLD` | `0.01` | Смещение (доля диагонали кадра), с которого единица считается сдвинувшейся |
+| `MIN_BRIGHTNESS` / `MAX_BLUR` | `0.15` / `0.6` | Пригодность кадра |
+| `TRANSIENT_WINDOW_SESSIONS` | `4` | Окно присутствия транзитной техники |
+| `MIN_STAGE_CONF` | `0.5` | Порог уверенной стадии по фото |
 | `MIN_ACTIVITY` | `0.1` | Нижняя граница темпа в прогнозе |
 | `ON_TRACK_TOLERANCE_DAYS` | `2` | Порог статуса «в графике» |
 
-Пороги методики продублированы в таблице `deviation_rule` и редактируются в UI;
-переменные окружения задают лишь значения по умолчанию при первичном заполнении.
+Пороги отклонений D1–D10 живут в таблице `deviation_rule` и правятся в интерфейсе; начальные
+значения — `services/analysis-service/data/deviation_rules.yaml`.
 
 ### LLM
 
@@ -150,115 +169,102 @@ make seed                # демо-объект, график, камеры, з
 | `LLM_TIMEOUT_S` | `30` | По истечении — шаблонное резюме |
 
 LLM внешняя: видеопамять полностью отдана распознаванию. Наружу уходят только
-структурированные факты — названия вех, даты, числа, коды отклонений; ни снимков,
-ни персональных данных. Для закрытого контура заказчика предусмотрен профиль `llm`
-с локальной моделью, переключение — одной переменной `LLM_PROVIDER`.
-
-Прямой доступ к OpenAI и Anthropic из РФ без прокси не работает. Проверьте выбранного
-провайдера **с той машины, на которой будет демонстрация**, заранее.
+структурированные факты — названия вех, даты, числа, коды отклонений; ни снимков, ни
+персональных данных. Прямой доступ к OpenAI и Anthropic из РФ без прокси не работает:
+провайдера нужно проверить **с той машины, на которой будет демонстрация**, заранее.
 
 ## 5. Профили и оверлеи compose
 
-Разработка — это **оверлей**, а не профиль: отдельный файл поверх основного.
-
-```bash
-make dev   # docker compose -f docker-compose.yml -f docker-compose.dev.yml up
-```
-
-Он добавляет hot-reload и монтирование исходников; `packages/py-common` намеренно
-не монтируется — его правка требует пересборки образа, иначе получается «работает
-только у меня».
+Разработка — это **оверлей**, а не профиль: отдельный файл `docker-compose.dev.yml` поверх
+основного. Он добавляет hot-reload и монтирование исходников; `packages/py-common` намеренно
+не монтируется — его правка требует пересборки образа, иначе получается «работает только у меня».
 
 | Профиль | Что добавит | Когда | Состояние |
 | :--- | :--- | :--- | :--- |
-| `llm` | Ollama + загрузка модели | Закрытый контур без внешнего API | появится вместе с `report-service` |
-| `gpu` | `vision-service` с пробросом GPU | Целевой стенд; нужен `nvidia-container-toolkit` | появится вместе с `vision-service` |
-
-Профилей в `docker-compose.yml` сейчас нет: `docker compose --profile llm up -d`
-поднимет обычный стек и промолчит. Появятся они вместе с сервисами, которые им нужны.
+| `llm` | Ollama + загрузка модели | Закрытый контур без внешнего API | появится вместе с резюме |
+| `gpu` | `vision-service` с пробросом видеокарты | Целевой стенд | появится вместе с распознаванием |
 
 ## 6. Демо-сценарий (5 минут)
 
-`make demo` готовит данные, дальше — по шагам интерфейса:
+`python scripts/demo.py` готовит данные, дальше — по шагам интерфейса:
 
-1. **Настройки → объект.** Вводим наименование: «Строительство монолитного жилого дома
-   17 этажей с подземной автостоянкой». Показываем, что `pos-engine` распознал ТЭП
-   и построил график по МРР с обоснованием по каждому этапу.
-2. **День 1 — котлован.** Экскаватор есть, самосвалов нет → **D2 «неполный комплект»**.
-   Открываем карточку: правило, числа, снимок с рамками.
-3. **День 2 — опережение.** Появился бетононасос при активном котловане → **D3**,
-   стадия по фото подтверждает начало плиты.
-4. **День 3 — простой и слепая зона.** Экскаватор стоит у въезда → **D4**;
-   одна камера закрыта → **D10 «зона вне контроля ИИ, проверить вручную»**.
+1. **График.** Импорт графика жилого дома из XLSX (или генерация по МРР из типа и параметров
+   объекта): вехи, даты, критический путь, правила «веха → техника».
+2. **День 1 — котлован.** Экскаватор работает, самосвалов нет два часа подряд → **D2 «неполный
+   комплект»**. Открываем карточку: правило, числа, снимок с рамками.
+3. **День 2 — опережение.** Появился бетононасос при активном котловане → **D3 «возможное
+   опережение»**: насос есть в правиле будущей вехи «Фундаментная плита».
+4. **День 3 — простой и слепой участок.** Экскаватор стоит у въезда → **D4**: его видит
+   обзорная камера. Камера въезда закрыта → склад, который видит только она, получает
+   **D10 «участок вне контроля ИИ, проверить вручную»**. Въезд при этом остаётся видимым частично
+   за счёт обзорной камеры — наглядный плюс нескольких камер на участок.
 5. **Гант.** Фактический старт, прогноз окончания, задержка, перенос на зависимые вехи.
 6. **Отчёт.** PDF с планом-фактом, загрузкой техники и LLM-резюме со ссылками на ID отклонений.
-7. **Правка правила.** Меняем минимум самосвалов с 2 на 1 в UI → пересчёт → D2 исчезает.
+7. **Правка правила.** Меняем минимум самосвалов с 2 на 1 в интерфейсе → пересчёт → D2 исчезает.
    Это демонстрация главного архитектурного тезиса: логика — данные, а не код.
 
 ## 7. Диагностика
 
 | Симптом | Причина | Что делать |
 | :--- | :--- | :--- |
-| `make health` показывает `vision: fail` | Не скачаны веса | `make models`, затем `make restart s=vision` |
-| Снимки остаются в статусе `PENDING` | Воркер не поднялся или недоступен Redis | `make logs s=site-worker`, проверить `REDIS_URL` |
-| Снимки в статусе `NEEDS_TIME` | Нет EXIF и время не распознано из имени файла | Указать время при загрузке или переименовать по шаблону `cam_YYYYMMDD_HHMMSS.jpg` |
-| Анализ не находит отклонений | Нет активных вех на дату снимков либо зоны не размечены | Проверить `GET /api/v1/plan/objects/{id}/stages?active_on=...` и наличие зон у камер |
-| Все зоны `BLIND` | Не размечены зоны или снимки не привязаны к камерам | Разметить зоны на эталонном кадре в UI |
+| `vision-service` не готов | Не скачаны веса | `python scripts/fetch_models.py`, затем `docker compose restart vision-service` |
+| Снимки остаются в статусе `PENDING` | Воркер не поднялся или недоступен Redis | `docker compose logs site-worker`, проверить `REDIS_URL` |
+| Снимки в статусе `NEEDS_TIME` | Нет EXIF и время не распознано из имени файла | Указать время при загрузке или переименовать по шаблону `YYYYMMDD_HHMMSS.jpg` |
+| Анализ не находит отклонений | Нет активных вех на дату снимков, не размечены зоны или участок невидим | Проверить `GET /api/v1/plan/objects/{id}/plan`, зоны камер и `as_of` прогона |
+| Все участки `BLIND` | Зоны не размечены или кадры непригодны | Проверить `data/seed/cameras.json` и `usable` у снимков |
+| Снимки не открываются в браузере | Ссылка подписана на внутренний адрес MinIO | Проверить `S3_PUBLIC_ENDPOINT` (`http://localhost:9000`) |
 | Отчёт без LLM-резюме | Нет сети, неверный ключ или таймаут | Проверить `LLM_BASE_URL` и `LLM_API_KEY`; `LLM_ENABLED=false` — резюме станет шаблонным |
-| Распознавание идёт на CPU, хотя есть карта | Не установлен `nvidia-container-toolkit` | `docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`; проверить `GET /api/v1/vision/model` |
-| `409 IMAGE_ALREADY_EXISTS` | Повторная загрузка того же файла | Это защита от дублей, не ошибка |
-| Медленная обработка | Работа идёт на CPU вместо GPU либо большой размер входа | Проверить `VISION_DEVICE` и вывод `GET /api/v1/vision/model`; уменьшить `VISION_DET_IMGSZ` |
+| Распознавание идёт на CPU, хотя есть карта | Docker не видит GPU | `docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`; обновить драйвер NVIDIA; проверить `GET /api/v1/vision/model` |
+| `make` пишет `'grep' is not recognized` | Windows: рецепты Makefile исполняет cmd | Команды из правого столбца раздела 3 |
+| Повторная загрузка того же файла в `rejected` | Защита от дублей по sha256 | Это не ошибка |
 
 **Куда смотреть в первую очередь:** `request_id` из ответа об ошибке —
-`docker compose logs | grep <request_id>` показывает всю цепочку вызовов через все сервисы.
+`docker compose logs | Select-String <request_id>` (PowerShell) или `| grep <request_id>` (bash)
+показывает всю цепочку вызовов через все сервисы.
 
 ## 8. Резервное копирование и перенос
 
 - Данные: тома `pgdata` (три базы) и `miniodata`.
-- Логический дамп: `make backup` → `backup/YYYY-MM-DD/{plandb,sitedb,analysisdb}.sql` + зеркало
-  бакетов MinIO.
+- Логический дамп: `python scripts/backup.py` → `backup/YYYY-MM-DD/{plandb,sitedb,analysisdb}.sql`
+  + зеркало бакетов MinIO.
 - Перенос к заказчику: те же образы, свой `.env`, свои адреса Postgres и S3.
   Ничего, кроме переменных окружения, менять не требуется.
 
 ## 9. Состав docker-compose
 
 Один файл `docker-compose.yml` на весь стек, оверлей `docker-compose.dev.yml` для разработки.
-Порядок запуска задаётся через `depends_on: condition: service_healthy` — сервис поднимается
-только после готовности своих зависимостей.
+Порядок запуска задаётся через `depends_on: condition: service_healthy`. Файлы
+`packages/contracts/*.yaml` монтируются в сервисы только для чтения
+(`./packages/contracts:/contracts:ro`).
 
-Ниже — **целевой** состав стека. В `docker-compose.yml` контейнер появляется, когда написан
-сам сервис: сегодня это `postgres`, `minio`, `redis`, `plan-service` и `gateway`.
-Что именно осталось и за кем — [docs/board.md](board.md).
+Ниже — **целевой** состав. Что из него уже стоит в compose, видно по задачам в
+[board.md](board.md).
 
 | Контейнер | Образ / сборка | Команда | Зависит от | Тома |
 | :--- | :--- | :--- | :--- | :--- |
 | `postgres` | `postgres:16-alpine` | — | — | `pgdata`, скрипт инициализации трёх баз и ролей |
 | `minio` | `minio/minio` | `server /data --console-address :9001` | — | `miniodata` |
 | `redis` | `redis:7-alpine` | — | — | — |
-| `pos-engine` | `services/pos-engine` | `uvicorn src.main:app` | — | справочники внутри образа |
-| `plan-service` | `services/plan-service` | `uvicorn src.main:app` | `postgres`, `pos-engine` | — |
-| `site-service` | `services/site-service` | `uvicorn src.main:app` | `postgres`, `minio`, `redis` | — |
-| `site-worker` | тот же образ, что `site-service` | `arq src.worker.WorkerSettings` | `redis`, `vision-service` | — |
-| `analysis-service` | `services/analysis-service` | `uvicorn src.main:app` | `postgres`, `plan-service`, `site-service` | — |
-| `vision-service` | `services/vision-service` | `uvicorn src.main:app` | — | `data/models` → `/models` (только чтение) |
-| `report-service` | `services/report-service` | `uvicorn src.main:app` | `analysis-service`, `plan-service`, `minio` | — |
-| `gateway` | `services/gateway` | nginx | все API-сервисы | собранная статика `apps/web` |
-| `ollama` (профиль `llm`) | `ollama/ollama` | — | — | `ollamadata`; только закрытый контур, по умолчанию не поднимается |
+| `plan-service` | `services/plan-service` | `uvicorn src.main:app` | `postgres` | `contracts` |
+| `site-service` | `services/site-service` | `uvicorn src.main:app` | `postgres`, `minio`, `redis` | `contracts` |
+| `site-worker` | тот же образ, что `site-service` | `arq src.worker.WorkerSettings` | `redis`, `vision-service` | `contracts` |
+| `analysis-service` | `services/analysis-service` | `uvicorn src.main:app` | `postgres`, `minio` | `contracts` |
+| `vision-service` | `services/vision-service` | `uvicorn src.main:app` | — | `data/models` → `/models`, `contracts` |
+| `gateway` | `services/gateway` | nginx | — | собранная статика `apps/web` |
+| `ollama` (профиль `llm`) | `ollama/ollama` | — | — | `ollamadata`; только закрытый контур |
 
 Особенности:
 
 - `site-service` и `site-worker` — **один образ, разные команды**. Воркеров можно поднять
   несколько: `docker compose up -d --scale site-worker=3`.
-- Веса моделей монтируются томом, а не копируются в образ: образ остаётся лёгким,
-  а смена модели не требует пересборки.
-- `docker-compose.dev.yml` добавляет проброс исходников, `--reload`, порты наружу
-  и Vite вместо статики.
+- Веса моделей монтируются томом, а не копируются в образ: образ остаётся лёгким, а смена
+  модели не требует пересборки.
 - Ни один контейнер не знает пароля от чужой базы: у каждого своя роль и свой DSN.
 
 ## 10. Публикация и получение образов
 
-Образы собирает и публикует `.github/workflows/release.yml` — **не** демо-ноутбук.
-Сервисы конвейер находит сам, по наличию `Dockerfile`; перечислять их нигде не нужно.
+Образы собирает и публикует `.github/workflows/release.yml` — **не** демо-ноутбук. Сервисы
+конвейер находит сам, по наличию `Dockerfile`; перечислять их нигде не нужно.
 
 ```bash
 git tag v0.2.0 && git push origin v0.2.0   # релиз по тегу
@@ -270,15 +276,14 @@ gh workflow run Release                    # то же самое вручную
 
 ```bash
 echo "$GITHUB_TOKEN" | docker login ghcr.io -u <логин> --password-stdin
-make pull && make up
+docker compose pull && docker compose up -d
 ```
 
-`IMAGE_REGISTRY` и `IMAGE_TAG` в `.env` задают, откуда и какую версию тянуть. Имя образа
-в `docker-compose.yml` стоит рядом с `build:`, поэтому собранный локально образ получает
-то же имя, что опубликованный: `make up` и `make pull && make up` взаимозаменяемы, и не
-бывает ситуации «у меня собралось, а на демо-машине другой образ».
+`IMAGE_REGISTRY` и `IMAGE_TAG` в `.env` задают, откуда и какую версию тянуть. Имя образа в
+`docker-compose.yml` стоит рядом с `build:`, поэтому собранный локально образ получает то же имя,
+что опубликованный.
 
-**Зачем это вообще.** Образ `vision-service` с CUDA весит 6–8 ГБ и собирается десятки
+**Зачем это вообще.** Образ `vision-service` с CUDA весит несколько гигабайт и собирается десятки
 минут. За час до показа собирать его на ноутбуке нельзя — только скачать. Поэтому перед
-демонстрацией ставится тег, конвейер собирает образы на своих машинах, а на стенде
-выполняется `make pull`.
+демонстрацией ставится тег, конвейер собирает образы на своих машинах, а на стенде выполняется
+`docker compose pull`.

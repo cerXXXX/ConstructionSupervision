@@ -1,0 +1,37 @@
+# Классы техники — единственный источник (ADR-0014).
+#
+# Кто читает:
+#   plan-service   — отдаёт список в API и проверяет по нему коды в правилах вех;
+#   vision-service — берёт prompts как словарь open-vocabulary детектора;
+#   ml/            — сводит метки внешних датасетов (aliases) к этим кодам;
+#   analysis       — получает code/name_ru/group/transient в контракте «весь план».
+#
+# Добавить класс = добавить запись и перезапустить plan-service и vision-service.
+#
+# Поля:
+#   code      — lower_snake_case; совпадает с меткой детектора и с ключами правил вех.
+#   name_ru   — название для интерфейса и текстов предупреждений.
+#   group     — значение из enums.yaml: equipment_group.
+#   transient — машина приезжает и уезжает (рейсы). Для таких классов присутствие
+#               считается за окно из нескольких сессий, а не в одном снимке
+#               (docs/methodology.md, раздел 5).
+#   prompts   — текстовые запросы детектору. Английские работают заметно лучше русских.
+#   aliases   — метки этого класса во внешних датасетах; заполняются при сведении
+#               датасетов в ml/prepare. Пустой список — сведения ещё не было.
+
+equipment_classes:
+  - {code: excavator,         name_ru: "Экскаватор",                   group: EARTHWORKS, transient: false, prompts: ["excavator", "digger", "backhoe"],             aliases: []}
+  - {code: dump_truck,        name_ru: "Самосвал",                     group: TRANSPORT,  transient: true,  prompts: ["dump truck", "tipper truck"],                 aliases: []}
+  - {code: bulldozer,         name_ru: "Бульдозер",                    group: EARTHWORKS, transient: false, prompts: ["bulldozer", "crawler dozer"],                 aliases: []}
+  - {code: loader,            name_ru: "Погрузчик",                    group: EARTHWORKS, transient: false, prompts: ["wheel loader", "front loader"],               aliases: []}
+  - {code: roller,            name_ru: "Каток",                        group: ROAD,       transient: false, prompts: ["road roller", "compactor roller"],            aliases: []}
+  - {code: tower_crane,       name_ru: "Башенный кран",                group: LIFTING,    transient: false, prompts: ["tower crane"],                                aliases: []}
+  - {code: truck_crane,       name_ru: "Автокран",                     group: LIFTING,    transient: false, prompts: ["mobile crane", "truck crane"],                aliases: []}
+  - {code: manipulator_crane, name_ru: "Кран-манипулятор",             group: LIFTING,    transient: false, prompts: ["knuckle boom truck", "truck mounted crane"],  aliases: []}
+  - {code: concrete_mixer,    name_ru: "Автобетоносмеситель",          group: CONCRETE,   transient: true,  prompts: ["concrete mixer truck", "cement mixer truck"], aliases: []}
+  - {code: concrete_pump,     name_ru: "Автобетононасос",              group: CONCRETE,   transient: false, prompts: ["concrete pump truck", "boom pump"],           aliases: []}
+  - {code: pile_driver,       name_ru: "Буровая/сваебойная установка", group: EARTHWORKS, transient: false, prompts: ["pile driver", "drilling rig"],                 aliases: []}
+  - {code: truck,             name_ru: "Грузовик",                     group: TRANSPORT,  transient: true,  prompts: ["truck", "lorry"],                             aliases: []}
+  - {code: asphalt_paver,     name_ru: "Асфальтоукладчик",             group: ROAD,       transient: false, prompts: ["asphalt paver", "asphalt finisher"],          aliases: []}
+  - {code: grader,            name_ru: "Грейдер",                      group: ROAD,       transient: false, prompts: ["motor grader"],                               aliases: []}
+  - {code: person,            name_ru: "Человек",                      group: OTHER,      transient: false, prompts: ["person", "construction worker"],              aliases: []}
