@@ -14,5 +14,10 @@ class Settings(BaseServiceSettings):
     # задаёт роли типов зон и порядок стадий по фото.
     contracts_dir: str = "/contracts"
 
+    # Параметры методики (docs/methodology.md, раздел 11) — экспертные допущения,
+    # вынесенные в окружение для калибровки на площадке.
+    transient_window_sessions: int = 4
+    min_stage_conf: float = 0.5
+
 
 settings = Settings()
