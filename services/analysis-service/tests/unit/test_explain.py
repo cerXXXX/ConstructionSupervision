@@ -1,5 +1,6 @@
 """Тексты отклонений из шаблонов и facts."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ from src.core.explain import (
     render,
     template_fields,
     templates,
+    validate_rule,
 )
 from src.core.predicates import evaluate, load_rules
 from src.core.rules import RuleParams
@@ -50,6 +52,35 @@ def test_шаблоны_используют_только_известные_ф�
     for variant in variants:
         for template in templates(rule, variant):
             assert {spec for _, spec in template_fields(template)} <= KNOWN_SPECS
+
+
+SEVERITIES = ("INFO", "LOW", "MEDIUM", "HIGH")
+
+
+@pytest.mark.parametrize("code", list(RULES))
+def test_начальные_настройки_проходят_проверку(code):
+    validate_rule(RULES[code], SEVERITIES)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"severity": "CRITICAL"},
+        {"params": {"escalate_after_days": 1, "escalate_to": "URGENT"}},
+        {"params": {"min_sessions": 0}},
+        {"params": {"min_sessions": "2"}},
+        {"params": {"min_sessions": True}},
+        {"params": {"k_days": -1}},
+        {"params": {"min_visible_share": 1.5}},
+        {"params": {"variants": ["ahead"]}},
+        {"title_template": "Этап «{stage_name»"},
+        {"message_template": "{plan_start:weekday}"},
+        {"params": {"variants": {"ahead": {"title_template": "{x:bad}", "message_template": ""}}}},
+    ],
+)
+def test_испорченная_настройка_не_проходит_проверку(change):
+    with pytest.raises(ExplainError):
+        validate_rule(replace(RULES["D2"], **change), SEVERITIES)
 
 
 def test_неизвестный_вариант_текста_это_ошибка_настройки():

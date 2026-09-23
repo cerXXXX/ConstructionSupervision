@@ -311,11 +311,18 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: на объект один прогон; сигнал во время прогона — `rerun_requested` и ответ
       `coalesced: true` с номером текущего; по окончании ровно один новый прогон
       готово, когда: api-тест: два сигнала подряд → один прогон + один повтор
-- [ ] `T16` analysis: чтение результатов
+- [x] `T16a` analysis: статус, прогресс, загрузка техники, настройки правил — сделано:
+      роуты `objects.py`, `rules.py`, сценарии `services/results.py`, `services/rules.py`,
+      проверка настройки `validate_rule` в `core/explain.py`; `X-Actor` в URL-кодировке
+      (api-guidelines §6); 15 api-тестов `test_results.py`, `test_deviation_rules.py`
       спец: [analysis-service README](../services/analysis-service/README.md) §3 · ждёт: T15
-      что: `/objects/{id}/status`, `/progress`, `/equipment`; `/deviations` с фильтрами и
-      пагинацией; `/deviations/{id}`, `/explain`; `PATCH /deviations/{id}` (вердикт, `X-Actor`);
-      `GET/PATCH /deviation-rules`
+      что: `/objects/{id}/status`, `/progress`, `/equipment`; `GET /deviation-rules`,
+      `GET/PATCH /deviation-rules/{code}` с проверкой порогов и шаблонов
+      готово, когда: api-тест на каждый эндпоинт
+- [ ] `T16b` analysis: лента отклонений, карточка, объяснение, вердикт
+      спец: [analysis-service README](../services/analysis-service/README.md) §3, [methodology.md](methodology.md) §9, §12 · ждёт: T16a
+      что: `/deviations` с фильтрами и пагинацией; `/deviations/{id}`, `/explain`;
+      `PATCH /deviations/{id}` (вердикт, `X-Actor`)
       готово, когда: api-тест на каждый эндпоинт
 - [ ] `T17` plan: справочные файлы и классы техники
       спец: [ADR-0014](decisions/0014-equipment-classes-file.md), [plan-service README](../services/plan-service/README.md) · ждёт: T01, T03

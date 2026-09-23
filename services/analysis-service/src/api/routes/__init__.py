@@ -8,7 +8,9 @@
 from fastapi import APIRouter, Depends
 
 from src.api.deps import require_api_key
-from src.api.routes import runs
+from src.api.routes import objects, rules, runs
 
 api_router = APIRouter(prefix="/api/v1/analysis", dependencies=[Depends(require_api_key)])
 api_router.include_router(runs.router)
+api_router.include_router(objects.router)
+api_router.include_router(rules.router)

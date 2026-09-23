@@ -138,6 +138,16 @@ class StubSiteClient:
 
 
 @pytest.fixture
+async def seeded_rules(session_factory) -> None:
+    """Правила D1–D10 в таблице, как после старта сервиса."""
+    from src.dal.repositories.rules import RuleRepository
+    from src.services.runs import default_rules
+
+    async with session_factory() as session, session.begin():
+        await RuleRepository(session).seed_missing(default_rules())
+
+
+@pytest.fixture
 def upstream():
     """Заглушки plan и site: внешние сервисы в тестах не вызываются (AGENTS.md, раздел 10)."""
     from types import SimpleNamespace
@@ -149,14 +159,20 @@ def upstream():
 async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
     """HTTP-клиент поверх приложения с тестовой базой, заглушками и рабочим ключом."""
     from httpx import ASGITransport, AsyncClient
-    from src.api.deps import get_run_service
+    from lct_common.db import session_dependency
+    from src.api.deps import get_run_service, get_session
     from src.config import settings
     from src.main import app
     from src.services import runs
     from src.services.runs import RunService
 
+    async def _session_override() -> AsyncIterator:
+        async for session in session_dependency(session_factory):
+            yield session
+
     monkeypatch.setattr(settings, "contracts_dir", str(CONTRACTS_DIR))
     runs.enums.cache_clear()
+    app.dependency_overrides[get_session] = _session_override
     app.dependency_overrides[get_run_service] = lambda: RunService(
         session_factory, upstream.plan, upstream.site
     )

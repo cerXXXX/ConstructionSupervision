@@ -83,6 +83,44 @@ def templates(rule: DeviationRule, variant: str | None = None) -> tuple[str, str
         raise ExplainError(f"{rule.code}: нет варианта текста {variant!r}") from exc
 
 
+def _check_template(template: str) -> None:
+    try:
+        specs = {spec for _, spec in template_fields(template)}
+    except ValueError as exc:
+        raise ExplainError(f"Шаблон не разбирается: {exc}") from exc
+    unknown = specs - KNOWN_SPECS
+    if unknown:
+        raise ExplainError(f"Неизвестный формат подстановки: {sorted(unknown)}")
+
+
+def validate_rule(rule: DeviationRule, severities: tuple[str, ...]) -> None:
+    """Правка настройки правила не должна ломать прогон: пороги и шаблоны проверяются заранее.
+
+    Поля шаблона с `facts` здесь не сверяются — набор `facts` знает только предикат; такой
+    промах всплывёт ошибкой прогона `ANALYSIS_INPUT_INVALID`, а не молчаливым текстом.
+    """
+    for level in (rule.severity, rule.params.get("escalate_to", rule.severity)):
+        if level not in severities:
+            raise ExplainError(f"Неизвестная серьёзность {level!r}; допустимо: {list(severities)}")
+    for name in ("min_sessions", "escalate_after_days", "k_days"):
+        value = rule.params.get(name)
+        if value is not None and (
+            not isinstance(value, int) or isinstance(value, bool) or value < 0
+        ):
+            raise ExplainError(f"Параметр {name} должен быть целым неотрицательным числом")
+    if rule.params.get("min_sessions") == 0:
+        raise ExplainError("Параметр min_sessions должен быть не меньше 1")
+    share = rule.params.get("min_visible_share")
+    if share is not None and not (isinstance(share, int | float) and 0 <= share <= 1):
+        raise ExplainError("Параметр min_visible_share — доля от 0 до 1")
+    variants = rule.params.get("variants") or {}
+    if not isinstance(variants, dict):
+        raise ExplainError("Параметр variants должен быть словарём вариантов текста")
+    for variant in (None, *variants):
+        for template in templates(rule, variant):
+            _check_template(template)
+
+
 def describe(finding: Finding, rule: DeviationRule, class_names: dict[str, str]) -> Deviation:
     title, message = templates(rule, finding.facts.get("template_variant"))
     return Deviation(

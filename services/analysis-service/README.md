@@ -50,7 +50,8 @@ flowchart LR
 | `GET` | `/deviations/{id}` | Карточка отклонения |
 | `GET` | `/deviations/{id}/explain` | **Полное объяснение:** правило и его параметры, проверенные сессии с фактами, ссылки на снимки |
 | `PATCH` | `/deviations/{id}` | Вердикт оператора: `CONFIRMED` / `REJECTED` и комментарий |
-| `GET` `PATCH` | `/deviation-rules` | Пороги D1–D10 без правки кода |
+| `GET` | `/deviation-rules` | Настройки D1–D10 (страница, по номеру кода) |
+| `GET` `PATCH` | `/deviation-rules/{code}` | Пороги, серьёзность и тексты правила без правки кода; `params` сливаются по ключам, `null` удаляет ключ; `X-Actor` — в журнал |
 | `POST` | `/reports` | Сформировать PDF-отчёт: `{object_id, period_from, period_to}` |
 | `GET` | `/reports` | Список отчётов объекта |
 | `GET` | `/reports/{key}` | Presigned-ссылка на готовый файл |
@@ -85,6 +86,15 @@ flowchart LR
 объекта, испорченная настройка правила), `VALIDATION_FAILED` (400 — `triggered_by` не из
 `analysis_trigger`). Любая ошибка прогона записывается в его строку: `status = FAILED`,
 `error = {code, message}`; лента и срезы при этом не меняются.
+
+Чтение выводов: `OBJECT_NOT_ANALYZED` (404 — по объекту ещё не было успешного прогона).
+Настройки правил: `DEVIATION_RULE_NOT_FOUND` (404), `DEVIATION_RULE_INVALID` (400 — неизвестная
+серьёзность, `min_sessions < 1`, доля вне 0…1, шаблон не разбирается или с неизвестным форматом).
+Поля шаблона с `facts` заранее не сверяются: их знает только предикат, и промах всплывёт ошибкой
+прогона `ANALYSIS_INPUT_INVALID`.
+
+`X-Actor` с именем по-русски передаётся в URL-кодировке: заголовки HTTP — только ASCII
+([api-guidelines.md](../../docs/api-guidelines.md), раздел 6).
 
 ## 4. Как устроен прогон
 

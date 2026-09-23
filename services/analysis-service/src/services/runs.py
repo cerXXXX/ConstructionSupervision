@@ -220,7 +220,7 @@ class RunService:
         async with self._factory() as session, session.begin():
             rules_repo = RuleRepository(session)
             await rules_repo.seed_missing(default_rules())
-            rules = tuple(await rules_repo.list())
+            rules = tuple(await rules_repo.all())
 
         # Без фактов «сегодня» — момент запуска (interservice.md, раздел 4).
         as_of = run.as_of or (None if facts.sessions else period_to)
