@@ -245,7 +245,10 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       спец: [methodology.md](methodology.md) §6 · ждёт: T08
       что: `core/equipment_state.py` по таблице §6 с обоснованием статуса строкой
       готово, когда: тест на каждую строку таблицы для транзитного и нетранзитного класса и для `person`
-- [~] `T10` analysis: реестр предикатов, D1, D2, объяснение
+- [x] `T10` analysis: реестр предикатов, D1, D2, объяснение — сделано: `core/predicates.py`
+      (контекст только из рабочих сессий, серии, эскалация, реестр, D1, D2), `core/explain.py`,
+      `data/deviation_rules.yaml` с десятью кодами, миграция `0002` (`title_template`);
+      контракт дополнен `cameras[].image_ids` для доказательств D1
       спец: [methodology.md](methodology.md) §9, §12 · ждёт: T09
       что: `core/predicates.py` (реестр, ключ отклонения); D1, D2;
       `data/deviation_rules.yaml` — все десять кодов (предикат, серьёзность, `params`, шаблон);

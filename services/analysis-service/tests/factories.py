@@ -125,6 +125,17 @@ def make_equipment(
     )
 
 
+def make_camera(code: str, at: datetime | None, *, reason: str | None = None) -> CameraState:
+    """Камера в окне с одним снимком; `reason` — причина непригодности кадра."""
+    return CameraState(
+        code=code,
+        images=1,
+        usable=reason is None,
+        reason=reason,
+        image_ids=(stable_id("image", at, code),),
+    )
+
+
 def make_area(
     area: str,
     *equipment: EquipmentFact,
@@ -168,11 +179,16 @@ def make_area(
 def make_session(
     window_start: datetime,
     *areas: AreaFact,
-    cameras: tuple[CameraState, ...] = (),
+    cameras: tuple[CameraState, ...] | None = None,
     stage: tuple[str, float] | None = ("PIT", 0.78),
     outside: tuple[EquipmentFact, ...] = (),
 ) -> SessionFact:
-    """Окно 30 минут; стадия по фото — (метка, уверенность) или None."""
+    """Окно 30 минут; по умолчанию одна пригодная камера `cam-north` со снимком.
+
+    Стадия по фото — (метка, уверенность) или None.
+    """
+    if cameras is None:
+        cameras = (make_camera("cam-north", window_start),)
     observation = None
     if stage is not None:
         label, conf = stage

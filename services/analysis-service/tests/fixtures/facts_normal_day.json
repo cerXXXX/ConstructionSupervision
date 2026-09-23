@@ -18,13 +18,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "98b8ac9a-e36f-5398-a152-1d9d72a15681"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "b4a9fbe7-af09-5453-8955-c585ca04de9b"
+          ]
         }
       ],
       "stage_observation": {
@@ -117,13 +123,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "92cbf99e-f22a-530a-bde9-eaf65427f787"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "70e80480-e939-5758-b4f0-8c419c652681"
+          ]
         }
       ],
       "stage_observation": {
@@ -197,13 +209,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "af8ef76a-2194-59d3-9cff-c116ebbb3e29"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "2c959643-6665-5360-99aa-cbc583d30080"
+          ]
         }
       ],
       "stage_observation": {
@@ -277,13 +295,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "ab7a4377-6559-5888-b993-e0057704f34f"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "e94dc580-3e79-5951-b21c-30278e627e02"
+          ]
         }
       ],
       "stage_observation": {
@@ -357,13 +381,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "c4f8c631-acc6-5cb3-bbc6-87d00fe6a25b"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "1ae0d915-d201-59c4-b125-44f7a99fd9ba"
+          ]
         }
       ],
       "stage_observation": {
@@ -456,13 +486,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "723801d9-d99a-5fb6-8d72-18227531351a"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "446db2e6-a30e-5724-8387-158fcd20bab7"
+          ]
         }
       ],
       "stage_observation": {
@@ -536,13 +572,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "b851c37e-1953-5a17-809a-409d1d6f64a0"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "370a7bb6-6bad-5c08-9dd8-19a6f142ca31"
+          ]
         }
       ],
       "stage_observation": {
@@ -616,13 +658,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "3fae6cd6-4a79-55c6-bb1f-85d022576109"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "d6e51702-702a-574c-b2a5-167c5e0a92a7"
+          ]
         }
       ],
       "stage_observation": {
@@ -696,13 +744,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "5d2cd259-7f74-574c-883b-e6e59676a90c"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "6e5781a3-174f-569e-8830-ac4795b61837"
+          ]
         }
       ],
       "stage_observation": {
@@ -795,13 +849,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "ace85950-1342-5d75-bce1-4eb92b33ffe7"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "c27542e0-c36d-5ab3-bdef-ed90c03731ac"
+          ]
         }
       ],
       "stage_observation": {
@@ -875,13 +935,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "219c3c20-598c-518d-9b0e-046e2f589a27"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "1ca44c63-c0e0-5772-a96d-c9982e7ef9db"
+          ]
         }
       ],
       "stage_observation": {
@@ -955,13 +1021,19 @@
           "code": "cam-north",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "c93e5562-9c92-518a-a161-4209c92da72e"
+          ]
         },
         {
           "code": "cam-gate",
           "images": 1,
           "usable": true,
-          "reason": null
+          "reason": null,
+          "image_ids": [
+            "a3c32c1f-6524-533d-82e5-bc3ad8989922"
+          ]
         }
       ],
       "stage_observation": {

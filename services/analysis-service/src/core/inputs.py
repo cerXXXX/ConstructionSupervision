@@ -114,6 +114,8 @@ class CameraState(_Input):
     images: int
     usable: bool
     reason: str | None = None
+    # Снимки окна: доказательство там, где рамок нет (D1 по пустому участку).
+    image_ids: tuple[UUID, ...] = ()
 
 
 class StageObservation(_Input):

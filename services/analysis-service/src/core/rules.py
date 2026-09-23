@@ -121,9 +121,11 @@ def _windowed(
     current = sessions[index]
     span = (current.window_end - current.window_start) * (window_sessions - 1)
     best: dict[str, Observed] = {}
-    for session in sessions[: index + 1]:
+    # Идём назад от текущей сессии и останавливаемся на границе окна: прогон по месяцу
+    # снимков не должен становиться квадратичным.
+    for session in reversed(sessions[: index + 1]):
         if session.window_start < current.window_start - span:
-            continue
+            break
         for cls, observed in stage_counts(session, zone_type)[1].items():
             if cls not in best or observed.count > best[cls].count:
                 best[cls] = observed

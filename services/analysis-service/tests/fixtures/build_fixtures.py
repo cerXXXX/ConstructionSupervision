@@ -14,7 +14,15 @@ import json
 from datetime import date, datetime, time, timedelta
 
 from src.core.inputs import AreaFact, CameraState, Facts
-from tests.factories import FIXTURES, make_area, make_equipment, make_facts, make_session, windows
+from tests.factories import (
+    FIXTURES,
+    make_area,
+    make_camera,
+    make_equipment,
+    make_facts,
+    make_session,
+    windows,
+)
 
 PIT = "PIT:Котлован"
 GATE = "ENTRY_GATE:Въезд"
@@ -25,12 +33,10 @@ SESSIONS_PER_DAY = 12
 TRUCK_EVERY = 4
 
 
-def _cameras(gate_dark: bool) -> tuple[CameraState, ...]:
+def _cameras(at: datetime, gate_dark: bool) -> tuple[CameraState, ...]:
     return (
-        CameraState(code="cam-north", images=1, usable=True),
-        CameraState(
-            code="cam-gate", images=1, usable=not gate_dark, reason="DARK" if gate_dark else None
-        ),
+        make_camera("cam-north", at),
+        make_camera("cam-gate", at, reason="DARK" if gate_dark else None),
     )
 
 
@@ -72,7 +78,7 @@ def build_day(day: date, *, trucks: bool, pump_from: int | None, gate_problem: b
                 _pit(at, i, trucks=trucks, pump=pump),
                 _gate(at, i, idle_excavator=gate_problem, gate_dark=gate_problem),
                 _storage(gate_problem),
-                cameras=_cameras(gate_problem),
+                cameras=_cameras(at, gate_problem),
             )
         )
     start = datetime.combine(day, time(0), tzinfo=sessions[0].window_start.tzinfo)

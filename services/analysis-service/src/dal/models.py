@@ -154,6 +154,7 @@ class DeviationRule(Base, TimestampMixin):
     enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     severity: Mapped[str] = mapped_column(String(8))
     params: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    title_template: Mapped[str] = mapped_column(Text, server_default=text("''"))
     message_template: Mapped[str] = mapped_column(Text)
 
 
