@@ -20,6 +20,9 @@ REQUIRED_ENUMS = (
     "construction_phase",
     "zone_type",
     "equipment_group",
+    "stage_label",
+    "stage_source",
+    "dependency_type",
 )
 
 
@@ -49,6 +52,17 @@ def parse_enums(raw: Any) -> dict[str, tuple[str, ...]]:
     if missing:
         raise ReferenceDataError(f"enums.yaml: нет перечислений {missing}")
     return values
+
+
+def parse_zone_roles(raw: Any, zone_types: Iterable[str]) -> dict[str, str]:
+    """Роли типов зон из enums.yaml: у каждого типа зоны должна быть роль."""
+    roles = raw.get("zone_type_role") if isinstance(raw, dict) else None
+    if not isinstance(roles, dict):
+        raise ReferenceDataError("enums.yaml: нет словаря zone_type_role")
+    missing = [z for z in zone_types if z not in roles]
+    if missing:
+        raise ReferenceDataError(f"enums.yaml: у типов зон нет роли в zone_type_role: {missing}")
+    return {str(zone): str(role) for zone, role in roles.items()}
 
 
 def parse_equipment_classes(raw: Any, groups: Iterable[str]) -> tuple[EquipmentClass, ...]:

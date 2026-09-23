@@ -5,12 +5,14 @@
 функции (docs/testing.md, п. 3).
 """
 
-from datetime import date
+from datetime import date, time
 
 import pytest
 from src.core.calendar import (
+    CalendarError,
     WorkCalendar,
     add_working_days,
+    check_calendar,
     count_working_days,
     next_working_day,
     working_progress,
@@ -83,3 +85,23 @@ def test_этап_нулевой_длительности_не_делит_на_�
     """Веха-точка считается выполненной, как только наступила её дата."""
     assert working_progress(FIVE_DAY, MONDAY, MONDAY, MONDAY) == 1.0
     assert working_progress(FIVE_DAY, MONDAY, MONDAY, date(2026, 10, 1)) == 0.0
+
+
+def test_московская_шестидневка_проходит_проверку():
+    check_calendar("Europe/Moscow", [7], time(7), time(23))
+
+
+@pytest.mark.parametrize(
+    ("timezone", "weekend", "start", "end", "message"),
+    [
+        ("Moscow/Kremlin", [7], time(7), time(23), "часовой пояс"),
+        ("Europe/Moscow", [0], time(7), time(23), "от 1 до 7"),
+        ("Europe/Moscow", [7, 7], time(7), time(23), "дважды"),
+        ("Europe/Moscow", [1, 2, 3, 4, 5, 6, 7], time(7), time(23), "ни одного рабочего"),
+        ("Europe/Moscow", [7], time(23), time(7), "позже начала"),
+        ("Europe/Moscow", [7], time(7), time(7), "позже начала"),
+    ],
+)
+def test_бессмысленный_календарь_отклоняется(timezone, weekend, start, end, message):
+    with pytest.raises(CalendarError, match=message):
+        check_calendar(timezone, weekend, start, end)

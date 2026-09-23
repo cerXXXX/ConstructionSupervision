@@ -10,16 +10,22 @@ from lct_common import NotFoundError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.schemas.objects import ObjectCreate, ObjectUpdate
+from src.config import settings
 from src.dal.models import ConstructionObject
+from src.dal.repositories.calendars import CalendarRepository
 from src.dal.repositories.objects import ObjectRepository
 
 
 class ObjectService:
     def __init__(self, session: AsyncSession) -> None:
         self._repo = ObjectRepository(session)
+        self._calendars = CalendarRepository(session)
 
     async def create(self, payload: ObjectCreate) -> ConstructionObject:
+        # Календарь по умолчанию (DEFAULT_CALENDAR); кода нет в базе — объект без календаря.
+        calendar = await self._calendars.by_code(settings.default_calendar)
         obj = ConstructionObject(
+            calendar_id=calendar.id if calendar else None,
             name=payload.name.strip(),
             # Тип не указан — считаем объект монолитным жильём: это самый частый
             # случай АИП Москвы и тип демо-объекта. Разбора наименования нет (ADR-0011).

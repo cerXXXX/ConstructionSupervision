@@ -8,10 +8,41 @@
 завысил бы выработку примерно на четверть.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, time, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 DEFAULT_WEEKEND_DAYS = (6, 7)  # суббота и воскресенье, нумерация ISO: понедельник = 1
+ISO_WEEKDAYS = range(1, 8)
+
+
+class CalendarError(ValueError):
+    """Настройка календаря не имеет смысла: такой календарь не сохраняется."""
+
+
+def check_calendar(
+    timezone: str, weekend_days: Sequence[int], work_start: time, work_end: time
+) -> None:
+    """Проверка календаря до записи: ошибку лучше показать оператору, чем получить в прогоне.
+
+    Условия совпадают с тем, что analysis-service требует от календаря в «весь план»:
+    известный часовой пояс и рабочие часы в пределах одних суток.
+    """
+    try:
+        ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise CalendarError(f"Неизвестный часовой пояс: {timezone!r}") from exc
+    wrong = sorted({d for d in weekend_days if d not in ISO_WEEKDAYS})
+    if wrong:
+        raise CalendarError(f"Выходные — номера дней по ISO от 1 до 7, а не {wrong}")
+    if len(set(weekend_days)) != len(weekend_days):
+        raise CalendarError("Выходной день указан дважды")
+    if len(weekend_days) == len(ISO_WEEKDAYS):
+        raise CalendarError("В календаре нет ни одного рабочего дня недели")
+    if work_end <= work_start:
+        # Смена через полночь не поддерживается: сессия относится к одному местному дню.
+        raise CalendarError("Конец рабочих часов должен быть позже начала в пределах суток")
 
 
 @dataclass(frozen=True)

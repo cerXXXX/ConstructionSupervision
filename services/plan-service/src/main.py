@@ -18,6 +18,7 @@ from lct_common import (
 from lct_common.db import create_engine, create_session_factory, make_db_check
 
 from src.api.routes import api_router
+from src.clients.analysis_client import AnalysisClient
 from src.config import settings
 from src.reference import reference
 
@@ -27,10 +28,18 @@ log = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ресурсы, живущие столько же, сколько процесс: пул БД."""
+    """Ресурсы, живущие столько же, сколько процесс: пул БД и клиент сигнала в analysis."""
     engine = create_engine(settings.plan_db_dsn, echo=settings.db_echo)
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
+    # Сигнал без повторов: отправитель не ждёт и не повторяет (interservice.md, раздел 4).
+    app.state.analysis_client = AnalysisClient(
+        settings.analysis_url,
+        service="analysis-service",
+        api_key=settings.api_key,
+        timeout_s=settings.signal_timeout_s,
+        retries=0,
+    )
 
     log.info(
         "service.started",
@@ -41,6 +50,7 @@ async def lifespan(app: FastAPI):
     )
     yield
 
+    await app.state.analysis_client.aclose()
     await engine.dispose()
     log.info("service.stopped")
 

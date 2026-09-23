@@ -17,5 +17,10 @@ class Settings(BaseServiceSettings):
     # (equipment_classes.yaml) и перечисления (enums.yaml). ADR-0014.
     contracts_dir: str = "/contracts"
 
+    # Сигнал «пересчитай» после правки плана (interservice.md, раздел 4): отправитель
+    # не ждёт и не повторяет — потерянный сигнал безопасен, следующий прогон посчитает всё.
+    analysis_url: str = "http://analysis-service:8000"
+    signal_timeout_s: float = 2.0
+
 
 settings = Settings()

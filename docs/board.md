@@ -335,20 +335,32 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: чтение `equipment_classes.yaml` и `enums.yaml` из `CONTRACTS_DIR`;
       `GET /equipment-classes`; проверка кодов классов (`UNKNOWN_EQUIPMENT_CLASS`)
       готово, когда: тесты; в контейнере список классов совпадает с файлом
-- [ ] `T18` plan: календари, вехи, правила, сигнал «пересчитай»
+- [x] `T18a` plan: календари, вехи, сигнал «пересчитай» — сделано: миграция `0002`
+      (праздники `moscow-6day` по ТК РФ ст. 112 ч. 1 на 2026–2028, объектам — календарь по
+      умолчанию), `/calendars` с проверкой `core/calendar.py`, `GET /objects/{id}/stages` и
+      `PATCH /stages/{id}` с проверкой `core/stages.py`, рост `plan_version` и сигнал после
+      commit (`services/plan_version.py`, `clients/analysis_client.py`: 2 с, без повторов)
       спец: [plan-service README](../services/plan-service/README.md) §3 · ждёт: T17
       что: календарь `moscow-6day` (часовой пояс `Europe/Moscow`, выходной `[7]`, праздники
       только с источником, для 2026 минимум 4 ноября); `GET /objects/{id}/stages`,
-      `PATCH /stages/{id}`, CRUD `/rules` в новом формате; рост `plan_version`; клиент сигнала в
-      analysis (2 с, без повторов, ошибки — в лог)
+      `PATCH /stages/{id}`; рост `plan_version`; клиент сигнала в analysis (2 с, без повторов,
+      ошибки — в лог)
+      готово, когда: api-тесты; правка вехи и календаря увеличивает `plan_version` и шлёт сигнал
+- [~] `T18b` plan: правила «веха → техника»
+      спец: [plan-service README](../services/plan-service/README.md) §3, [interservice.md](../packages/contracts/interservice.md) §1 · ждёт: T18a
+      что: CRUD `/rules` в новом формате (группы `any_of`/`min`, `allowed`, `signature`,
+      `min_sessions`), коды классов — `check_equipment_codes`; версия правила и `plan_version`
+      растут; правило в ответе `GET /objects/{id}/stages`
       готово, когда: api-тесты; правка правила увеличивает `plan_version` и шлёт сигнал (заглушка)
 - [ ] `T19` plan: «весь план», импорт графика, критический путь
       спец: [interservice.md](../packages/contracts/interservice.md) §1, [ТЗ §5.2](<ТЗ Мониторинг строительной площадки по снимкам камер (ЛЦТ 2026, кейс 07).md>) · ждёт: T18
-      что: `GET /objects/{id}/plan` строго по контракту; `POST /objects/{id}/plan/import`
+      что: `GET /objects/{id}/plan` строго по контракту (календарь объекта — `calendar_id`);
+      `POST /objects/{id}/plan/import`
       (CSV/XLSX: код, наименование, начало, окончание; необязательно тип участка, визуальная
       стадия, связи); `core/cpm.py`; проверка дат и циклов. `data/wbs_templates.json`: вехи
       жилого монолита с типом участка, визуальной стадией, связями и правилами по таблице
-      ТЗ §5.2, включая группы «любой из». Доли фаз пока `null` — их заполнит T21
+      ТЗ §5.2, включая группы «любой из». Доли фаз пока `null` — их заполнит T21.
+      `PATCH /stages/{id}` после правки дат пересчитывает критический путь (T18a его не трогает)
       готово, когда: ответ `/plan` на демо-графике совпадает по форме с `tests/fixtures/plan.json`
       из T06; импорт с ошибкой возвращает номер строки
 - [ ] `T20` plan: парсер справочника работ

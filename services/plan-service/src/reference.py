@@ -11,7 +11,12 @@ from pathlib import Path
 import yaml
 
 from src.config import settings
-from src.core.reference import EquipmentClass, parse_enums, parse_equipment_classes
+from src.core.reference import (
+    EquipmentClass,
+    parse_enums,
+    parse_equipment_classes,
+    parse_zone_roles,
+)
 
 ENUMS_FILE = "enums.yaml"
 CLASSES_FILE = "equipment_classes.yaml"
@@ -20,6 +25,8 @@ CLASSES_FILE = "equipment_classes.yaml"
 @dataclass(frozen=True)
 class Reference:
     enums: dict[str, tuple[str, ...]]
+    # Роль типа зоны: на участках с ролью WORK идут работы вех.
+    zone_roles: dict[str, str]
     equipment_classes: tuple[EquipmentClass, ...]
 
     @cached_property
@@ -34,6 +41,11 @@ def _read(name: str) -> object:
 
 @lru_cache
 def reference() -> Reference:
-    enums = parse_enums(_read(ENUMS_FILE))
+    raw_enums = _read(ENUMS_FILE)
+    enums = parse_enums(raw_enums)
     classes = parse_equipment_classes(_read(CLASSES_FILE), enums["equipment_group"])
-    return Reference(enums=enums, equipment_classes=classes)
+    return Reference(
+        enums=enums,
+        zone_roles=parse_zone_roles(raw_enums, enums["zone_type"]),
+        equipment_classes=classes,
+    )

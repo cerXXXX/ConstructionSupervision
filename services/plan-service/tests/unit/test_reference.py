@@ -8,6 +8,7 @@ from src.core.reference import (
     ReferenceDataError,
     parse_enums,
     parse_equipment_classes,
+    parse_zone_roles,
     unknown_codes,
 )
 
@@ -74,6 +75,23 @@ def test_без_нужного_перечисления_enums_не_приним�
 
     with pytest.raises(ReferenceDataError, match="zone_type"):
         parse_enums(raw)
+
+
+def test_роли_типов_зон_читаются_для_каждого_типа():
+    zone_types = parse_enums(RAW_ENUMS)["zone_type"]
+
+    roles = parse_zone_roles(RAW_ENUMS, zone_types)
+
+    assert set(roles) == set(zone_types)
+    assert roles["PIT"] == "WORK" and roles["ENTRY_GATE"] == "SERVICE"
+
+
+def test_тип_зоны_без_роли_это_ошибка_старта():
+    raw = copy.deepcopy(RAW_ENUMS)
+    del raw["zone_type_role"]["STORAGE"]
+
+    with pytest.raises(ReferenceDataError, match="STORAGE"):
+        parse_zone_roles(raw, parse_enums(raw)["zone_type"])
 
 
 def test_неизвестные_коды_по_порядку_и_без_повторов():

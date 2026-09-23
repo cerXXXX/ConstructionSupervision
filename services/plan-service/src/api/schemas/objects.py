@@ -49,6 +49,9 @@ class ObjectRead(BaseModel):
     tep: dict
     plan_start: date | None
     status: ObjectLifecycle
+    calendar_id: UUID | None = Field(
+        description="Рабочий календарь; при создании — DEFAULT_CALENDAR"
+    )
     plan_version: int = Field(
         description="Растёт при любой правке вех, правил или календаря; 0 — план не заводился"
     )
