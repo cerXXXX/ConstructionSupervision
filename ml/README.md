@@ -29,8 +29,9 @@ open-vocabulary детекторе, которому обучение не ну�
 
 ```text
 ml/
-├── datasets/        # сведённые датасеты в формате YOLO (в git не хранятся)
-│   ├── external/    #   открытые датасеты техники
+├── datasets/        # датасеты (в git не хранятся)
+│   ├── lct-raw/     #   100 снимков организаторов как есть (data/README.md, «Материалы организаторов»)
+│   ├── external/    #   открытые датасеты техники, сведённые в формат YOLO
 │   ├── lct-train/   #   собственная разметка кадров организаторов
 │   └── lct-test/    #   собственный тестовый набор (не пересекается с train)
 ├── prepare/         # сведение датасетов, маппинг классов, фильтрация, аугментации
@@ -49,6 +50,31 @@ ml/
 
 Метрики считаются одинаково для обоих режимов — zero-shot и дообученного, — и в
 документацию идут обе колонки. Это честно показывает, что дало дообучение.
+
+## Открытые датасеты от организаторов
+
+Список организаторов (`data/reference/Ссылки на открыте датасеты.txt`). Лицензию каждого
+проверяем до использования и записываем сюда.
+
+| № | Датасет | Ссылка |
+| :--- | :--- | :--- |
+| 1 | Construction Equipment (Kaggle) | <https://www.kaggle.com/datasets/xyzyxzzxy/construction-equipment/data> |
+| 2 | arh-df, раздел `images` (Kaggle) | <https://www.kaggle.com/datasets/kartaviychert/arh-df?select=images> |
+| 3 | Construction-Machines-Images-Dataset (GitHub) | <https://github.com/miniexcav/Construction-Machines-Images-Dataset> |
+| 4 | Construction Vehicle Images (Kaggle) | <https://www.kaggle.com/datasets/dataclusterlabs/construction-vehicle-images> |
+| 5 | construction-machinery (Roboflow Universe) | <https://universe.roboflow.com/jejung/construction-machinery-tbosw> |
+
+При сведении метки каждого датасета записываются в поле `aliases` нужного класса в
+`equipment_classes.yaml`, а сам датасет — в `datasets/external/<имя>/`.
+
+## Снимки организаторов
+
+100 снимков в `datasets/lct-raw/`: фото хода строительства около десятка объектов за 2023–2026 годы,
+лето и зима, разные стадии. Это главный кандидат в `lct-test`. Он разнообразен ровно в том,
+что проверяют эксперты, и не пересекается с открытыми датасетами. Разметка рамок — задача H5
+в [docs/board.md](../docs/board.md). Если снимки идут и в `lct-train` (после авторазметки),
+разбиение делается по объектам, а не по кадрам. Иначе один объект окажется и в обучении, и в
+тесте, и метрики будут завышены.
 
 Проблемные места, известные заранее:
 
