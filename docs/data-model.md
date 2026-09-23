@@ -364,7 +364,7 @@ erDiagram
 | `stage_id`, `date` | uuid, date | Первичный ключ |
 | `sessions_total` | int | Рабочие сессии дня с видимым участком вехи |
 | `sessions_working` | int | Из них — с выполненными группами `required` и работающей техникой |
-| `activity_index` | real | `sessions_working / sessions_total`, 0…1 |
+| `activity_index` | real null | `sessions_working / sessions_total`, 0…1; `null` — участок вехи за день ни разу не был виден: «не знаем», а не ноль |
 | `blind_sessions` | int | Сессии, где участок был не виден: не штрафуют индекс, а снижают `confidence` |
 
 ### 3.6. `daily_equipment` — загрузка техники по дням
