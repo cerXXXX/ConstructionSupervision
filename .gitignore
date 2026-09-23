@@ -45,3 +45,8 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# --- repowise: локальный индекс кода для ИИ-агентов ---
+# Пересобирается командой repowise update (и post-commit хуком), поэтому не коммитится.
+.repowise/
+.claude/CLAUDE.md
