@@ -137,7 +137,10 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
 
 ### R0. Выравнивание кода с документами — 23.09
 
-- [ ] `T01` infra: убрать pos-engine и report-service, смонтировать справочные файлы
+- [x] `T01` infra: убрать pos-engine и report-service, смонтировать справочные файлы — сделано:
+      Makefile, gateway (неизвестный `/api/…` → 404 в конверте ошибки), `.env.example`, том
+      `/contracts:ro`; попутно для подъёма стека: MinIO с quay.io, `GATEWAY_PORT`, `.gitattributes`
+      (LF для `*.sh`), healthcheck gateway на 127.0.0.1
       спец: [architecture.md](architecture.md) §3, [runbook.md](runbook.md) §4 и §9 · ждёт: —
       что: `Makefile` (`SERVICES`, `NAME_*`, `PORT_*` без pos и report); `services/gateway/nginx.conf`
       и `swagger/index.html` без pos и report; `.env.example` без `POS_URL`, `REPORT_URL`,
@@ -413,4 +416,7 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
 Сюда агент записывает найденное попутно: баг, противоречие, долг. Одна строка — одна находка,
 со ссылкой на файл. Человек решает, превращать ли её в задачу.
 
-- (пусто)
+- `docker-compose.yml`: якорь `service-base` с `env_file: [.env]` передаёт каждому контейнеру
+  все переменные, включая DSN с паролями чужих баз. Это расходится с runbook §9 («ни один
+  контейнер не знает пароля от чужой базы»). Нужно убрать `env_file` и перечислить переменные
+  каждого сервиса в `environment`.

@@ -33,6 +33,7 @@ flowchart LR
 | `/api/v1/site/…` | `site-service:8000` |
 | `/api/v1/analysis/…` | `analysis-service:8000`, включая отчёты `/api/v1/analysis/reports` |
 | `/api/v1/vision/…` | `vision-service:8000` (закрыт для внешнего доступа в `prod`) |
+| прочие `/api/…` | `404 NOT_FOUND` в едином конверте ошибки, без проксирования |
 | `/docs` | Сводный Swagger UI с выбором сервиса из выпадающего списка |
 | `/health` | Живость самого gateway |
 

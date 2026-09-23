@@ -89,6 +89,7 @@ python scripts/seed.py             # демо-объект, график, кам
 | `TZ` | `Europe/Moscow` | Отображение времени; хранение всегда UTC |
 | `RUN_MIGRATIONS` | `true` | Применять Alembic при старте контейнера |
 | `CONTRACTS_DIR` | `/contracts` | Куда смонтирован `packages/contracts` (классы техники, перечисления) |
+| `GATEWAY_PORT` | `8080` | Внешний порт gateway; поменять, если 8080 на машине занят |
 
 ### Образы
 
@@ -243,7 +244,7 @@ LLM внешняя: видеопамять полностью отдана ра�
 | Контейнер | Образ / сборка | Команда | Зависит от | Тома |
 | :--- | :--- | :--- | :--- | :--- |
 | `postgres` | `postgres:16-alpine` | — | — | `pgdata`, скрипт инициализации трёх баз и ролей |
-| `minio` | `minio/minio` | `server /data --console-address :9001` | — | `miniodata` |
+| `minio` | `quay.io/minio/minio` | `server /data --console-address :9001` | — | `miniodata` |
 | `redis` | `redis:7-alpine` | — | — | — |
 | `plan-service` | `services/plan-service` | `uvicorn src.main:app` | `postgres` | `contracts` |
 | `site-service` | `services/site-service` | `uvicorn src.main:app` | `postgres`, `minio`, `redis` | `contracts` |

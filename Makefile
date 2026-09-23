@@ -6,19 +6,15 @@ COMPOSE     := docker compose
 COMPOSE_DEV := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 
 # Сопоставление короткого имени сервиса (s=plan) с именем контейнера и портом.
-SERVICES := plan site analysis vision report pos gateway
+SERVICES := plan site analysis vision gateway
 PORT_plan := 8001
 PORT_site := 8002
 PORT_analysis := 8003
 PORT_vision := 8004
-PORT_report := 8005
-PORT_pos := 8000
 NAME_plan := plan-service
 NAME_site := site-service
 NAME_analysis := analysis-service
 NAME_vision := vision-service
-NAME_report := report-service
-NAME_pos := pos-engine
 NAME_gateway := gateway
 
 .PHONY: help up down dev restart logs ps health seed demo reset test lint fmt contracts migrate models backup e2e pull
