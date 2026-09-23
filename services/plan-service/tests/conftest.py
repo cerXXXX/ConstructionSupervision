@@ -19,6 +19,10 @@ import pytest
 # это и есть смысл правила «доменная логика не знает про БД и сеть».
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
+# Справочные файлы: в контейнере — CONTRACTS_DIR, в рабочей копии и CI — packages/contracts.
+# Выставляется до импорта сервиса: типы перечислений строятся из enums.yaml при импорте схем.
+CONTRACTS_DIR = Path(os.getenv("CONTRACTS_DIR") or SERVICE_ROOT.parents[1] / "packages/contracts")
+os.environ["CONTRACTS_DIR"] = str(CONTRACTS_DIR)
 
 # Одна переменная на все сервисы: CI не должен знать про каждый в отдельности.
 TEST_DSN = os.getenv(

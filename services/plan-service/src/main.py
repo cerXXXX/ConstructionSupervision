@@ -19,6 +19,7 @@ from lct_common.db import create_engine, create_session_factory, make_db_check
 
 from src.api.routes import api_router
 from src.config import settings
+from src.reference import reference
 
 setup_logging(settings.service_name, settings.log_level, pretty=settings.is_dev)
 log = get_logger(__name__)
@@ -31,7 +32,13 @@ async def lifespan(app: FastAPI):
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
 
-    log.info("service.started", version=settings.version, env=settings.env)
+    log.info(
+        "service.started",
+        version=settings.version,
+        env=settings.env,
+        # Справочники уже прочитаны при импорте схем: испорченный файл не даёт стартовать.
+        equipment_classes=len(reference().equipment_classes),
+    )
     yield
 
     await engine.dispose()

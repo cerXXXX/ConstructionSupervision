@@ -327,7 +327,10 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: `/deviations` с фильтрами и пагинацией; `/deviations/{id}`, `/explain`;
       `PATCH /deviations/{id}` (вердикт, `X-Actor`)
       готово, когда: api-тест на каждый эндпоинт
-- [ ] `T17` plan: справочные файлы и классы техники
+- [x] `T17` plan: справочные файлы и классы техники — сделано: `core/reference.py` (разбор и
+      проверка файлов), `src/reference.py` (чтение при старте), `GET /equipment-classes`,
+      `check_equipment_codes` → `UNKNOWN_EQUIPMENT_CLASS` для T18; `StrEnum` в схемах заменены
+      `Literal` из `enums.yaml`; в контейнере 15 классов, как в файле
       спец: [ADR-0014](decisions/0014-equipment-classes-file.md), [plan-service README](../services/plan-service/README.md) · ждёт: T01, T03
       что: чтение `equipment_classes.yaml` и `enums.yaml` из `CONTRACTS_DIR`;
       `GET /equipment-classes`; проверка кодов классов (`UNKNOWN_EQUIPMENT_CLASS`)
@@ -499,6 +502,6 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
   поясом падает (`can't subtract offset-naive and offset-aware datetimes`); в analysis это
   всплыло в T15a и исправлено `type_annotation_map` в `Base`. site пишет `window_start`,
   `captured_at` — упадёт в T23/T25.
-- `services/plan-service/src/api/schemas/common.py` дублирует в коде списки `object_type`,
-  `construction_phase`, `zone_type` и др. в виде `StrEnum`, что запрещено AGENTS.md §7.
-  Естественно заменить чтением `enums.yaml` в T17.
+- ~~`services/plan-service/src/api/schemas/common.py` дублирует в коде списки `object_type`,
+  `construction_phase`, `zone_type` и др. в виде `StrEnum`, что запрещено AGENTS.md §7.~~
+  Закрыто в T17: типы строятся из `enums.yaml`.

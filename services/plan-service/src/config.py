@@ -13,5 +13,9 @@ class Settings(BaseServiceSettings):
     # Календарь по умолчанию для новых объектов.
     default_calendar: str = "moscow-6day"
 
+    # Справочные файлы контрактов, смонтированные только для чтения: классы техники
+    # (equipment_classes.yaml) и перечисления (enums.yaml). ADR-0014.
+    contracts_dir: str = "/contracts"
+
 
 settings = Settings()
