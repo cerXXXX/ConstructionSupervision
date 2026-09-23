@@ -281,7 +281,10 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       SPI, прогноз, перенос по связям, `stages_at_risk`, статус объекта, `confidence`; D7
       готово, когда: тесты на деление на ноль, полный простой (`MIN_ACTIVITY`), `as_of` в прошлом,
       нехватку данных (`UNKNOWN`)
-- [ ] `T14` analysis: прогон целиком как чистая функция
+- [x] `T14` analysis: прогон целиком как чистая функция — сделано: `core/run.py`
+      (`analyze` → отклонения с текстами, факт вех, активность, загрузка техники, статус,
+      счётчики), тесты `tests/unit/test_run.py`; на четырёх демо-днях подряд объект `DELAY`
+      +14 рабочих дней, уверенность MEDIUM. Рубеж R1 пройден
       спец: [analysis-service README](../services/analysis-service/README.md) §4 · ждёт: T11, T12, T13
       что: `core/run.py` — `analyze(plan, facts, as_of, rules) -> AnalysisResult`
       готово, когда: на фикстурах: день 1 → D2, день 2 → D3, день 3 → D4 и D10,
