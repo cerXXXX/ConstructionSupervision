@@ -4,8 +4,9 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 
 import pytest
+from src.core.context import build_context
 from src.core.explain import describe
-from src.core.predicates import REGISTRY, build_context, evaluate, load_rules
+from src.core.predicates import REGISTRY, evaluate, load_rules
 from src.core.rules import RuleParams
 
 from tests.factories import (

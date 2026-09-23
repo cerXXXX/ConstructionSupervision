@@ -9,28 +9,23 @@
 - выводы строятся только по рабочим сессиям — `build_context` отбрасывает остальные;
 - «подряд» считается по наблюдаемым сессиям: сессия, где участок не виден, серию не
   рвёт и в неё не входит — «не видно» не значит ни «есть», ни «нет»;
-- находка без `facts` и `evidence` не создаётся.
+- находка без `facts` и `evidence` не создаётся. Исключение — D10, когда снимков нет по
+  определению: тогда причина записана в `facts.evidence_absent_reason` (раздел 12).
 """
 
-from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass, field
-from datetime import datetime
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field, replace
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 import yaml
 
-from src.core.calendar import (
-    Calendar,
-    calendar_from_plan,
-    is_working_session,
-    local_date,
-    working_days_between,
-)
-from src.core.enums import Enums
-from src.core.inputs import Evidence, Facts, Plan, SessionFact, Stage
-from src.core.rules import RuleCheck, RuleParams, check_rule
+from src.core.calendar import local_date, working_days_between
+from src.core.context import Context, Streak, find_streaks
+from src.core.inputs import Evidence, Stage
+from src.core.rules import RuleCheck, check_rule
 
 
 class PredicateError(ValueError):
@@ -72,37 +67,6 @@ def parse_rules(raw: dict[str, Any]) -> tuple[DeviationRule, ...]:
 def load_rules(path: str | Path) -> tuple[DeviationRule, ...]:
     with Path(path).open(encoding="utf-8") as file:
         return parse_rules(yaml.safe_load(file))
-
-
-@dataclass(frozen=True)
-class Context:
-    """Всё, что нужно предикатам: план, рабочие сессии по времени, параметры методики."""
-
-    plan: Plan
-    calendar: Calendar
-    sessions: tuple[SessionFact, ...]
-    enums: Enums
-    params: RuleParams
-    transient: frozenset[str]
-    class_names: dict[str, str]
-
-
-def build_context(plan: Plan, facts: Facts, *, enums: Enums, params: RuleParams) -> Context:
-    """Контекст прогона. Сессии вне рабочего времени отбрасываются здесь, один раз для всех."""
-    calendar = calendar_from_plan(plan.calendar)
-    working = sorted(
-        (s for s in facts.sessions if is_working_session(calendar, s.window_start, s.window_end)),
-        key=lambda s: s.window_start,
-    )
-    return Context(
-        plan=plan,
-        calendar=calendar,
-        sessions=tuple(working),
-        enums=enums,
-        params=params,
-        transient=frozenset(c.code for c in plan.equipment_classes if c.transient),
-        class_names={c.code: c.name_ru for c in plan.equipment_classes},
-    )
 
 
 @dataclass(frozen=True)
@@ -154,43 +118,15 @@ def evaluate(ctx: Context, rules: Iterable[DeviationRule]) -> list[Finding]:
         predicate = REGISTRY.get(rule.predicate)
         if predicate is None:
             raise PredicateError(f"{rule.code}: предикат {rule.predicate!r} не зарегистрирован")
-        findings.extend(f for f in predicate(ctx, rule) if f.facts and f.evidence)
+        findings.extend(f for f in predicate(ctx, rule) if _explained(f))
     return findings
 
 
-@dataclass(frozen=True)
-class Streak:
-    """Серия подряд идущих наблюдаемых сессий, где условие выполнялось."""
-
-    sessions: tuple[SessionFact, ...]
-    payloads: tuple[Any, ...]
-    active: bool
-
-
-def find_streaks(rows: Sequence[tuple[SessionFact, Any]]) -> list[Streak]:
-    """Серии по строкам (сессия, состояние).
-
-    Состояние: None — сессия не наблюдалась (пропускается, серию не рвёт), False —
-    условие не выполнено (рвёт серию), иное — условие выполнено, это данные сессии.
-    """
-    result: list[Streak] = []
-    current: list[tuple[SessionFact, Any]] = []
-    for session, state in rows:
-        if state is None:
-            continue
-        if state is False:
-            if current:
-                result.append(_streak(current, active=False))
-                current = []
-            continue
-        current.append((session, state))
-    if current:
-        result.append(_streak(current, active=True))
-    return result
-
-
-def _streak(items: list[tuple[SessionFact, Any]], *, active: bool) -> Streak:
-    return Streak(tuple(s for s, _ in items), tuple(p for _, p in items), active)
+def _explained(finding: Finding) -> bool:
+    """Инвариант раздела 12: есть числа и есть снимки — или сказано, почему снимков нет."""
+    return bool(finding.facts) and bool(
+        finding.evidence or finding.facts.get("evidence_absent_reason")
+    )
 
 
 def held_working_days(ctx: Context, streak: Streak) -> int:
@@ -220,10 +156,19 @@ def evidence_refs(
     return tuple({"image_id": str(i), "detection_ids": ids} for i, ids in by_image.items())
 
 
+def _planned(stage: Stage, day: date) -> bool:
+    """Веха активна по плану: даты включительно."""
+    return stage.plan_start <= day <= stage.plan_end
+
+
 def _stage_findings(
-    ctx: Context, rule: DeviationRule, condition: Callable[[RuleCheck], bool]
+    ctx: Context,
+    rule: DeviationRule,
+    condition: Callable[[RuleCheck], bool],
+    *,
+    when: Callable[[Stage, date], bool] = _planned,
 ) -> list[Finding]:
-    """D1 и D2: серии сессий, где активна веха и её комплект в нужном состоянии."""
+    """D1, D2, D8: серии сессий в дни `when`, где правило вехи в состоянии `condition`."""
     findings = []
     for stage in ctx.plan.stages:
         if stage.rule is None:
@@ -231,7 +176,7 @@ def _stage_findings(
         rows = []
         for i, session in enumerate(ctx.sessions):
             day = local_date(ctx.calendar, session.window_start)
-            if not stage.plan_start <= day <= stage.plan_end:
+            if not when(stage, day):
                 rows.append((session, False))
                 continue
             check = check_rule(
@@ -257,6 +202,7 @@ def _stage_finding(ctx: Context, rule: DeviationRule, stage: Stage, streak: Stre
     names = {a.area: a.name for a in last_session.areas}
     held = held_working_days(ctx, streak)
     required_classes = [c for g in stage.rule.required for c in g.any_of]
+    signature_classes = list(stage.rule.signature.equipment)
     groups = [
         {"any_of": list(g.group.any_of), "min": g.group.min, "observed": g.observed}
         for g in check.groups
@@ -281,9 +227,17 @@ def _stage_finding(ctx: Context, rule: DeviationRule, stage: Stage, streak: Stre
         },
         "groups": groups,
         "groups_failed": [g for g in groups if g["observed"] < g["min"]],
+        "signature": signature_classes,
+        "signature_stage_label": stage.rule.signature.stage_label,
+        "signature_observed": {
+            c: (check.observed[c].count if c in check.observed else 0) for c in signature_classes
+        },
     }
     detections = [
-        ev for c in required_classes if c in check.observed for ev in check.observed[c].evidence
+        ev
+        for c in dict.fromkeys(required_classes + signature_classes)
+        if c in check.observed
+        for ev in check.observed[c].evidence
     ]
     # Рамок нет (пустой участок) — доказательство сам снимок: на нём видно, что пусто.
     images = (
@@ -324,6 +278,30 @@ def incomplete_set(ctx: Context, rule: DeviationRule) -> list[Finding]:
     return _stage_findings(ctx, rule, lambda check: check.partial)
 
 
-# Предикаты по технике живут в своём модуле, чтобы этот не разрастался. Импорт в конце
-# файла регистрирует их вместе с реестром: кто бы ни импортировал реестр, D3–D6 в нём есть.
-from src.core import equipment_predicates  # noqa: E402, F401
+@register("stage_overrun")
+def stage_overrun(ctx: Context, rule: DeviationRule) -> list[Finding]:
+    """D8: сигнатура вехи держится после `plan_end` — этап затянулся."""
+    findings = _stage_findings(
+        ctx, rule, lambda check: check.signature_met, when=lambda s, day: day > s.plan_end
+    )
+    # Рабочая сессия лежит в одних местных сутках, поэтому дата конца окна — дата сессии.
+    return [
+        replace(
+            f,
+            facts=f.facts
+            | {
+                "days_after_plan_end": working_days_between(
+                    ctx.calendar,
+                    date.fromisoformat(f.facts["plan_end"]),
+                    local_date(ctx.calendar, f.last_seen_at),
+                )
+            },
+        )
+        for f in findings
+    ]
+
+
+# Предикаты по технике и по срокам и видимости живут в своих модулях, чтобы этот не
+# разрастался. Импорт в конце файла регистрирует их вместе с реестром: кто бы ни
+# импортировал реестр, D3–D10 в нём есть.
+from src.core import equipment_predicates, stage_predicates  # noqa: E402, F401

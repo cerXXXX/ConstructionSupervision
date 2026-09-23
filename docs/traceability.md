@@ -12,7 +12,7 @@
 | F2 | Детекция и классификация техники, mAP50 на своём тесте | `vision-service`, `ml/` | `core/detector.py`, `ml/eval/evaluate.py` | Must | — |
 | F3 | Привязка детекций к зонам по точке контакта | `site-service` | `core/zones.py` | Must | — |
 | F4 | Статус техники: работает / простой / вне зоны | `analysis-service` (смещение — `site-service`) | `core/equipment_state.py`, site `core/movement.py` | Must | — |
-| F5 | Контроль видимости участков | `site-service`, `analysis-service` | site `core/aggregation.py`, analysis `core/predicates.py` (D10) | Must | — |
+| F5 | Контроль видимости участков | `site-service`, `analysis-service` | site `core/aggregation.py`, analysis `core/stage_predicates.py` (D10) | Must | ~ |
 | F6 | Классификация стадии объекта по снимку | `vision-service`, `site-service` | `core/stage_classifier.py`, site `core/aggregation.py` | Must | — |
 | F7 | Сопоставление сессии с активными вехами графика | `analysis-service` | `core/plan_on_date.py`, `core/rules.py` | Must | — |
 | F8 | Выявление отклонений D1–D10 с объяснением | `analysis-service` | `core/predicates.py`, `core/explain.py` | Must | — |
@@ -48,12 +48,12 @@
 | D5 | Не та зона | `wrong_zone` | ~ |
 | D6 | Опасная зона | `danger_zone` | ~ |
 
-Статус `~` у D1–D6: предикат и unit-тесты на фикстурах демо-дней готовы, в прогон сервиса
+Статус `~` у D1–D6 и D8–D10: предикат и unit-тесты на фикстурах демо-дней готовы, в прогон сервиса
 (T14–T15) ещё не включены.
 | D7 | Стадия не совпадает | `stage_mismatch` | — |
-| D8 | Этап затянулся | `stage_overrun` | — |
-| D9 | Не начат в срок | `stage_not_started` | — |
-| D10 | Участок вне контроля ИИ | `blind_area` | — |
+| D8 | Этап затянулся | `stage_overrun` | ~ |
+| D9 | Не начат в срок | `late_start` | ~ |
+| D10 | Участок вне контроля ИИ | `blind_area` | ~ |
 
 ## Критерии оценки (ТЗ, п. 8)
 

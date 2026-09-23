@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from src.core.context import build_context
 from src.core.explain import (
     KNOWN_SPECS,
     ExplainError,
@@ -11,7 +12,7 @@ from src.core.explain import (
     template_fields,
     templates,
 )
-from src.core.predicates import build_context, evaluate, load_rules
+from src.core.predicates import evaluate, load_rules
 from src.core.rules import RuleParams
 
 from tests.factories import load_facts, load_plan

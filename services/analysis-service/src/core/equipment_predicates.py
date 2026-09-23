@@ -15,6 +15,7 @@ from typing import Any
 from uuid import UUID
 
 from src.core.calendar import local_date
+from src.core.context import Context, Streak, find_streaks
 from src.core.equipment_state import (
     BLIND,
     IDLE,
@@ -28,12 +29,9 @@ from src.core.equipment_state import (
 from src.core.inputs import Evidence, SessionFact, Stage
 from src.core.plan_on_date import active_stages
 from src.core.predicates import (
-    Context,
     DeviationRule,
     Finding,
-    Streak,
     evidence_refs,
-    find_streaks,
     held_working_days,
     register,
     severity,

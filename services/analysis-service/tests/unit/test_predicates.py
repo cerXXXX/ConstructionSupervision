@@ -5,13 +5,8 @@ from datetime import UTC, date, datetime, time
 from pathlib import Path
 
 import pytest
-from src.core.predicates import (
-    REGISTRY,
-    PredicateError,
-    build_context,
-    evaluate,
-    load_rules,
-)
+from src.core.context import build_context
+from src.core.predicates import REGISTRY, PredicateError, evaluate, load_rules
 from src.core.rules import RuleParams
 
 from tests.factories import (

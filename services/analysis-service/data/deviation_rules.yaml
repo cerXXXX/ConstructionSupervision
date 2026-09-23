@@ -44,7 +44,7 @@ rules:
       {transient_window_sessions} сессии. Правило вехи, версия {stage_rule_version}.
 
   # D3–D6: ключ — участок и класс техники; min_sessions — в params (T11).
-  # D7–D10: предикаты и полный набор facts появляются в T12–T13; там же уточняются тексты.
+  # D7: предикат и полный набор facts появляются в T13; там же уточняется текст.
   D3:
     predicate: unexpected_equipment
     severity: MEDIUM
@@ -101,6 +101,7 @@ rules:
       {sessions_checked} рабочих сессий подряд стадия объекта по фото — {observed_stage}
       (уверенность {observed_conf}), по плану — {planned_stage}.
 
+  # D8: серия — min_sessions правила вехи, как у D1 и D2.
   D8:
     predicate: stage_overrun
     severity: HIGH
@@ -108,22 +109,45 @@ rules:
     title_template: "Этап затянулся: «{stage_name}»"
     message_template: >-
       Этап «{stage_name}» по плану закончился {plan_end:date}, но на участке «{area_name}»
-      {sessions_checked} рабочих сессий подряд видна его техника: {observed:counts}.
+      {sessions_checked} рабочих сессий подряд держится его признак: {signature_observed:counts}.
+      Это {days_after_plan_end} рабочих дней после плановой даты. Правило вехи, версия
+      {stage_rule_version}.
 
+  # D9: k_days — сколько первых рабочих дней вехи ждать фактического старта;
+  # min_visible_share — в какой доле рабочих сессий этих дней участок должен быть виден,
+  # чтобы «не начат» было выводом, а не догадкой.
   D9:
     predicate: late_start
     severity: HIGH
     params: {k_days: 3, min_visible_share: 0.5}
     title_template: "Этап не начат в срок: «{stage_name}»"
     message_template: >-
-      Этап «{stage_name}» по плану начинается {plan_start:date}, но за {k_days} рабочих дня
-      признак начала работ не появился на участке «{area_name}».
+      Этап «{stage_name}» по плану начинается {plan_start:date}, но за первые {k_days}
+      рабочих дня, по {deadline:date}, признак начала работ ({signature_names:list}) не
+      появился на участке «{area_name}». Участок был виден в {sessions_visible} из
+      {sessions_total} рабочих сессий этих дней.
 
+  # D10: reason_names — как причины слепоты (enums.yaml: visibility_reason) звучат в тексте.
+  # variants.no_area — у активной вехи нет ни одного размеченного участка её типа.
   D10:
     predicate: blind_area
     severity: INFO
-    params: {min_sessions: 2}
+    params:
+      min_sessions: 2
+      reason_names:
+        NO_IMAGES: нет снимков
+        DARK: слишком темно
+        BLURRED: кадры размыты
+        OCCLUDED: обзор перекрыт
+      variants:
+        no_area:
+          title_template: "Вне контроля ИИ: «{stage_name}»"
+          message_template: >-
+            Этап «{stage_name}» идёт по плану с {plan_start:date} по {plan_end:date}, но
+            участок его типа ({zone_type}) не размечен ни на одной камере — так
+            {sessions_checked} рабочих сессий подряд. Выводы по этапу не делаются: разметьте
+            зону или проверьте вручную.
     title_template: "Вне контроля ИИ: «{area_name}»"
     message_template: >-
       Участок «{area_name}» {sessions_checked} рабочих сессий подряд не виден ни одной
-      камерой ({reason}). Выводы по нему не делаются — проверьте вручную.
+      камерой: {reason_name}. Выводы по нему не делаются — проверьте вручную.
