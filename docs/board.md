@@ -192,7 +192,10 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       (`as_of`, `confidence`, `stages_at_risk`); удалить `deviation_feedback`. Миграцию `0001`
       править на месте
       готово, когда: тесты analysis-service зелёные
-- [ ] `T06` analysis: входные модели контрактов, фикстуры демо-дней, чтение enums
+- [x] `T06` analysis: входные модели контрактов, фикстуры демо-дней, чтение enums — сделано:
+      `core/inputs.py`, `core/enums.py` (+ `pyyaml`, `CONTRACTS_DIR` в конфиге),
+      `tests/factories.py`; факты демо-дней собирает `tests/fixtures/build_fixtures.py`
+      (окна 06:00–12:00 UTC), тесты сверяют сценарий дней и значения с `enums.yaml`
       спец: [interservice.md](../packages/contracts/interservice.md) §1–2, [methodology.md](methodology.md), [runbook.md](runbook.md) §6 · ждёт: —
       что: `src/core/inputs.py` — Pydantic-модели «весь план» и «факты за период»
       (`extra="ignore"`); `src/core/enums.py` — чтение `enums.yaml` из `CONTRACTS_DIR` (роли
@@ -437,3 +440,7 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
   и зависимостей сервиса. Рабочий способ (T03): одноразовый контейнер из образа сервиса в сети
   `lct_lct` с каталогом сервиса, смонтированным в `/app/services/<сервис>`, `pip install pytest
   pytest-asyncio`, `TEST_DB_DSN` на `postgres:5432`. Стоит записать в §2 или в `scripts/`.
+  Для analysis-service ещё смонтировать `packages/contracts` в `/app/packages/contracts`.
+- `services/plan-service/src/api/schemas/common.py` дублирует в коде списки `object_type`,
+  `construction_phase`, `zone_type` и др. в виде `StrEnum`, что запрещено AGENTS.md §7.
+  Естественно заменить чтением `enums.yaml` в T17.

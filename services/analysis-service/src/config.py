@@ -10,5 +10,9 @@ class Settings(BaseServiceSettings):
     analysis_db_dsn: str = "postgresql+asyncpg://analysis_user:analysis@postgres:5432/analysisdb"
     db_echo: bool = False
 
+    # Справочные файлы контрактов, смонтированные только для чтения: enums.yaml
+    # задаёт роли типов зон и порядок стадий по фото.
+    contracts_dir: str = "/contracts"
+
 
 settings = Settings()

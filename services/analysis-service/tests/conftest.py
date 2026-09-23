@@ -14,6 +14,8 @@ from pathlib import Path
 import pytest
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
+# Справочные файлы: в контейнере — CONTRACTS_DIR, в рабочей копии и CI — packages/contracts.
+CONTRACTS_DIR = Path(os.getenv("CONTRACTS_DIR") or SERVICE_ROOT.parents[1] / "packages/contracts")
 
 # Одна переменная на все сервисы: CI не должен знать про каждый в отдельности.
 TEST_DSN = os.getenv(
@@ -73,3 +75,11 @@ def migrated_database(alembic_config) -> str:
 
     command.upgrade(alembic_config, "head")
     return TEST_DSN
+
+
+@pytest.fixture(scope="session")
+def enums():
+    """Перечисления из настоящего enums.yaml: тесты сверяются с контрактом, а не с копией."""
+    from src.core.enums import load_enums
+
+    return load_enums(CONTRACTS_DIR)
