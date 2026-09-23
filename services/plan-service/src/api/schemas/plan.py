@@ -74,6 +74,14 @@ class PlanStage(BaseModel):
     )
 
 
+class PlanImportResult(BaseModel):
+    object_id: UUID
+    plan_version: int
+    stages: int = Field(description="Сколько вех в новом графике")
+    rules: int = Field(description="Сколько вех получили правило из шаблона")
+    critical_stages: int = Field(description="Сколько вех на критическом пути")
+
+
 class Plan(BaseModel):
     object: PlanObject
     plan_version: int

@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.dal.models import Stage
@@ -33,6 +33,12 @@ class StageRepository:
             select(Stage).where(Stage.object_id == object_id).order_by(Stage.seq, Stage.plan_start)
         )
         return rows.all()
+
+    async def replace_for_object(self, object_id: UUID, stages: Sequence[Stage]) -> None:
+        """Весь график объекта заменяется новым; правила старых вех уходят каскадом."""
+        await self._session.execute(delete(Stage).where(Stage.object_id == object_id))
+        self._session.add_all(stages)
+        await self._session.flush()
 
     async def save(self, stage: Stage) -> Stage:
         await self._session.flush()
