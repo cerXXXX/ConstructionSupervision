@@ -1,4 +1,4 @@
-"""D8, D9, D10 и инварианты ленты по всем предикатам (docs/methodology.md, разделы 7, 9, 12)."""
+"""D7–D10 и инварианты ленты по всем предикатам (docs/methodology.md, разделы 7–9, 12)."""
 
 from datetime import UTC, date, datetime, time
 from pathlib import Path
@@ -61,6 +61,66 @@ def _blind(at):
 
 def _sessions(builder, day, n, first=time(6)):
     return [builder(at) for at in windows(day, first, n)]
+
+
+# --- D7: стадия по фото не совпадает с планом ---------------------------------------------
+
+
+def _photo(label, conf=0.8, day=date(2026, 10, 20), n=2, first=time(6)):
+    """Сессии с котлованом, где классификатор видит стадию `label`."""
+    return [make_session(at, make_area(PIT), stage=(label, conf)) for at in windows(day, first, n)]
+
+
+def test_d7_опережение_когда_на_фото_фундамент_а_по_плану_котлован(enums):
+    (finding,) = _findings(make_facts(*_photo("FOUNDATION")), enums, ["D7"])
+
+    assert (finding.code, finding.stage_id, finding.area) == ("D7", PIT_STAGE.id, None)
+    assert finding.facts["direction"] == "AHEAD" and finding.facts["stages_apart"] == 2
+    assert finding.severity == "HIGH" and finding.evidence
+    assert describe(finding, RULES["D7"], NAMES).title == (
+        "Стадия по фото опережает план: «Разработка котлована»"
+    )
+
+
+def test_d7_отставание_когда_по_плану_уже_фундамент(enums):
+    # 25.11 активна «Фундаментная плита» с плановой стадией FOUNDATION.
+    (finding,) = _findings(make_facts(*_photo("PIT", day=date(2026, 11, 25))), enums, ["D7"])
+
+    assert finding.stage_id == PLAN.stages[2].id
+    assert finding.facts["direction"] == "BEHIND"
+    deviation = describe(finding, RULES["D7"], NAMES)
+    assert deviation.title == "Стадия по фото отстаёт от плана: «Фундаментная плита»"
+    assert "объект на фото — котлован (уверенность 0.8)" in deviation.message
+    assert "уже должен быть фундамент" in deviation.message
+
+
+def test_одна_сессия_с_чужой_стадией_это_ещё_не_d7(enums):
+    sessions = _photo("FOUNDATION", n=1) + _photo("PIT", n=2, first=time(7))
+
+    assert _findings(make_facts(*sessions), enums, ["D7"]) == []
+
+
+def test_неуверенная_стадия_серию_d7_не_рвёт_и_в_неё_не_входит(enums):
+    at = windows(date(2026, 10, 20), time(6), 3)
+    sessions = [
+        make_session(at[0], make_area(PIT), stage=("FOUNDATION", 0.8)),
+        make_session(at[1], make_area(PIT), stage=("FOUNDATION", 0.3)),
+        make_session(at[2], make_area(PIT), stage=("FOUNDATION", 0.8)),
+    ]
+
+    (finding,) = _findings(make_facts(*sessions), enums, ["D7"])
+
+    assert finding.occurrences == 2
+
+
+@pytest.mark.parametrize("name", ["facts_normal_day.json", "facts_day1.json", "facts_day3.json"])
+def test_в_демо_дни_стадия_совпадает_с_планом(enums, name):
+    assert _findings(load_facts(name), enums, ["D7"]) == []
+
+
+def test_без_вехи_с_плановой_стадией_d7_нет(enums):
+    # 01.10 активна только «Подготовка территории», visual_stage у неё не задан.
+    assert _findings(make_facts(*_photo("FRAME", day=date(2026, 10, 1))), enums, ["D7"]) == []
 
 
 # --- D8: этап затянулся -------------------------------------------------------------------
@@ -255,8 +315,8 @@ def test_вне_рабочего_времени_d10_нет(enums):
 READY = [c for c in RULES if RULES[c].predicate in REGISTRY]
 
 
-def test_готовы_все_предикаты_кроме_d7():
-    assert set(RULES) - set(READY) == {"D7"}
+def test_готовы_все_предикаты():
+    assert list(RULES) == READY
 
 
 def test_по_слепому_участку_ничего_кроме_d10(enums):

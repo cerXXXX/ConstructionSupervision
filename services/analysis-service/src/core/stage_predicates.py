@@ -1,6 +1,7 @@
-"""Предикаты сроков и видимости: D9 и D10 (docs/methodology.md, разделы 7 и 9).
+"""Предикаты по вехе и видимости: D7, D9, D10 (docs/methodology.md, разделы 7, 8 и 9).
 
-D9 смотрит на отрезок первых рабочих дней вехи целиком, а не на серию сессий. D10 —
+D7 сравнивает уверенную стадию по фото с плановой визуальной стадией. D9 смотрит на
+отрезок первых рабочих дней вехи целиком, а не на серию сессий. D10 —
 единственный вывод по невидимому: он говорит «проверьте вручную» там, где остальные
 предикаты молчат. Модуль регистрирует предикаты при импорте; импортирует его
 `core/predicates.py`.
@@ -14,7 +15,8 @@ from src.core.activity import actual_start, rule_checks
 from src.core.calendar import add_working_days, is_working_day, local_date
 from src.core.context import Context, Streak, find_streaks
 from src.core.equipment_state import BLIND
-from src.core.inputs import AreaFact, SessionFact, Stage
+from src.core.inputs import AreaFact, SessionFact, Stage, StageObservation
+from src.core.plan_on_date import visual_milestone
 from src.core.predicates import (
     DeviationRule,
     Finding,
@@ -44,6 +46,89 @@ def _stage_facts(stage: Stage) -> dict[str, Any]:
         "plan_start": stage.plan_start.isoformat(),
         "plan_end": stage.plan_end.isoformat(),
     }
+
+
+def _stage_mismatch_state(
+    ctx: Context, session: SessionFact
+) -> tuple[Stage, StageObservation, int] | bool | None:
+    """Состояние сессии для D7: (веха, наблюдение, на сколько стадий расходится) или нет.
+
+    Неуверенная стадия — «не наблюдалась»: серию не рвёт и в неё не входит.
+    """
+    observation = session.stage_observation
+    if observation is None or observation.conf < ctx.params.min_stage_conf:
+        return None
+    stage = visual_milestone(ctx.plan, local_date(ctx.calendar, session.window_start))
+    if stage is None:
+        return False
+    diff = ctx.enums.stage_index(observation.stage_label) - ctx.enums.stage_index(
+        stage.visual_stage
+    )
+    return (stage, observation, diff) if diff else False
+
+
+def _mismatch_finding(
+    ctx: Context, rule: DeviationRule, streak: Streak, min_sessions: int
+) -> Finding:
+    last_session = streak.sessions[-1]
+    stage, observation, diff = streak.payloads[-1]
+    held = held_working_days(ctx, streak)
+    names = rule.params.get("label_names", {})
+    facts = _stage_facts(stage) | {
+        "planned_stage": stage.visual_stage,
+        "planned_stage_name": names.get(stage.visual_stage, stage.visual_stage),
+        "observed_stage": observation.stage_label,
+        "observed_stage_name": names.get(observation.stage_label, observation.stage_label),
+        "observed_conf": round(observation.conf, 2),
+        "min_stage_conf": ctx.params.min_stage_conf,
+        "direction": "AHEAD" if diff > 0 else "BEHIND",
+        "stages_apart": abs(diff),
+        "sessions_checked": len(streak.sessions),
+        "min_sessions": min_sessions,
+        "first_seen_at": streak.sessions[0].window_start.isoformat(),
+        "last_seen_at": last_session.window_end.isoformat(),
+        "held_working_days": held,
+    }
+    if diff > 0:
+        facts["template_variant"] = "ahead"
+    # Доказательство — сами кадры, по которым классификатор определил стадию.
+    images = [i for cam in last_session.cameras if cam.usable for i in cam.image_ids]
+    return Finding(
+        code=rule.code,
+        severity=severity(rule, held),
+        stage_id=stage.id,
+        area=None,
+        equipment_class=None,
+        session_id=last_session.session_id,
+        first_seen_at=streak.sessions[0].window_start,
+        last_seen_at=last_session.window_end,
+        occurrences=len(streak.sessions),
+        active=streak.active,
+        facts=facts,
+        evidence=evidence_refs((), images),
+        rule_ref={"deviation_rule": rule.code},
+    )
+
+
+@register("stage_mismatch")
+def stage_mismatch(ctx: Context, rule: DeviationRule) -> list[Finding]:
+    """D7: уверенная стадия по фото раньше или позже плановой визуальной стадии."""
+    min_sessions = rule.params.get("min_sessions", 1)
+    states = [(s, _stage_mismatch_state(ctx, s)) for s in ctx.sessions]
+    # Ключ — веха, задающая плановую стадию: смена вехи в плане начинает новую серию.
+    keys = dict.fromkeys(state[0].id for _, state in states if isinstance(state, tuple))
+    findings = []
+    for key in keys:
+        rows = [
+            (s, state if not isinstance(state, tuple) or state[0].id == key else False)
+            for s, state in states
+        ]
+        findings += [
+            _mismatch_finding(ctx, rule, streak, min_sessions)
+            for streak in find_streaks(rows)
+            if len(streak.sessions) >= min_sessions
+        ]
+    return findings
 
 
 def _signature_names(ctx: Context, stage: Stage) -> list[str]:

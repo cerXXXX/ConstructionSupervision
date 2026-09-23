@@ -18,6 +18,17 @@ class Settings(BaseServiceSettings):
     # вынесенные в окружение для калибровки на площадке.
     transient_window_sessions: int = 4
     min_stage_conf: float = 0.5
+    # Прогноз (раздел 10.5): нижняя граница темпа, окно усреднения, минимум дней наблюдений.
+    min_activity: float = 0.1
+    forecast_window_days: int = 5
+    min_days_for_forecast: int = 3
+    on_track_tolerance_days: int = 2
+    # Уверенность и UNKNOWN (разделы 10.7–10.8): сколько дней и какая доля видимых
+    # сессий нужны для HIGH и MEDIUM; доля слепых сессий, после которой статус UNKNOWN.
+    confidence_high_days: int = 5
+    confidence_high_visible: float = 0.8
+    confidence_medium_visible: float = 0.5
+    unknown_blind_share: float = 0.5
 
 
 settings = Settings()

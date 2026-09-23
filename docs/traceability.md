@@ -16,7 +16,7 @@
 | F6 | Классификация стадии объекта по снимку | `vision-service`, `site-service` | `core/stage_classifier.py`, site `core/aggregation.py` | Must | — |
 | F7 | Сопоставление сессии с активными вехами графика | `analysis-service` | `core/plan_on_date.py`, `core/rules.py` | Must | — |
 | F8 | Выявление отклонений D1–D10 с объяснением | `analysis-service` | `core/predicates.py`, `core/explain.py` | Must | — |
-| F9 | Прогноз задержки и даты окончания | `analysis-service` | `core/activity.py`, `core/forecast.py` | Must | — |
+| F9 | Прогноз задержки и даты окончания | `analysis-service` | `core/activity.py`, `core/forecast.py` | Must | ~ |
 | F10 | Отчёт план-факт: Гант, загрузка техники, лента, PDF | `analysis-service`, `web` | `report/`, web `features/gantt` | Must | — |
 | F11 | Редактирование графика, правил и зон с пересчётом | `plan-service`, `site-service`, `web` | `api/routes/stages.py`, `api/routes/rules.py`, site `api/routes/zones.py`, web `features/rules-editor` | Should | — |
 | F12 | LLM-резюме строго по фактам | `analysis-service` | `report/summary.py` | Should | — |
@@ -48,9 +48,9 @@
 | D5 | Не та зона | `wrong_zone` | ~ |
 | D6 | Опасная зона | `danger_zone` | ~ |
 
-Статус `~` у D1–D6 и D8–D10: предикат и unit-тесты на фикстурах демо-дней готовы, в прогон сервиса
+Статус `~` у D1–D10: предикат и unit-тесты на фикстурах демо-дней готовы, в прогон сервиса
 (T14–T15) ещё не включены.
-| D7 | Стадия не совпадает | `stage_mismatch` | — |
+| D7 | Стадия не совпадает | `stage_mismatch` | ~ |
 | D8 | Этап затянулся | `stage_overrun` | ~ |
 | D9 | Не начат в срок | `late_start` | ~ |
 | D10 | Участок вне контроля ИИ | `blind_area` | ~ |

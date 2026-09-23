@@ -41,6 +41,8 @@ class DailyActivity:
     # None — участок вехи за день ни разу не был виден: «не знаем», а не ноль.
     activity_index: float | None
     blind_sessions: int
+    # Конец последней сессии дня, где комплект был и работал; None — такой не было.
+    last_working_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -132,6 +134,7 @@ def daily_activity(
         start = actual_start(ctx, stage, checks)
         since = min(stage.plan_start, start.day) if start else stage.plan_start
     days: dict[date, list[int]] = {}
+    last_working: dict[date, datetime] = {}
     for session, check in zip(ctx.sessions, checks, strict=True):
         day = local_date(ctx.calendar, session.window_start)
         if day < since:
@@ -144,6 +147,7 @@ def daily_activity(
         total_working_blind[0] += 1
         if check.complete and _working(ctx, stage, session, check):
             total_working_blind[1] += 1
+            last_working[day] = session.window_end
     return tuple(
         DailyActivity(
             stage_id=stage.id,
@@ -152,6 +156,7 @@ def daily_activity(
             sessions_working=working,
             activity_index=working / total if total else None,
             blind_sessions=blind,
+            last_working_at=last_working.get(day),
         )
         for day, (total, working, blind) in days.items()
     )

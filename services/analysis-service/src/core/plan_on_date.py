@@ -16,12 +16,17 @@ def active_stages(plan: Plan, day: date) -> tuple[Stage, ...]:
     return tuple(sorted(active, key=lambda s: s.seq))
 
 
-def planned_visual_stage(plan: Plan, day: date) -> str | None:
-    """Плановая визуальная стадия на дату (docs/methodology.md, раздел 8).
+def visual_milestone(plan: Plan, day: date) -> Stage | None:
+    """Веха, задающая плановую визуальную стадию на дату (docs/methodology.md, раздел 8).
 
-    Берётся у активной вехи с заданным `visual_stage` и наибольшим `seq`: если
-    параллельно идут котлован и сваи, объект на фото должен выглядеть по более поздней.
-    None — на дату нет вехи со стадией, и D7 проверять не с чем.
+    Это активная веха с заданным `visual_stage` и наибольшим `seq`: если параллельно
+    идут котлован и сваи, объект на фото должен выглядеть по более поздней.
     """
     with_stage = [s for s in active_stages(plan, day) if s.visual_stage is not None]
-    return with_stage[-1].visual_stage if with_stage else None
+    return with_stage[-1] if with_stage else None
+
+
+def planned_visual_stage(plan: Plan, day: date) -> str | None:
+    """Плановая визуальная стадия на дату; None — на дату нет вехи со стадией, D7 не с чем."""
+    stage = visual_milestone(plan, day)
+    return stage.visual_stage if stage else None
