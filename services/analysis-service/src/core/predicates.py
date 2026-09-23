@@ -322,3 +322,8 @@ def missing_required(ctx: Context, rule: DeviationRule) -> list[Finding]:
 def incomplete_set(ctx: Context, rule: DeviationRule) -> list[Finding]:
     """D2: часть групп `required` выполнена, часть — нет."""
     return _stage_findings(ctx, rule, lambda check: check.partial)
+
+
+# Предикаты по технике живут в своём модуле, чтобы этот не разрастался. Импорт в конце
+# файла регистрирует их вместе с реестром: кто бы ни импортировал реестр, D3–D6 в нём есть.
+from src.core import equipment_predicates  # noqa: E402, F401

@@ -3,7 +3,14 @@
 from pathlib import Path
 
 import pytest
-from src.core.explain import KNOWN_SPECS, ExplainError, describe, render, template_fields
+from src.core.explain import (
+    KNOWN_SPECS,
+    ExplainError,
+    describe,
+    render,
+    template_fields,
+    templates,
+)
 from src.core.predicates import build_context, evaluate, load_rules
 from src.core.rules import RuleParams
 
@@ -37,9 +44,16 @@ def test_d2_дня_1_читается_как_карточка(enums):
 @pytest.mark.parametrize("code", list(RULES))
 def test_шаблоны_используют_только_известные_форматы(code):
     rule = RULES[code]
+    variants = [None, *rule.params.get("variants", {})]
 
-    for template in (rule.title_template, rule.message_template):
-        assert {spec for _, spec in template_fields(template)} <= KNOWN_SPECS
+    for variant in variants:
+        for template in templates(rule, variant):
+            assert {spec for _, spec in template_fields(template)} <= KNOWN_SPECS
+
+
+def test_неизвестный_вариант_текста_это_ошибка_настройки():
+    with pytest.raises(ExplainError):
+        templates(RULES["D3"], "no_such_variant")
 
 
 def test_группа_любой_из_перечисляет_классы_через_или():

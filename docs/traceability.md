@@ -21,7 +21,7 @@
 | F11 | Редактирование графика, правил и зон с пересчётом | `plan-service`, `site-service`, `web` | `api/routes/stages.py`, `api/routes/rules.py`, site `api/routes/zones.py`, web `features/rules-editor` | Should | — |
 | F12 | LLM-резюме строго по фактам | `analysis-service` | `report/summary.py` | Should | — |
 | F13 | % готовности объекта по снимку | `analysis-service` | `core/forecast.py` (только по стадии, без этажей) | Could | — |
-| F14 | Опасные зоны | `analysis-service` | `core/predicates.py` (D6) | Could | — |
+| F14 | Опасные зоны | `analysis-service` | `core/equipment_predicates.py` (D6) | Could | ~ |
 | F15 | REST API + Swagger для интеграции | все | `api/`, `gateway` | Must | — |
 
 Оговорка по F11: зоны в MVP правятся через API и файл `data/seed/cameras.json`. Редактор
@@ -41,12 +41,15 @@
 
 | Код | Отклонение | Предикат | Статус |
 | :--- | :--- | :--- | :---: |
-| D1 | Нет обязательной техники | `no_required_equipment` | — |
-| D2 | Неполный комплект | `incomplete_equipment_set` | — |
-| D3 | Техника не по этапу | `equipment_not_in_plan` | — |
-| D4 | Простой | `idle_equipment` | — |
-| D5 | Не та зона | `wrong_zone` | — |
-| D6 | Опасная зона | `danger_zone` | — |
+| D1 | Нет обязательной техники | `missing_required` | ~ |
+| D2 | Неполный комплект | `incomplete_set` | ~ |
+| D3 | Техника не по этапу | `unexpected_equipment` | ~ |
+| D4 | Простой | `idle_equipment` | ~ |
+| D5 | Не та зона | `wrong_zone` | ~ |
+| D6 | Опасная зона | `danger_zone` | ~ |
+
+Статус `~` у D1–D6: предикат и unit-тесты на фикстурах демо-дней готовы, в прогон сервиса
+(T14–T15) ещё не включены.
 | D7 | Стадия не совпадает | `stage_mismatch` | — |
 | D8 | Этап затянулся | `stage_overrun` | — |
 | D9 | Не начат в срок | `stage_not_started` | — |

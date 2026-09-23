@@ -10,7 +10,9 @@
 #   params           — пороги. min_sessions — сколько рабочих сессий подряд держится
 #                      условие (у D1, D2, D8 его задаёт правило вехи, а не эта запись);
 #                      escalate_after_days + escalate_to — повышение серьёзности, если
-#                      условие держится столько рабочих дней;
+#                      условие держится столько рабочих дней; variants — другие
+#                      формулировки того же кода: предикат выбирает вариант полем
+#                      facts.template_variant;
 #   title_template,
 #   message_template — текст карточки. Подстановки — поля facts отклонения;
 #                      после двоеточия — формат: date (ДД.ММ.ГГГГ), counts (техника
@@ -41,12 +43,24 @@ rules:
       Не выполнено: {groups_failed:groups}. Транзитная техника учитывается за последние
       {transient_window_sessions} сессии. Правило вехи, версия {stage_rule_version}.
 
-  # D3–D10: предикаты и полный набор facts появляются в T11–T13; там же уточняются тексты.
+  # D3–D6: ключ — участок и класс техники; min_sessions — в params (T11).
+  # D7–D10: предикаты и полный набор facts появляются в T12–T13; там же уточняются тексты.
   D3:
     predicate: unexpected_equipment
     severity: MEDIUM
     # Одиночный кадр отклонения не порождает (methodology.md, раздел 6).
-    params: {min_sessions: 2}
+    # variants.ahead — формулировка, когда класс нужен будущей вехе участка: ключом
+    # отклонения тогда становится та веха.
+    params:
+      min_sessions: 2
+      variants:
+        ahead:
+          title_template: "Возможное опережение: {equipment_name} для «{future_stage_name}»"
+          message_template: >-
+            На участке «{area_name}» {sessions_checked} рабочих сессий подряд:
+            {equipment_name}, {count} ед. Этой техники нет в правилах активных вех участка
+            ({active_stages:list}), но она нужна вехе «{future_stage_name}», которая по плану
+            начинается {future_plan_start:date}.
     title_template: "Техника не по этапу: {equipment_name}"
     message_template: >-
       На участке «{area_name}» {sessions_checked} рабочих сессий подряд: {equipment_name},
@@ -58,8 +72,7 @@ rules:
     params: {min_sessions: 3, escalate_after_days: 1, escalate_to: MEDIUM}
     title_template: "Простой: {equipment_name}"
     message_template: >-
-      {equipment_name}, {count} ед., {sessions_checked} рабочих сессий подряд в простое.
-      {state_reason}.
+      {state_reason}. Так {sessions_checked} рабочих сессий подряд, единиц: {count}.
 
   D5:
     predicate: wrong_zone
@@ -67,8 +80,8 @@ rules:
     params: {min_sessions: 2}
     title_template: "Техника не в той зоне: {equipment_name}"
     message_template: >-
-      {equipment_name}, {count} ед., {sessions_checked} рабочих сессий подряд на участке
-      «{area_name}», где по плану нет активной вехи этого типа.
+      {state_reason}. Так {sessions_checked} рабочих сессий подряд, единиц: {count}.
+      Активные по плану вехи: {active_stages:list}.
 
   D6:
     predicate: danger_zone
@@ -76,7 +89,8 @@ rules:
     params: {min_sessions: 1}
     title_template: "Опасная зона: {equipment_name}"
     message_template: >-
-      В опасной зоне «{area_name}» замечено: {equipment_name}, {count} ед.
+      В опасной зоне «{area_name}» замечено: {equipment_name}, {count} ед. Рабочих
+      сессий подряд: {sessions_checked}.
 
   D7:
     predicate: stage_mismatch

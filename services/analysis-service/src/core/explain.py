@@ -68,9 +68,25 @@ class Deviation:
     message: str
 
 
+def templates(rule: DeviationRule, variant: str | None = None) -> tuple[str, str]:
+    """Шаблоны заголовка и текста; вариант — другая формулировка того же кода.
+
+    Варианты лежат в `params.variants` правила (например, D3 «возможное опережение»):
+    так формулировка остаётся в данных, а не в ветке кода.
+    """
+    if variant is None:
+        return rule.title_template, rule.message_template
+    try:
+        body = rule.params["variants"][variant]
+        return body["title_template"], body["message_template"]
+    except (KeyError, TypeError) as exc:
+        raise ExplainError(f"{rule.code}: нет варианта текста {variant!r}") from exc
+
+
 def describe(finding: Finding, rule: DeviationRule, class_names: dict[str, str]) -> Deviation:
+    title, message = templates(rule, finding.facts.get("template_variant"))
     return Deviation(
         finding=finding,
-        title=render(rule.title_template, finding.facts, class_names),
-        message=render(rule.message_template, finding.facts, class_names),
+        title=render(title, finding.facts, class_names),
+        message=render(message, finding.facts, class_names),
     )
