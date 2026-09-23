@@ -9,6 +9,7 @@ unit-тесты на core/ должны проходить всегда и бе�
 """
 
 import os
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
@@ -83,3 +84,87 @@ def enums():
     from src.core.enums import load_enums
 
     return load_enums(CONTRACTS_DIR)
+
+
+# Все таблицы выводов: прогон пишет своими транзакциями, поэтому API-тесты изолируются
+# очисткой, а не откатом транзакции.
+TABLES = (
+    "analysis_run, deviation, deviation_rule, stage_fact, daily_activity, daily_equipment, "
+    "object_status"
+)
+
+
+@pytest.fixture
+async def session_factory(migrated_database):
+    """Фабрика сессий к чистой тестовой базе."""
+    from lct_common.db import create_engine, create_session_factory
+    from sqlalchemy import text
+
+    engine = create_engine(migrated_database)
+    async with engine.begin() as connection:
+        await connection.execute(text(f"TRUNCATE {TABLES}"))
+    yield create_session_factory(engine)
+    await engine.dispose()
+
+
+class StubPlanClient:
+    """plan-service на фикстуре: отдаёт план или бросает заданную ошибку."""
+
+    def __init__(self) -> None:
+        from tests.factories import load_plan
+
+        self.plan = load_plan()
+        self.error: Exception | None = None
+
+    async def get_plan(self, object_id):
+        if self.error is not None:
+            raise self.error
+        return self.plan
+
+
+class StubSiteClient:
+    """site-service на фикстуре: запоминает запрошенный период."""
+
+    def __init__(self) -> None:
+        self.facts = None
+        self.error: Exception | None = None
+        self.calls: list[tuple] = []
+
+    async def get_facts(self, object_id, period_from, period_to):
+        self.calls.append((object_id, period_from, period_to))
+        if self.error is not None:
+            raise self.error
+        return self.facts
+
+
+@pytest.fixture
+def upstream():
+    """Заглушки plan и site: внешние сервисы в тестах не вызываются (AGENTS.md, раздел 10)."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(plan=StubPlanClient(), site=StubSiteClient())
+
+
+@pytest.fixture
+async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
+    """HTTP-клиент поверх приложения с тестовой базой, заглушками и рабочим ключом."""
+    from httpx import ASGITransport, AsyncClient
+    from src.api.deps import get_run_service
+    from src.config import settings
+    from src.main import app
+    from src.services import runs
+    from src.services.runs import RunService
+
+    monkeypatch.setattr(settings, "contracts_dir", str(CONTRACTS_DIR))
+    runs.enums.cache_clear()
+    app.dependency_overrides[get_run_service] = lambda: RunService(
+        session_factory, upstream.plan, upstream.site
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"X-API-Key": settings.api_key},
+    ) as http_client:
+        yield http_client
+    app.dependency_overrides.clear()
+    runs.enums.cache_clear()

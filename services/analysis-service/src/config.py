@@ -13,6 +13,14 @@ class Settings(BaseServiceSettings):
     # Справочные файлы контрактов, смонтированные только для чтения: enums.yaml
     # задаёт роли типов зон и порядок стадий по фото.
     contracts_dir: str = "/contracts"
+    # Начальные настройки D1–D10: переносятся в deviation_rule при первом старте.
+    deviation_rules_file: str = "data/deviation_rules.yaml"
+
+    # Источники плана и фактов (interservice.md, контракты 1 и 2): 10 с, два повтора.
+    plan_url: str = "http://plan-service:8000"
+    site_url: str = "http://site-service:8000"
+    upstream_timeout_s: float = 10.0
+    upstream_retries: int = 2
 
     # Параметры методики (docs/methodology.md, раздел 11) — экспертные допущения,
     # вынесенные в окружение для калибровки на площадке.

@@ -17,24 +17,57 @@ from lct_common import (
     setup_logging,
 )
 from lct_common.db import create_engine, create_session_factory, make_db_check
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.api.routes import api_router
+from src.clients.plan_client import PlanClient
+from src.clients.site_client import SiteClient
 from src.config import settings
+from src.dal.repositories.rules import RuleRepository
+from src.services.runs import default_rules
 
 setup_logging(settings.service_name, settings.log_level, pretty=settings.is_dev)
 log = get_logger(__name__)
 
 
+def _client(cls, url: str, service: str):
+    return cls(
+        url,
+        service=service,
+        api_key=settings.api_key,
+        timeout_s=settings.upstream_timeout_s,
+        retries=settings.upstream_retries,
+    )
+
+
+async def _seed_rules(factory) -> None:
+    """Первый старт: пороги D1–D10 из YAML в deviation_rule; правленые строки не трогаются.
+
+    База может быть ещё не готова — тогда правила заполнит первый прогон, а сервис
+    всё равно поднимется: /health/ready честно скажет, что БД недоступна.
+    """
+    try:
+        async with factory() as session, session.begin():
+            await RuleRepository(session).seed_missing(default_rules())
+    except (OSError, SQLAlchemyError) as exc:
+        log.warning("rules.seed_skipped", error=type(exc).__name__)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ресурсы, живущие столько же, сколько процесс: пул БД."""
+    """Ресурсы, живущие столько же, сколько процесс: пул БД и клиенты plan и site."""
     engine = create_engine(settings.analysis_db_dsn, echo=settings.db_echo)
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
+    app.state.plan_client = _client(PlanClient, settings.plan_url, "plan-service")
+    app.state.site_client = _client(SiteClient, settings.site_url, "site-service")
+    await _seed_rules(app.state.session_factory)
 
     log.info("service.started", version=settings.version, env=settings.env)
     yield
 
+    await app.state.plan_client.aclose()
+    await app.state.site_client.aclose()
     await engine.dispose()
     log.info("service.stopped")
 

@@ -292,12 +292,22 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
 
 ### R2. Сервисы и сквозной прогон — 25–26.09
 
-- [ ] `T15` analysis: прогон как сервис
+- [x] `T15a` analysis: прогон как сервис — сделано: клиенты `src/clients/`, сценарий
+      `src/services/runs.py`, сверка ленты `core/ledger.py`, репозитории `dal/repositories/`,
+      `POST /runs` и `GET /runs/{id}`, миграция `0003`, `timestamptz` в моделях; 14 api-тестов
+      на базе `analysisdb_test`; в стеке правила D1–D10 заполняются при старте. Живой прогон ждёт
+      `GET /plan` из T19
       спец: [interservice.md](../packages/contracts/interservice.md) §4, [analysis-service README](../services/analysis-service/README.md) §4 · ждёт: T05, T14
-      что: клиенты plan и site (py-common http: 10 с, 2 повтора); `POST /runs` со схлопыванием
-      (`rerun_requested`) и `?wait=true`; `GET /runs/{id}`; запись результатов (UPSERT по ключу,
-      `RESOLVED`); заполнение `deviation_rule` из YAML при первом старте
+      что: клиенты plan и site (py-common http: 10 с, 2 повтора); `POST /runs` с `?wait=true`
+      и фоновым запуском без него; `GET /runs/{id}`; запись результатов (UPSERT по ключу,
+      `RESOLVED`); заполнение `deviation_rule` из YAML при первом старте; миграция `0003`
+      (`activity_index` nullable)
       готово, когда: api-тесты с клиентами-заглушками на фикстурах; повтор не создаёт дублей
+- [ ] `T15b` analysis: схлопывание сигналов прогона
+      спец: [interservice.md](../packages/contracts/interservice.md) §4 · ждёт: T15a
+      что: на объект один прогон; сигнал во время прогона — `rerun_requested` и ответ
+      `coalesced: true` с номером текущего; по окончании ровно один новый прогон
+      готово, когда: api-тест: два сигнала подряд → один прогон + один повтор
 - [ ] `T16` analysis: чтение результатов
       спец: [analysis-service README](../services/analysis-service/README.md) §3 · ждёт: T15
       что: `/objects/{id}/status`, `/progress`, `/equipment`; `/deviations` с фильтрами и
@@ -470,6 +480,12 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
   `lct_lct` с каталогом сервиса, смонтированным в `/app/services/<сервис>`, `pip install pytest
   pytest-asyncio`, `TEST_DB_DSN` на `postgres:5432`. Стоит записать в §2 или в `scripts/`.
   Для analysis-service ещё смонтировать `packages/contracts` в `/app/packages/contracts`.
+- `services/plan-service/src/dal/models.py` и `services/site-service/src/dal/models.py`:
+  поля `Mapped[datetime]` без `DateTime(timezone=True)`, хотя колонки в миграциях —
+  `timestamptz`. SQLAlchemy шлёт момент как наивный `TIMESTAMP`, и запись момента с часовым
+  поясом падает (`can't subtract offset-naive and offset-aware datetimes`); в analysis это
+  всплыло в T15a и исправлено `type_annotation_map` в `Base`. site пишет `window_start`,
+  `captured_at` — упадёт в T23/T25.
 - `services/plan-service/src/api/schemas/common.py` дублирует в коде списки `object_type`,
   `construction_phase`, `zone_type` и др. в виде `StrEnum`, что запрещено AGENTS.md §7.
   Естественно заменить чтением `enums.yaml` в T17.

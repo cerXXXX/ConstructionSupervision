@@ -6,12 +6,14 @@
 """
 
 from datetime import date, datetime
+from typing import ClassVar
 from uuid import UUID
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Date,
+    DateTime,
     Float,
     Index,
     Integer,
@@ -39,7 +41,9 @@ def _in(column: str, values: tuple[str, ...]) -> str:
 
 
 class Base(DeclarativeBase):
-    pass
+    # Всё время в базе — timestamptz (AGENTS.md, раздел 7), и модели обязаны это знать:
+    # иначе SQLAlchemy шлёт момент как наивный TIMESTAMP и теряет часовой пояс.
+    type_annotation_map: ClassVar[dict] = {datetime: DateTime(timezone=True)}
 
 
 class TimestampMixin:
@@ -200,7 +204,8 @@ class DailyActivity(Base):
     day: Mapped[date] = mapped_column("date", Date, primary_key=True)
     sessions_total: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     sessions_working: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    activity_index: Mapped[float] = mapped_column(Float, server_default=text("0"))
+    # Пусто — участок вехи за день ни разу не был виден: «не знаем», а не ноль.
+    activity_index: Mapped[float | None] = mapped_column(Float)
     # Слепые сессии не штрафуют индекс, а снижают уверенность: «не видно»
     # и «не работают» — разные утверждения.
     blind_sessions: Mapped[int] = mapped_column(Integer, server_default=text("0"))

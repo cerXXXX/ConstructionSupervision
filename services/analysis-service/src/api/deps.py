@@ -1,4 +1,4 @@
-"""Зависимости FastAPI: сессия БД, проверка ключа."""
+"""Зависимости FastAPI: сессия БД, сценарий прогона, проверка ключа."""
 
 from collections.abc import AsyncIterator
 from typing import Annotated
@@ -9,6 +9,7 @@ from lct_common.db import session_dependency
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
+from src.services.runs import RunService
 
 require_api_key = make_api_key_dependency(settings.api_key)
 
@@ -19,3 +20,12 @@ async def get_session(request: Request) -> AsyncIterator[AsyncSession]:
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
+
+
+def get_run_service(request: Request) -> RunService:
+    """Прогон пишет своими транзакциями, поэтому берёт фабрику сессий, а не сессию запроса."""
+    state = request.app.state
+    return RunService(state.session_factory, state.plan_client, state.site_client)
+
+
+RunServiceDep = Annotated[RunService, Depends(get_run_service)]
