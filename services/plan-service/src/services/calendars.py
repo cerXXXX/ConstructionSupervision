@@ -8,7 +8,7 @@ from datetime import time
 from typing import Any
 from uuid import UUID
 
-from lct_common import ConflictError, NotFoundError, ValidationError
+from lct_common import ConflictError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.schemas.calendars import CalendarCreate, CalendarUpdate
@@ -17,14 +17,8 @@ from src.core.calendar import CalendarError, check_calendar
 from src.dal.models import WorkCalendar
 from src.dal.repositories.calendars import CalendarRepository
 from src.dal.repositories.objects import ObjectRepository
+from src.services.critical_path import CalendarNotFound, refresh_critical_path
 from src.services.plan_version import PlanVersion
-
-
-class CalendarNotFound(NotFoundError):
-    code = "CALENDAR_NOT_FOUND"
-
-    def __init__(self, calendar_id: UUID) -> None:
-        super().__init__("Календарь не найден", calendar_id=str(calendar_id))
 
 
 class CalendarAlreadyExists(ConflictError):
@@ -50,6 +44,7 @@ def _check(fields: dict[str, Any]) -> None:
 
 class CalendarService:
     def __init__(self, session: AsyncSession, signal: AnalysisClient) -> None:
+        self._session = session
         self._repo = CalendarRepository(session)
         self._objects = ObjectRepository(session)
         self._plan_version = PlanVersion(session, signal)
@@ -88,5 +83,8 @@ class CalendarService:
         calendar = await self._repo.save(calendar)
         # Название на рабочие дни не влияет: план от него не меняется.
         if changes.keys() - {"name"}:
-            await self._plan_version.changed(await self._objects.ids_with_calendar(calendar_id))
+            object_ids = list(await self._objects.ids_with_calendar(calendar_id))
+            # Выходные и праздники меняют число рабочих дней, а с ним резервы вех.
+            await refresh_critical_path(self._session, object_ids)
+            await self._plan_version.changed(object_ids)
         return calendar

@@ -12,6 +12,7 @@ from src.dal.models import Stage, StageRule
 from src.dal.repositories.rules import RuleRepository
 from src.dal.repositories.stages import StageRepository
 from src.reference import reference
+from src.services.critical_path import refresh_critical_path
 from src.services.objects import ObjectService
 from src.services.plan_version import PlanVersion
 
@@ -59,7 +60,7 @@ class StageService:
         return stages, total, await self._rules.by_stages([s.id for s in stages])
 
     async def update(self, stage_id: UUID, payload: StageUpdate) -> Stage:
-        """Правка вехи. Критический путь пересчитывается в T19 вместе с core/cpm.py."""
+        """Правка вехи; после смены дат пересчитывается критический путь всего объекта."""
         stage = await self.get(stage_id)
         changes = {
             k: v
@@ -81,6 +82,9 @@ class StageService:
         for field, value in changes.items():
             setattr(stage, field, value)
         stage = await self._repo.save(stage)
+        if changes.keys() & {"plan_start", "plan_end"}:
+            await refresh_critical_path(self._session, [stage.object_id])
+            await self._session.refresh(stage)
         if changes:
             await self._plan_version.changed([stage.object_id])
         return stage

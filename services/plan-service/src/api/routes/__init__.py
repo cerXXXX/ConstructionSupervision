@@ -7,10 +7,11 @@
 from fastapi import APIRouter, Depends
 
 from src.api.deps import require_api_key
-from src.api.routes import calendars, equipment_classes, objects, rules, stages
+from src.api.routes import calendars, equipment_classes, objects, plan, rules, stages
 
 api_router = APIRouter(prefix="/api/v1/plan", dependencies=[Depends(require_api_key)])
 api_router.include_router(objects.router)
+api_router.include_router(plan.router)
 api_router.include_router(stages.router)
 api_router.include_router(rules.router)
 api_router.include_router(calendars.router)

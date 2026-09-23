@@ -1,5 +1,6 @@
 """Запросы к таблице stage."""
 
+from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -25,6 +26,13 @@ class StageRepository:
             query.order_by(Stage.seq, Stage.plan_start).limit(limit).offset(offset)
         )
         return list(rows), int(total or 0)
+
+    async def all_for_object(self, object_id: UUID) -> Sequence[Stage]:
+        """Все вехи объекта по seq — для «весь план» и критического пути."""
+        rows = await self._session.scalars(
+            select(Stage).where(Stage.object_id == object_id).order_by(Stage.seq, Stage.plan_start)
+        )
+        return rows.all()
 
     async def save(self, stage: Stage) -> Stage:
         await self._session.flush()
