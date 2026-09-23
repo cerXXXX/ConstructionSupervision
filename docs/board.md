@@ -169,7 +169,9 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       `plan_revision`. Миграцию `0001` править на месте: реальных данных нет, после правки
       локально `docker compose down -v`
       готово, когда: тесты plan-service зелёные, включая тест миграций (если есть база)
-- [ ] `T04` site-service: схема по data-model §2
+- [x] `T04` site-service: схема по data-model §2 — сделано: `dal/models.py` и миграция `0001`;
+      видимость и факты окна по участку `ТИП:Название`, `session_fact.count > 0`; тесты зелёные
+      в контейнере, стек отвечает `/health/ready`
       спец: [data-model.md](data-model.md) §2, [ADR-0012](decisions/0012-facts-without-judgement.md), [ADR-0013](decisions/0013-zones-and-areas.md) · ждёт: —
       что: `camera.reference_image_id`; `zone` без `overlaps_with`; `image.usable`,
       `usable_reason`, без `thumb_key`; `session` без `is_working_time` и `status`, + `stage_label`,
