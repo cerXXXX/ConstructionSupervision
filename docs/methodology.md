@@ -348,6 +348,7 @@ delay_days(объект) = наибольшая задержка среди ве
 | `TRANSIENT_WINDOW_SESSIONS` | 4 | analysis-service, окружение |
 | `MIN_STAGE_CONF` | 0.5 | analysis-service, окружение |
 | `MIN_ACTIVITY`, `FORECAST_WINDOW_DAYS`, `MIN_DAYS_FOR_FORECAST`, `ON_TRACK_TOLERANCE_DAYS` | 0.1, 5, 3, 2 | analysis-service, окружение |
+| Пороги уверенности и `UNKNOWN` (разделы 10.7–10.8): `CONFIDENCE_HIGH_DAYS`, `CONFIDENCE_HIGH_VISIBLE`, `CONFIDENCE_MEDIUM_VISIBLE`, `UNKNOWN_BLIND_SHARE`; дни для `MEDIUM` — `MIN_DAYS_FOR_FORECAST` | 5, 0.8, 0.5, 0.5 | analysis-service, окружение |
 | `min_sessions` вехи | 2 | `stage_rule`, правится в интерфейсе |
 | Пороги D1–D10 (`min_sessions`, `escalate_after_days`, `K`) | см. таблицу раздела 9 | `deviation_rule.params`, правится в интерфейсе |
 
