@@ -55,8 +55,13 @@ flowchart LR
 
 | Метод | Путь | Описание |
 | :--- | :--- | :--- |
-| `GET` `POST` | `/rules` | Правила «веха → техника»; фильтр по `stage_id` |
-| `PATCH` `DELETE` | `/rules/{id}` | Правка правила; версия правила и `plan_version` растут |
+| `GET` `POST` | `/rules` | Правила «веха → техника» в форме `stages[].rule` контракта «весь план»; фильтры `stage_id`, `object_id`. У вехи не больше одного правила |
+| `GET` `PATCH` `DELETE` | `/rules/{id}` | Правило; правка (списки и сигнатура заменяются целиком) и удаление поднимают версию правила и `plan_version`, шлют сигнал «пересчитай» |
+
+Коды классов в `required`, `allowed` и `signature.equipment` сверяются с
+`equipment_classes.yaml`, повтор класса в одном списке — опечатка (`core/stage_rules.py`).
+`X-Actor` (имя в URL-кодировке) попадает в журнал правок: в лог `stage_rule.*`.
+`GET /objects/{id}/stages` и `PATCH /stages/{id}` отдают веху вместе с её правилом (`rule`).
 | `GET` | `/equipment-classes` | Классы техники из `equipment_classes.yaml` (только чтение), в порядке файла; фильтры `group`, `transient` |
 | `GET` | `/work-types` | Справочник работ; фильтры `level`, `parent_code` |
 | `POST` | `/work-types/import` | Импорт справочника из XLSX с восстановлением кодов |
@@ -71,7 +76,9 @@ flowchart LR
 (код класса не найден в `equipment_classes.yaml`), `PLAN_ALREADY_EXISTS` (генерация без `force`
 поверх ручных правок), `PLAN_IMPORT_INVALID` (с номером строки файла), `INVALID_DATE_RANGE`,
 `PLAN_CYCLE` (цикл в связях вех), `NORMS_NOT_AVAILABLE` (для типа объекта нет норм — используйте импорт),
-`INVALID_ZONE_TYPE` (веха на участке не с ролью `WORK`), `CALENDAR_NOT_FOUND`,
+`STAGE_RULE_ALREADY_EXISTS` (второе правило у вехи), `STAGE_RULE_INVALID` (класс повторяется
+в группе, `allowed` или сигнатуре), `INVALID_ZONE_TYPE` (веха на участке не с ролью `WORK`),
+`CALENDAR_NOT_FOUND`,
 `CALENDAR_ALREADY_EXISTS` (повтор кода), `CALENDAR_INVALID` (неизвестный часовой пояс,
 выходные вне 1…7 или все семь дней, конец рабочих часов не позже начала).
 

@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.schemas.stages import StageUpdate
 from src.clients.analysis_client import AnalysisClient
 from src.core.stages import StageDatesError, StageError, check_stage
-from src.dal.models import Stage
+from src.dal.models import Stage, StageRule
+from src.dal.repositories.rules import RuleRepository
 from src.dal.repositories.stages import StageRepository
 from src.reference import reference
 from src.services.objects import ObjectService
@@ -37,6 +38,7 @@ class StageService:
     def __init__(self, session: AsyncSession, signal: AnalysisClient) -> None:
         self._session = session
         self._repo = StageRepository(session)
+        self._rules = RuleRepository(session)
         self._plan_version = PlanVersion(session, signal)
 
     async def get(self, stage_id: UUID) -> Stage:
@@ -45,11 +47,16 @@ class StageService:
             raise StageNotFound(stage_id)
         return stage
 
+    async def rule_of(self, stage: Stage) -> StageRule | None:
+        return await self._rules.by_stage(stage.id)
+
     async def list_for_object(
         self, object_id: UUID, *, limit: int, offset: int
-    ) -> tuple[list[Stage], int]:
+    ) -> tuple[list[Stage], int, dict[UUID, StageRule]]:
+        """Страница вех, общее число и правила этих вех по id вехи."""
         await ObjectService(self._session).get(object_id)
-        return await self._repo.list_for_object(object_id, limit=limit, offset=offset)
+        stages, total = await self._repo.list_for_object(object_id, limit=limit, offset=offset)
+        return stages, total, await self._rules.by_stages([s.id for s in stages])
 
     async def update(self, stage_id: UUID, payload: StageUpdate) -> Stage:
         """Правка вехи. Критический путь пересчитывается в T19 вместе с core/cpm.py."""

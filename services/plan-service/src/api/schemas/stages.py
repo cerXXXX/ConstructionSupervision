@@ -12,6 +12,7 @@ from src.api.schemas.common import (
     StageSource,
     ZoneType,
 )
+from src.api.schemas.rules import RuleRead
 
 
 class PredecessorRead(BaseModel):
@@ -40,8 +41,16 @@ class StageRead(BaseModel):
     total_float_days: int
     source: StageSource
     basis: str | None
+    rule: RuleRead | None = Field(default=None, description="Правило «веха → техника»")
     created_at: datetime
     updated_at: datetime
+
+    @classmethod
+    def of(cls, stage: object, rule: object | None) -> "StageRead":
+        """Веха вместе с её правилом: правило живёт в своей таблице."""
+        read = cls.model_validate(stage)
+        read.rule = RuleRead.model_validate(rule) if rule is not None else None
+        return read
 
 
 class StageUpdate(BaseModel):

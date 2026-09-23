@@ -346,7 +346,10 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       `PATCH /stages/{id}`; рост `plan_version`; клиент сигнала в analysis (2 с, без повторов,
       ошибки — в лог)
       готово, когда: api-тесты; правка вехи и календаря увеличивает `plan_version` и шлёт сигнал
-- [~] `T18b` plan: правила «веха → техника»
+- [x] `T18b` plan: правила «веха → техника» — сделано: `/rules` (список с фильтрами, создание,
+      правка, удаление), проверка формы `core/stage_rules.py` и кодов по
+      `equipment_classes.yaml`, версия правила растёт в SQL, `plan_version` и сигнал через
+      `services/plan_version.py`; правило в ответе вех; `X-Actor` в журнал
       спец: [plan-service README](../services/plan-service/README.md) §3, [interservice.md](../packages/contracts/interservice.md) §1 · ждёт: T18a
       что: CRUD `/rules` в новом формате (группы `any_of`/`min`, `allowed`, `signature`,
       `min_sessions`), коды классов — `check_equipment_codes`; версия правила и `plan_version`
@@ -360,7 +363,9 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       стадия, связи); `core/cpm.py`; проверка дат и циклов. `data/wbs_templates.json`: вехи
       жилого монолита с типом участка, визуальной стадией, связями и правилами по таблице
       ТЗ §5.2, включая группы «любой из». Доли фаз пока `null` — их заполнит T21.
-      `PATCH /stages/{id}` после правки дат пересчитывает критический путь (T18a его не трогает)
+      `PATCH /stages/{id}` после правки дат пересчитывает критический путь (T18a его не трогает).
+      Как отдавать в `/plan` правило с `is_active: false` (предложение — `rule: null`), решить и
+      записать в README
       готово, когда: ответ `/plan` на демо-графике совпадает по форме с `tests/fixtures/plan.json`
       из T06; импорт с ошибкой возвращает номер строки
 - [ ] `T20` plan: парсер справочника работ
