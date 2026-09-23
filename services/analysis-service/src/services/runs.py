@@ -6,6 +6,7 @@
 запроса.
 """
 
+import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime, time
 from functools import lru_cache, partial
@@ -113,16 +114,33 @@ class RunService:
 
     async def start(
         self, object_id: UUID, triggered_by: str, as_of: datetime | None
-    ) -> AnalysisRun:
-        """Заводит прогон со статусом RUNNING отдельной транзакцией."""
+    ) -> tuple[AnalysisRun, bool]:
+        """Заводит прогон RUNNING или схлопывает сигнал с идущим: (прогон, схлопнут ли).
+
+        На объект одновременно идёт не больше одного прогона. Сигнал во время прогона
+        только отмечает, что по его окончании нужен ещё один (interservice.md, раздел 4).
+        """
         allowed = enums().values.get("analysis_trigger", ())
         if triggered_by not in allowed:
             raise ValidationError(
                 "Неизвестный источник прогона", triggered_by=triggered_by, allowed=list(allowed)
             )
         async with self._factory() as session, session.begin():
+            runs = RunRepository(session)
+            await runs.lock_object(object_id)
+            for current in await runs.running(object_id):
+                if runs.is_stale(current, self._now(), settings.run_stale_after_s):
+                    # Процесс упал посреди прогона: строка RUNNING не должна держать объект.
+                    current.status = "FAILED"
+                    current.error = {
+                        "code": "RUN_ABANDONED",
+                        "message": "Прогон не завершился вовремя и считается брошенным",
+                    }
+                    continue
+                current.rerun_requested = True
+                return current, True
             run = AnalysisRun(object_id=object_id, triggered_by=triggered_by, as_of=as_of)
-            return await RunRepository(session).add(run)
+            return await runs.add(run), False
 
     async def get(self, run_id: UUID) -> AnalysisRun:
         async with self._factory() as session:
@@ -132,7 +150,11 @@ class RunService:
         return run
 
     async def execute(self, run_id: UUID) -> AnalysisRun:
-        """Прогон целиком. Ошибка отмечается в строке прогона и пробрасывается дальше."""
+        """Прогон целиком, затем повтор, если во время него пришёл сигнал.
+
+        Ошибка отмечается в строке прогона и пробрасывается дальше — но только после
+        повтора: сигнал, пришедший во время неудачного прогона, тоже не теряется.
+        """
         run = await self.get(run_id)
         try:
             await self._compute_and_save(run)
@@ -145,6 +167,8 @@ class RunService:
             error = AnalysisInputInvalid(str(exc), object_id=str(run.object_id))
             await self._fail(run_id, error)
             raise error from exc
+        finally:
+            await self._follow_up(run)
         return await self.get(run_id)
 
     async def execute_in_background(self, run_id: UUID) -> None:
@@ -153,6 +177,40 @@ class RunService:
             await self.execute(run_id)
         except DomainError as exc:
             log.warning("run.failed", run_id=str(run_id), code=exc.code)
+
+    async def wait_idle(self, object_id: UUID) -> AnalysisRun | None:
+        """Ждёт, пока по объекту не останется идущих прогонов; None — не дождались.
+
+        Нужен `?wait=true`, когда сигнал схлопнулся с чужим прогоном: вызывающему важен
+        не номер прогона, а то, что выводы посчитаны с учётом его сигнала.
+        """
+        deadline = self._now().timestamp() + settings.run_wait_timeout_s
+        while True:
+            async with self._factory() as session:
+                runs = RunRepository(session)
+                if await runs.count_running(object_id) == 0:
+                    return await runs.latest(object_id)
+            if self._now().timestamp() >= deadline:
+                return None
+            await asyncio.sleep(settings.run_wait_poll_s)
+
+    async def _follow_up(self, run: AnalysisRun) -> None:
+        """Ровно один повторный прогон, если во время `run` пришёл сигнал."""
+        async with self._factory() as session, session.begin():
+            requested = await RunRepository(session).consume_rerun(run.id)
+        if not requested:
+            return
+        # as_of схлопнутого сигнала не хранится; сигналы site и plan приходят без него,
+        # поэтому повтор считает на момент по умолчанию — конец последней сессии.
+        follow, coalesced = await self.start(run.object_id, run.triggered_by, None)
+        if coalesced:
+            # Кто-то уже начал новый прогон — повтор сделает он.
+            return
+        log.info("run.rerun", run_id=str(follow.id), after=str(run.id))
+        try:
+            await self.execute(follow.id)
+        except DomainError as exc:
+            log.warning("run.failed", run_id=str(follow.id), code=exc.code)
 
     async def _compute_and_save(self, run: AnalysisRun) -> None:
         plan = await self._plan.get_plan(run.object_id)

@@ -16,7 +16,10 @@ router = APIRouter(prefix="/runs", tags=["Прогон анализа"])
     status_code=status.HTTP_202_ACCEPTED,
     summary="Запустить прогон или подать сигнал «пересчитай»",
     description="Без `wait` прогон идёт в фоне, ответ 202. С `wait=true` — 200 и результат "
-    "прогона, как у `GET /runs/{id}`; ошибка прогона приходит конвертом ошибки.",
+    "прогона, как у `GET /runs/{id}`; ошибка прогона приходит конвертом ошибки. Если по "
+    "объекту прогон уже идёт, сигнал схлопывается с ним (`coalesced: true`, номер идущего), "
+    "а по его окончании запускается ровно один новый. `wait=true` в этом случае ждёт, пока "
+    "прогоны по объекту закончатся, и отдаёт последний; не дождался — 202.",
 )
 async def create_run(
     payload: RunCreate,
@@ -25,7 +28,13 @@ async def create_run(
     response: Response,
     wait: bool = False,
 ):
-    run = await service.start(payload.object_id, payload.triggered_by, payload.as_of)
+    run, coalesced = await service.start(payload.object_id, payload.triggered_by, payload.as_of)
+    if coalesced:
+        finished = await service.wait_idle(payload.object_id) if wait else None
+        if finished is not None:
+            response.status_code = status.HTTP_200_OK
+            return RunRead.of(finished)
+        return RunAccepted(run_id=run.id, status=run.status, coalesced=True)
     if wait:
         response.status_code = status.HTTP_200_OK
         return RunRead.of(await service.execute(run.id))

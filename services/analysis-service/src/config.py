@@ -22,6 +22,13 @@ class Settings(BaseServiceSettings):
     upstream_timeout_s: float = 10.0
     upstream_retries: int = 2
 
+    # Прогон (interservice.md, раздел 4): на объект один прогон. Прогон, который висит
+    # в RUNNING дольше RUN_STALE_AFTER_S, считается брошенным (процесс упал) и объект не
+    # блокирует. `?wait=true` во время чужого прогона ждёт его не дольше RUN_WAIT_TIMEOUT_S.
+    run_stale_after_s: float = 900.0
+    run_wait_timeout_s: float = 120.0
+    run_wait_poll_s: float = 0.5
+
     # Параметры методики (docs/methodology.md, раздел 11) — экспертные допущения,
     # вынесенные в окружение для калибровки на площадке.
     transient_window_sessions: int = 4

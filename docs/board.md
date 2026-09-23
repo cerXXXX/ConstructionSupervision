@@ -303,7 +303,10 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       `RESOLVED`); заполнение `deviation_rule` из YAML при первом старте; миграция `0003`
       (`activity_index` nullable)
       готово, когда: api-тесты с клиентами-заглушками на фикстурах; повтор не создаёт дублей
-- [ ] `T15b` analysis: схлопывание сигналов прогона
+- [x] `T15b` analysis: схлопывание сигналов прогона — сделано: advisory-блокировка объекта,
+      `rerun_requested` с атомарным снятием и одним повтором (`services/runs.py`), брошенный
+      прогон → `RUN_ABANDONED`, `wait=true` ждёт чужой прогон; 6 api-тестов
+      `tests/api/test_run_coalescing.py`
       спец: [interservice.md](../packages/contracts/interservice.md) §4 · ждёт: T15a
       что: на объект один прогон; сигнал во время прогона — `rerun_requested` и ответ
       `coalesced: true` с номером текущего; по окончании ровно один новый прогон
