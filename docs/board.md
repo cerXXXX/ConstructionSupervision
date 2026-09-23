@@ -220,7 +220,9 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
 
 Всё в `services/analysis-service/src/core/`, чистые функции с unit-тестами.
 
-- [ ] `T07` analysis: календарь, рабочие сессии, активные вехи
+- [x] `T07` analysis: календарь, рабочие сессии, активные вехи — сделано: `core/calendar.py`
+      (рабочая сессия целиком в рабочих часах местного дня, `working_days_between` со знаком
+      и обратная ей `add_working_days`), `core/plan_on_date.py`; тесты в `tests/unit/`
       спец: [methodology.md](methodology.md) §2, §8 · ждёт: T06
       что: `core/calendar.py` (рабочие дни, `add/count_working_days`, рабочая сессия по
       `timezone` и `work_hours`); `core/plan_on_date.py` (активные вехи на местную дату, плановая
