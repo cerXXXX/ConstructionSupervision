@@ -5,12 +5,8 @@ SHELL := /bin/bash
 COMPOSE     := docker compose
 COMPOSE_DEV := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 
-# Сопоставление короткого имени сервиса (s=plan) с именем контейнера и портом.
-SERVICES := plan site analysis vision gateway
-PORT_plan := 8001
-PORT_site := 8002
-PORT_analysis := 8003
-PORT_vision := 8004
+# Сопоставление короткого имени сервиса (s=plan) с именем контейнера и каталогом.
+# Порты для опроса здоровья знает scripts/health.py.
 NAME_plan := plan-service
 NAME_site := site-service
 NAME_analysis := analysis-service
@@ -43,23 +39,14 @@ logs: ## Логи сервиса: make logs s=plan [f=1]
 ps: ## Состояние контейнеров
 	$(COMPOSE) ps
 
-health: ## Опросить /health/ready всех поднятых сервисов
-	@for s in $(SERVICES); do \
-		port=$$(make -s _port s=$$s); \
-		[ -z "$$port" ] && continue; \
-		printf '%-18s ' "$$s"; \
-		curl -fsS -m 3 "http://localhost:$$port/health/ready" 2>/dev/null || echo "недоступен"; \
-		echo; \
-	done
-
-_port:
-	@echo $(PORT_$(s))
+health: ## Опросить /health/ready всех сервисов
+	python scripts/health.py
 
 seed: ## Загрузить демо-данные
-	./scripts/seed.sh
+	python scripts/seed.py
 
 demo: ## Демо-сценарий: три «дня» объекта с заложенными отклонениями
-	./scripts/demo.sh
+	python scripts/demo.py
 
 reset: ## Полная очистка данных: тома БД, бакеты, очередь
 	$(COMPOSE) down -v
@@ -83,19 +70,19 @@ fmt: ## Автоформатирование
 	ruff check --fix --config tools/ruff.toml packages services scripts
 
 contracts: ## Пересобрать снапшоты OpenAPI и TS-клиент
-	./scripts/contracts.sh
+	python scripts/contracts.py
 
 migrate: ## Создать миграцию: make migrate s=plan m="описание"
 	cd services/$(NAME_$(s)) && PYTHONPATH=. alembic revision --autogenerate -m "$(m)"
 
 models: ## Скачать веса моделей в data/models
-	./scripts/fetch_models.sh
+	python scripts/fetch_models.py
 
 e2e: ## Сквозной сценарий на поднятом стеке
-	./scripts/e2e.sh
+	python scripts/e2e.py
 
 backup: ## Дамп баз и зеркало бакетов
-	./scripts/backup.sh
+	python scripts/backup.py
 
 .env:
 	@echo "Нет .env — создаю из шаблона. Проверьте пароли и ключи перед продом."

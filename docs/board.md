@@ -148,7 +148,9 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       переменными методики из runbook §4; том `./packages/contracts:/contracts:ro` у plan, site,
       analysis и vision в `docker-compose.yml`
       готово, когда: `docker compose config` без ошибок; стек поднимается; `/api/v1/pos/…` → 404
-- [ ] `T02` scripts: скрипты на Python
+- [x] `T02` scripts: скрипты на Python — сделано: `scripts/health.py`, `scripts/fetch_models.py`
+      (sha256 обоих файлов сверены, OpenCLIP — с Hugging Face), `_common.py`, заготовки остальных;
+      Makefile вызывает `python scripts/…`, `*.sh` удалены
       спец: [scripts/README.md](../scripts/README.md) · ждёт: T01
       что: `health.py` и `fetch_models.py` — полностью (YOLO-World `yolov8s-worldv2` и OpenCLIP
       в `data/models/`); `seed.py`, `demo.py`, `e2e.py`, `contracts.py`, `backup.py`,
@@ -420,3 +422,8 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
   все переменные, включая DSN с паролями чужих баз. Это расходится с runbook §9 («ни один
   контейнер не знает пароля от чужой базы»). Нужно убрать `env_file` и перечислить переменные
   каждого сервиса в `environment`.
+- `scripts/backup.py` (`make backup`, runbook §8) не закреплён ни за одной задачей: сейчас это
+  заготовка.
+- YOLO-World в Ultralytics для `set_classes`, насколько известно, берёт текстовый энкодер CLIP
+  и при первом вызове качает его из интернета (не проверено запуском). Для работы без сети в контейнере `vision-service` его тоже нужно
+  положить в `data/models/` — проверить в T24.
