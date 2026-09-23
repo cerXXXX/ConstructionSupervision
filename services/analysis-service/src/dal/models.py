@@ -13,7 +13,6 @@ from sqlalchemy import (
     CheckConstraint,
     Date,
     Float,
-    ForeignKey,
     Index,
     Integer,
     String,
@@ -24,14 +23,13 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-RUN_TRIGGERS = ("SESSION_CLOSED", "PLAN_CHANGED", "RULES_CHANGED", "MANUAL")
+RUN_TRIGGERS = ("FACTS_UPDATED", "PLAN_CHANGED", "MANUAL")
 RUN_STATUSES = ("RUNNING", "DONE", "FAILED")
 SEVERITIES = ("INFO", "LOW", "MEDIUM", "HIGH")
 DEVIATION_STATUSES = ("NEW", "CONFIRMED", "REJECTED", "RESOLVED")
 STAGE_FACT_STATUSES = ("NOT_STARTED", "IN_PROGRESS", "DONE", "LATE", "AHEAD")
 CONFIDENCE = ("LOW", "MEDIUM", "HIGH")
 OBJECT_STATUSES = ("ON_TRACK", "DELAY", "AHEAD", "UNKNOWN")
-VERDICTS = ("CONFIRMED", "FALSE_POSITIVE")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -55,7 +53,8 @@ class AnalysisRun(Base, TimestampMixin):
     """Один прогон сверки.
 
     Версии входных данных фиксируются в строке: по ним прогон воспроизводится
-    и объясняется задним числом, даже если план с тех пор правили.
+    и объясняется задним числом, даже если план с тех пор правили. Начало
+    прогона — `created_at`, конец — `updated_at` у завершённого прогона.
     """
 
     __tablename__ = "analysis_run"
@@ -67,14 +66,19 @@ class AnalysisRun(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=text("gen_random_uuid()"))
     object_id: Mapped[UUID] = mapped_column(index=True)  # внешняя ссылка на plandb.object
     triggered_by: Mapped[str] = mapped_column(String(32), server_default=text("'MANUAL'"))
-    period_from: Mapped[date]
-    period_to: Mapped[date]
-    plan_revision: Mapped[int | None] = mapped_column(Integer)
-    rules_version: Mapped[int | None] = mapped_column(Integer)
+    # Момент, подставляемый вместо «сегодня» во все формулы. Пусто, пока прогон не
+    # получил факты: по умолчанию это конец последней сессии с фактами.
+    as_of: Mapped[datetime | None]
+    # Версии входа известны только после чтения плана и фактов.
+    plan_version: Mapped[int | None] = mapped_column(Integer)
     zones_version: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(16), server_default=text("'RUNNING'"))
+    # Во время прогона пришёл ещё сигнал: после окончания нужен ровно один новый прогон.
+    rerun_requested: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     # Сколько сессий обработано, сколько отклонений открыто и закрыто.
     stats: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
+    # Код и сообщение для FAILED.
+    error: Mapped[dict | None] = mapped_column(JSONB)
 
 
 class Deviation(Base, TimestampMixin):
@@ -88,16 +92,17 @@ class Deviation(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint(_in("severity", SEVERITIES), name="ck_deviation_severity"),
         CheckConstraint(_in("status", DEVIATION_STATUSES), name="ck_deviation_status"),
-        # Открытое отклонение единственно в разрезе «объект + веха + зона + код»:
-        # повторный прогон обновляет строку, а не плодит дубли. NULLS NOT DISTINCT
-        # обязателен — у отклонения уровня объекта нет ни вехи, ни зоны, и без
-        # него два NULL считались бы разными значениями.
+        # Открытое отклонение единственно по ключу «объект + веха + участок + код +
+        # класс»: повторный прогон обновляет строку, а не плодит дубли. NULLS NOT
+        # DISTINCT обязателен — у D7 нет участка, у D1 нет класса, и без него два
+        # NULL считались бы разными значениями.
         Index(
             "uq_deviation_open",
             "object_id",
             "stage_id",
-            "zone_id",
+            "area",
             "code",
+            "equipment_class",
             unique=True,
             postgresql_where=text("status IN ('NEW', 'CONFIRMED')"),
             postgresql_nulls_not_distinct=True,
@@ -108,7 +113,11 @@ class Deviation(Base, TimestampMixin):
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=text("gen_random_uuid()"))
     object_id: Mapped[UUID]  # внешняя ссылка
     stage_id: Mapped[UUID | None]  # внешняя ссылка на plandb.stage
-    zone_id: Mapped[UUID | None]  # внешняя ссылка на sitedb.zone
+    # Ключ участка `ТИП:Название`, а не зона камеры: иначе слепая камера давала бы
+    # ложное отклонение по участку, который видит соседняя (ADR-0013).
+    area: Mapped[str | None] = mapped_column(String(300))
+    # Класс техники — для отклонений про конкретную технику (D3–D6).
+    equipment_class: Mapped[str | None] = mapped_column(String(64))
     session_id: Mapped[UUID | None]  # внешняя ссылка на sitedb.session
     code: Mapped[str] = mapped_column(String(8))
     severity: Mapped[str] = mapped_column(String(8), index=True)
@@ -119,6 +128,10 @@ class Deviation(Base, TimestampMixin):
     rule_ref: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     evidence: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     status: Mapped[str] = mapped_column(String(16), server_default=text("'NEW'"), index=True)
+    # Вердикт оператора прямо в строке: кто, когда и почему подтвердил или отклонил.
+    verdict_comment: Mapped[str | None] = mapped_column(Text)
+    verdict_by: Mapped[str | None] = mapped_column(String(200))
+    verdict_at: Mapped[datetime | None]
     first_seen_at: Mapped[datetime] = mapped_column(server_default=func.now())
     last_seen_at: Mapped[datetime] = mapped_column(server_default=func.now())
     # Сколько сессий подряд условие выполнялось: одиночный кадр не повод для тревоги.
@@ -147,7 +160,7 @@ class DeviationRule(Base, TimestampMixin):
 class StageFact(Base, TimestampMixin):
     """Вывод по одной вехе: прогресс, SPI, прогноз, задержка.
 
-    `confidence` не украшение: при двух сессиях и слепой зоне уверенный прогноз
+    `confidence` не украшение: при двух сессиях и слепом участке уверенный прогноз
     вводит в заблуждение, и об этом обязан знать интерфейс.
     """
 
@@ -170,6 +183,8 @@ class StageFact(Base, TimestampMixin):
     delay_days: Mapped[int | None] = mapped_column(Integer)
     status: Mapped[str] = mapped_column(String(16), server_default=text("'NOT_STARTED'"))
     confidence: Mapped[str] = mapped_column(String(8), server_default=text("'LOW'"))
+    # Числа прогноза: средний темп, окно, ограничение прогресса и его причина.
+    facts: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
 
 
 class DailyActivity(Base):
@@ -177,6 +192,7 @@ class DailyActivity(Base):
 
     __tablename__ = "daily_activity"
 
+    object_id: Mapped[UUID] = mapped_column(index=True)  # внешняя ссылка
     stage_id: Mapped[UUID] = mapped_column(primary_key=True)  # внешняя ссылка
     # Колонка названа `date` (docs/data-model.md, п. 3.5), атрибут — `day`:
     # иначе имя перекрыло бы тип `datetime.date` в теле класса.
@@ -190,36 +206,39 @@ class DailyActivity(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
+class DailyEquipment(Base):
+    """Загрузка техники по дням — данные графика F10 в отчёте и интерфейсе."""
+
+    __tablename__ = "daily_equipment"
+
+    object_id: Mapped[UUID] = mapped_column(primary_key=True)  # внешняя ссылка
+    day: Mapped[date] = mapped_column("date", Date, primary_key=True)
+    # Код класса из equipment_classes.yaml — связь по значению (ADR-0014).
+    equipment_class: Mapped[str] = mapped_column(String(64), primary_key=True)
+    # В скольких рабочих сессиях дня класс был на площадке.
+    sessions_seen: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    # Наибольшее число единиц за сессию.
+    max_count: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
 class ObjectStatus(Base):
     """Сводный статус объекта для дашборда — последний посчитанный срез."""
 
     __tablename__ = "object_status"
-    __table_args__ = (CheckConstraint(_in("status", OBJECT_STATUSES), name="ck_object_status"),)
+    __table_args__ = (
+        CheckConstraint(_in("status", OBJECT_STATUSES), name="ck_object_status"),
+        CheckConstraint(_in("confidence", CONFIDENCE), name="ck_object_status_confidence"),
+    )
 
     object_id: Mapped[UUID] = mapped_column(primary_key=True)  # внешняя ссылка
     computed_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # На какой момент посчитан статус: с ним статус сравним с прогоном.
+    as_of: Mapped[datetime]
     status: Mapped[str] = mapped_column(String(16), server_default=text("'UNKNOWN'"))
     delay_days: Mapped[int | None] = mapped_column(Integer)
     spi: Mapped[float | None] = mapped_column(Float)
+    confidence: Mapped[str] = mapped_column(String(8), server_default=text("'LOW'"))
     counters: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
-    milestones_at_risk: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
-
-
-class DeviationFeedback(Base):
-    """Вердикт оператора по отклонению.
-
-    Помимо UX это выборка для калибровки порогов: доля ложных срабатываний
-    измеряется, а не оценивается на глаз.
-    """
-
-    __tablename__ = "deviation_feedback"
-    __table_args__ = (CheckConstraint(_in("verdict", VERDICTS), name="ck_feedback_verdict"),)
-
-    id: Mapped[UUID] = mapped_column(primary_key=True, server_default=text("gen_random_uuid()"))
-    deviation_id: Mapped[UUID] = mapped_column(
-        ForeignKey("deviation.id", ondelete="CASCADE"), index=True
-    )
-    verdict: Mapped[str] = mapped_column(String(16))
-    comment: Mapped[str | None] = mapped_column(Text)
-    author: Mapped[str | None] = mapped_column(String(200))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # Вехи критического пути с прогнозом позже плана.
+    stages_at_risk: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))

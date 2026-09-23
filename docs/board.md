@@ -180,7 +180,9 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       `zone_visibility` → `area_visibility`; `session_fact` по `area` со `static`.
       Миграцию `0001` править на месте
       готово, когда: тесты site-service зелёные
-- [ ] `T05` analysis-service: схема по data-model §3
+- [x] `T05` analysis-service: схема по data-model §3 — сделано: `dal/models.py` и миграция
+      `0001`; тест `tests/migrations/test_deviation_key.py` проверяет ключ открытого отклонения
+      с `NULLS NOT DISTINCT`; начало и конец прогона — `created_at`/`updated_at`
       спец: [data-model.md](data-model.md) §3 · ждёт: —
       что: `analysis_run` (`as_of`, триггеры `FACTS_UPDATED/PLAN_CHANGED/MANUAL`, `plan_version`,
       `zones_version`, `rerun_requested`, `error`, без `period_*` и `rules_version`); `deviation`
