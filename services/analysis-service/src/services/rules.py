@@ -29,7 +29,7 @@ class RuleService:
     def __init__(self, session: AsyncSession) -> None:
         self._repo = RuleRepository(session)
 
-    async def list(self) -> list[DeviationRuleRow]:
+    async def all(self) -> list[DeviationRuleRow]:
         return await self._repo.rows()
 
     async def get(self, code: str) -> DeviationRuleRow:

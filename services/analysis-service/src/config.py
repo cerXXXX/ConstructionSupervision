@@ -29,6 +29,9 @@ class Settings(BaseServiceSettings):
     run_wait_timeout_s: float = 120.0
     run_wait_poll_s: float = 0.5
 
+    # /explain показывает не больше стольких последних сессий эпизода (два рабочих дня).
+    explain_max_sessions: int = 64
+
     # Параметры методики (docs/methodology.md, раздел 11) — экспертные допущения,
     # вынесенные в окружение для калибровки на площадке.
     transient_window_sessions: int = 4

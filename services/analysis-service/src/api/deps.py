@@ -9,7 +9,9 @@ from lct_common import make_api_key_dependency
 from lct_common.db import session_dependency
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.clients.site_client import SiteClient
 from src.config import settings
+from src.services.deviations import DeviationService
 from src.services.runs import RunService
 
 require_api_key = make_api_key_dependency(settings.api_key)
@@ -33,6 +35,19 @@ def get_actor(x_actor: Annotated[str | None, Header(alias="X-Actor")] = None) ->
 
 
 ActorDep = Annotated[str | None, Depends(get_actor)]
+
+
+def get_site_client(request: Request) -> SiteClient:
+    return request.app.state.site_client
+
+
+def get_deviation_service(
+    session: SessionDep, site: Annotated[SiteClient, Depends(get_site_client)]
+) -> DeviationService:
+    return DeviationService(session, site)
+
+
+DeviationServiceDep = Annotated[DeviationService, Depends(get_deviation_service)]
 
 
 def get_run_service(request: Request) -> RunService:

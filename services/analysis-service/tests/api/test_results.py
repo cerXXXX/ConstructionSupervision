@@ -1,23 +1,9 @@
 """API выводов по объекту: статус, прогресс вех, загрузка техники (T16a)."""
 
-import pytest
+from tests.conftest import DEMO_OBJECT_ID
 
-from tests.factories import load_facts, make_facts
-
-OBJECT_ID = "0f3a6c1e-8d4b-4c2a-9e71-5b0d2f6a8c31"
-BASE = f"/api/v1/analysis/objects/{OBJECT_ID}"
+BASE = f"/api/v1/analysis/objects/{DEMO_OBJECT_ID}"
 PIT_STAGE_ID = "7c1e9f03-b5a2-4d78-8e46-c3f0a1b7d926"
-DAYS = ["facts_normal_day.json", "facts_day1.json", "facts_day2.json", "facts_day3.json"]
-
-
-@pytest.fixture
-async def analyzed(client, upstream):
-    """Объект после прогона по четырём демо-дням (19–22.10)."""
-    upstream.site.facts = make_facts(*(s for n in DAYS for s in load_facts(n).sessions))
-    response = await client.post(
-        "/api/v1/analysis/runs", json={"object_id": OBJECT_ID}, params={"wait": True}
-    )
-    assert response.status_code == 200
 
 
 async def test_статус_объекта_для_дашборда(client, analyzed):

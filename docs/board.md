@@ -319,7 +319,10 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: `/objects/{id}/status`, `/progress`, `/equipment`; `GET /deviation-rules`,
       `GET/PATCH /deviation-rules/{code}` с проверкой порогов и шаблонов
       готово, когда: api-тест на каждый эндпоинт
-- [ ] `T16b` analysis: лента отклонений, карточка, объяснение, вердикт
+- [x] `T16b` analysis: лента отклонений, карточка, объяснение, вердикт — сделано: роут
+      `deviations.py`, сценарий `services/deviations.py`, репозиторий с фильтрами и сортировкой
+      по порядку серьёзностей из `enums.yaml`; `/explain` с сессиями эпизода от site-service и
+      честным `null` без него; 15 api-тестов `tests/api/test_deviations.py`
       спец: [analysis-service README](../services/analysis-service/README.md) §3, [methodology.md](methodology.md) §9, §12 · ждёт: T16a
       что: `/deviations` с фильтрами и пагинацией; `/deviations/{id}`, `/explain`;
       `PATCH /deviations/{id}` (вердикт, `X-Actor`)

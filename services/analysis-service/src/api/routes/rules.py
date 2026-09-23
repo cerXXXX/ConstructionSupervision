@@ -14,7 +14,7 @@ router = APIRouter(prefix="/deviation-rules", tags=["Правила отклон
 
 @router.get("", response_model=Page[DeviationRuleRead], summary="Настройки D1–D10")
 async def list_rules(session: SessionDep, params: Annotated[PageParams, Depends()]):
-    rows = await RuleService(session).list()
+    rows = await RuleService(session).all()
     page = rows[params.offset : params.offset + params.limit]
     return Page[DeviationRuleRead].of(
         [DeviationRuleRead.model_validate(r) for r in page], len(rows), params

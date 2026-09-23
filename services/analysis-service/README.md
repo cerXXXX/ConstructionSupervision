@@ -46,10 +46,10 @@ flowchart LR
 | `GET` | `/objects/{id}/status` | Сводный статус объекта для дашборда |
 | `GET` | `/objects/{id}/progress` | Прогресс, SPI и прогноз по каждой вехе — данные для Ганта |
 | `GET` | `/objects/{id}/equipment` | Загрузка техники по дням и классам (F10) |
-| `GET` | `/deviations` | Лента: фильтры `object_id`, `code`, `severity`, `status`, `stage_id`, `area`, `from`, `to` |
+| `GET` | `/deviations` | Лента: фильтры `object_id`, `code`, `severity`, `status`, `stage_id`, `area`, `from`, `to`; `code`, `severity`, `status` повторяются для нескольких значений; `sort` — `last_seen_at`, `first_seen_at`, `severity` (минус — по убыванию, по умолчанию `-last_seen_at`) |
 | `GET` | `/deviations/{id}` | Карточка отклонения |
-| `GET` | `/deviations/{id}/explain` | **Полное объяснение:** правило и его параметры, проверенные сессии с фактами, ссылки на снимки |
-| `PATCH` | `/deviations/{id}` | Вердикт оператора: `CONFIRMED` / `REJECTED` и комментарий |
+| `GET` | `/deviations/{id}/explain` | **Полное объяснение:** действующая настройка правила, сессии эпизода с фактами участка (от site-service), снимки со ссылкой `image_path` |
+| `PATCH` | `/deviations/{id}` | Вердикт оператора: `{status: CONFIRMED / REJECTED, comment}`, кто — из `X-Actor` |
 | `GET` | `/deviation-rules` | Настройки D1–D10 (страница, по номеру кода) |
 | `GET` `PATCH` | `/deviation-rules/{code}` | Пороги, серьёзность и тексты правила без правки кода; `params` сливаются по ключам, `null` удаляет ключ; `X-Actor` — в журнал |
 | `POST` | `/reports` | Сформировать PDF-отчёт: `{object_id, period_from, period_to}` |
@@ -92,6 +92,11 @@ flowchart LR
 серьёзность, `min_sessions < 1`, доля вне 0…1, шаблон не разбирается или с неизвестным форматом).
 Поля шаблона с `facts` заранее не сверяются: их знает только предикат, и промах всплывёт ошибкой
 прогона `ANALYSIS_INPUT_INVALID`.
+
+Лента: `DEVIATION_NOT_FOUND` (404), `VALIDATION_FAILED` (400 — значение фильтра не из
+`enums.yaml` или сортировка по неподдерживаемому полю), `INVALID_VERDICT` (400 — вердикт не
+`CONFIRMED` / `REJECTED`), `VERDICT_CONFLICT` (409 — отклонение уже `RESOLVED` или по его ключу
+открыто более новое).
 
 `X-Actor` с именем по-русски передаётся в URL-кодировке: заголовки HTTP — только ASCII
 ([api-guidelines.md](../../docs/api-guidelines.md), раздел 6).
@@ -207,6 +212,7 @@ POST /runs {object_id, triggered_by, as_of?}
 | `DEVIATION_RULES_FILE` | `data/deviation_rules.yaml` | Начальные настройки D1–D10; относительный путь — от корня сервиса |
 | `RUN_STALE_AFTER_S` | `900` | Прогон в `RUNNING` дольше этого срока считается брошенным (`RUN_ABANDONED`) и объект не блокирует |
 | `RUN_WAIT_TIMEOUT_S` / `RUN_WAIT_POLL_S` | `120` / `0.5` | Сколько `?wait=true` ждёт чужой прогон по объекту и как часто проверяет |
+| `EXPLAIN_MAX_SESSIONS` | `64` | Сколько последних сессий эпизода показывает `/explain` (два рабочих дня) |
 | `TRANSIENT_WINDOW_SESSIONS` | `4` | Окно присутствия транзитной техники, в рабочих сессиях |
 | `MIN_STAGE_CONF` | `0.5` | С какой уверенности стадия по фото считается уверенной |
 | `MIN_ACTIVITY` | `0.1` | Нижняя граница темпа в прогнозе |
@@ -318,6 +324,12 @@ API-тесты (`tests/api/`) пишут в базу своими транзак
 - **Числа статуса объекта лежат в `object_status.counters.facts`** (дни наблюдений, доля видимых
   сессий, задержка по критическому пути): отдельной колонки `facts` у `object_status` нет.
   Ожидаемые даты вехи с учётом связей — в `stage_fact.facts.expected_start / expected_end`.
+- **Фильтр ленты по времени — пересечение эпизода с `[from, to)`**; дата без времени — полночь
+  UTC: календаря объекта у ленты под рукой нет.
+- **`/explain` показывает сессии эпизода, а не «засчитанные» сессии.** Это все окна site-service
+  между `first_seen_at` и `last_seen_at` с фактами участка отклонения, включая слепые: какие из
+  них вошли в серию, видно по видимости участка. Без site-service объяснение всё равно отдаётся,
+  `sessions: null` и причина в `sessions_unavailable_reason`.
 - **Прогноз линеен:** предполагается, что сохранится средний темп последних рабочих дней.
   Сезонность, погода и поставки материалов не моделируются. Интерфейс говорит об этом
   формулировкой «при сохранении текущего темпа».

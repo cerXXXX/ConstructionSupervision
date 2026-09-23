@@ -160,7 +160,7 @@ async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
     """HTTP-клиент поверх приложения с тестовой базой, заглушками и рабочим ключом."""
     from httpx import ASGITransport, AsyncClient
     from lct_common.db import session_dependency
-    from src.api.deps import get_run_service, get_session
+    from src.api.deps import get_run_service, get_session, get_site_client
     from src.config import settings
     from src.main import app
     from src.services import runs
@@ -173,6 +173,7 @@ async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
     monkeypatch.setattr(settings, "contracts_dir", str(CONTRACTS_DIR))
     runs.enums.cache_clear()
     app.dependency_overrides[get_session] = _session_override
+    app.dependency_overrides[get_site_client] = lambda: upstream.site
     app.dependency_overrides[get_run_service] = lambda: RunService(
         session_factory, upstream.plan, upstream.site
     )
@@ -184,3 +185,19 @@ async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
         yield http_client
     app.dependency_overrides.clear()
     runs.enums.cache_clear()
+
+
+DEMO_OBJECT_ID = "0f3a6c1e-8d4b-4c2a-9e71-5b0d2f6a8c31"
+DEMO_DAYS = ("facts_normal_day.json", "facts_day1.json", "facts_day2.json", "facts_day3.json")
+
+
+@pytest.fixture
+async def analyzed(client, upstream):
+    """Демо-объект после прогона по четырём демо-дням (19–22.10)."""
+    from tests.factories import load_facts, make_facts
+
+    upstream.site.facts = make_facts(*(s for n in DEMO_DAYS for s in load_facts(n).sessions))
+    response = await client.post(
+        "/api/v1/analysis/runs", json={"object_id": DEMO_OBJECT_ID}, params={"wait": True}
+    )
+    assert response.status_code == 200, response.text
