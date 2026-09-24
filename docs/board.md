@@ -490,12 +490,21 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       запись детекций, стадии, пересчёт факта окна; сигнал в analysis; постановка в очередь
       при загрузке; контейнер `site-worker` в compose
       готово, когда: загруженный снимок доходит до `ANALYZED`, факт окна появляется
-- [ ] `T26` site: «факты за период» и пересчёты
+- [x] `T26a` site: «факты за период» и окна — сделано: `GET /objects/{id}/facts`
+      (`services/facts.py` собирает материализованный факт окон одной выборкой на таблицу,
+      камеры окна — `camera_states` в `core/aggregation.py`), `GET /sessions`,
+      `GET /sessions/{id}`; 6 api-тестов `tests/api/test_facts.py`; живой ответ в стеке
+      разбирается моделью `Facts` analysis, прогон анализа доходит до `DONE`
       спец: [interservice.md](../packages/contracts/interservice.md) §2 · ждёт: T25
       что: `GET /objects/{id}/facts` строго по контракту, включая `cameras[].image_ids`
-      (добавлено 23.09 для доказательств D1); `/sessions`, `/sessions/{id}`;
-      `POST /zones/reapply`; `POST /images/reanalyze`
-      готово, когда: ответ совпадает по форме с фикстурами T06; правка зоны пересчитывает факты
+      (добавлено 23.09 для доказательств D1); `/sessions`, `/sessions/{id}`
+      готово, когда: ответ совпадает по форме с фикстурами T06 (разбирается моделью analysis)
+- [ ] `T26b` site: пересчёт фактов после правки зон и повторное распознавание
+      спец: [architecture.md](architecture.md) §5.5, §7.3 · ждёт: T26a
+      что: задачи воркера `reapply_zones` и `reanalyze_object`; `POST /zones/reapply`;
+      `POST /images/reanalyze`; правка, деактивация и импорт зон сами ставят `reapply_zones`
+      готово, когда: api-тест: правка зоны пересчитывает факты окон; в стеке после правки зоны
+      факты меняются без повторного распознавания
 - [ ] `T27` scripts: `seed.py` и `labelme_to_zones.py`
       спец: [scripts/README.md](../scripts/README.md), [data/README.md](../data/README.md) · ждёт: T16, T19, T26, H1
       что: объект → импорт `data/seed/schedule.xlsx` → зоны из `cameras.json` → загрузка

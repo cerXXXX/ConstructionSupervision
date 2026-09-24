@@ -9,6 +9,7 @@ from src.core.aggregation import (
     Frame,
     FrameDetection,
     aggregate_window,
+    camera_states,
     frame_usability,
 )
 from src.core.reference import parse_enums
@@ -248,3 +249,27 @@ def test_пригодность_кадра():
     assert frame_usability({"brightness": 0.5, "blur": 0.61}, 0.15, 0.6) == (False, "BLURRED")
     # Границы включительно пригодны: порог — это «хуже чем».
     assert frame_usability({"brightness": 0.15, "blur": 0.6}, 0.15, 0.6) == (True, None)
+
+
+def test_камеры_окна_без_снимков_тёмная_и_пригодная():
+    dark = frame(GATE, usable=False, reason="DARK", n=5)
+    bright, blurred = frame(NORTH, n=7), frame(NORTH, usable=False, reason="BLURRED", n=6)
+    idle = CameraZones(UUID(int=3), "cam-yard", ())
+
+    states = {s.code: s for s in camera_states([bright, dark, blurred], [*CAMERAS, idle])}
+
+    assert [s.code for s in camera_states([], [*CAMERAS, idle])] == [
+        "cam-gate",
+        "cam-north",
+        "cam-yard",
+    ]
+    north, gate, yard = states["cam-north"], states["cam-gate"], states["cam-yard"]
+    assert (north.images, north.usable, north.reason) == (2, True, None)
+    assert north.image_ids == (UUID(int=6), UUID(int=7))
+    assert (gate.images, gate.usable, gate.reason, gate.image_ids) == (
+        1,
+        False,
+        "DARK",
+        (UUID(int=5),),
+    )
+    assert (yard.images, yard.usable, yard.reason, yard.image_ids) == (0, False, "NO_IMAGES", ())

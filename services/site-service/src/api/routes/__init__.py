@@ -7,9 +7,10 @@
 from fastapi import APIRouter, Depends
 
 from src.api.deps import require_api_key
-from src.api.routes import cameras, images, zones
+from src.api.routes import cameras, facts, images, zones
 
 api_router = APIRouter(prefix="/api/v1/site", dependencies=[Depends(require_api_key)])
 api_router.include_router(cameras.router)
 api_router.include_router(zones.router)
 api_router.include_router(images.router)
+api_router.include_router(facts.router)

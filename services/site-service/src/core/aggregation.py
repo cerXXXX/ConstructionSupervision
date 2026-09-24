@@ -88,6 +88,18 @@ class WindowFact:
 
 
 @dataclass(frozen=True)
+class CameraState:
+    """Что камера дала окну: распознанные снимки и пригоден ли хоть один."""
+
+    camera_id: UUID
+    code: str
+    images: int
+    usable: bool
+    reason: str | None
+    image_ids: tuple[UUID, ...]
+
+
+@dataclass(frozen=True)
 class _Seen:
     """Рамки класса на участке в одном кадре одной камеры."""
 
@@ -224,6 +236,34 @@ def _visibility(
                 cameras_usable=usable,
                 status=status,
                 reason=_most_common(blind_reasons) if blind_reasons else None,
+            )
+        )
+    return tuple(result)
+
+
+def camera_states(
+    frames: Sequence[Frame], cameras: Sequence[CameraZones]
+) -> tuple[CameraState, ...]:
+    """Каждая активная камера в окне, даже без снимков: `NO_IMAGES` — тоже наблюдение.
+
+    Причина непригодности — та же, что делает участок камеры невидимым (4.4), поэтому
+    «камера тёмная» в фактах и `DARK` у её участков не расходятся.
+    """
+    frames_by_camera: dict[UUID, list[Frame]] = defaultdict(list)
+    for frame in frames:
+        frames_by_camera[frame.camera_id].append(frame)
+    result = []
+    for camera in sorted(cameras, key=lambda c: c.code):
+        own = sorted(frames_by_camera.get(camera.id, []), key=lambda f: str(f.image_id))
+        usable = any(f.usable for f in own)
+        result.append(
+            CameraState(
+                camera_id=camera.id,
+                code=camera.code,
+                images=len(own),
+                usable=usable,
+                reason=None if usable else _camera_reason(own),
+                image_ids=tuple(f.image_id for f in own),
             )
         )
     return tuple(result)
