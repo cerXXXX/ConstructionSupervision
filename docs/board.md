@@ -402,7 +402,11 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       `wbs_templates.json`, `core/schedule_generator.py` (фазы → вехи → даты по календарю)
       готово, когда: unit-тесты: 17 этажей, 10 000 м² → 8,7 мес. = 1,0 + 1,5 + 4,7 + 1,5 (ТЗ §8);
       интерполяция, экстраполяция и её пределы, сменность, сваи; ни одного числа без источника
-- [ ] `T21b` plan: `POST /objects/{id}/plan/generate` · **режется первым**
+- [x] `T21b` plan: `POST /objects/{id}/plan/generate` · **режется первым** — сделано:
+      `services/plan_generate.py`, запись графика вынесена из импорта в
+      `services/plan_writer.py`, нормы сверяются с шаблоном при старте
+      (`check_generator_template`), коды `NORMS_NOT_AVAILABLE` и `GENERATOR_PARAMS_INVALID`;
+      5 api-тестов; в стеке демо-объект — 12 вех, 21.09.2026–21.06.2027 по `moscow-6day`
       спец: [plan-service README](../services/plan-service/README.md) §4 · ждёт: T21a
       что: сценарий и роут (`force`, `NORMS_NOT_AVAILABLE`), запись вех и правил как при
       импорте, критический путь, `plan_version` и сигнал; README

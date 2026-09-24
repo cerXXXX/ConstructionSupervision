@@ -82,6 +82,28 @@ class PlanImportResult(BaseModel):
     critical_stages: int = Field(description="Сколько вех на критическом пути")
 
 
+class PlanGenerateRequest(BaseModel):
+    """Всё необязательно: чего нет в запросе, берётся из карточки объекта."""
+
+    tep: dict | None = Field(
+        default=None,
+        description="Параметры: `floors`, `total_area` (м² квартир) — обязательно; `sections`, "
+        "`piles`, `shifts` (`1.5`, `2`, `3`). Дополняют `tep` объекта и сохраняются в нём",
+        examples=[{"floors": 17, "total_area": 10000, "sections": 2, "piles": 200}],
+    )
+    start_date: date | None = Field(
+        default=None,
+        description="Дата начала; по умолчанию `plan_start` объекта. Сохраняется в нём",
+    )
+
+
+class PlanGenerateResult(PlanImportResult):
+    plan_start: date = Field(description="Первый рабочий день графика")
+    plan_end: date = Field(description="Последний рабочий день графика")
+    total_months: float = Field(description="Срок по МРР с коэффициентами, мес.")
+    basis: str = Field(description="Откуда срок: пункт и строка таблицы МРР, коэффициенты")
+
+
 class Plan(BaseModel):
     object: PlanObject
     plan_version: int

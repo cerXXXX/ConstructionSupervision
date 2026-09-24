@@ -5,8 +5,8 @@ from datetime import date
 
 import pytest
 from src.core.calendar import WorkCalendar, count_working_days
-from src.core.mrr_norms import NormsNotAvailable, params_from_tep
-from src.core.schedule_generator import generate_schedule
+from src.core.mrr_norms import NormsError, NormsNotAvailable, params_from_tep
+from src.core.schedule_generator import check_generator_template, generate_schedule
 
 from tests.unit.test_mrr_norms import NORMS
 from tests.unit.vocab import MONOLITH
@@ -127,3 +127,13 @@ def test_веха_без_доли_в_шаблоне_не_генерируетс�
 
 def test_повторный_вызов_даёт_тот_же_график():
     assert _generate() == _generate()
+
+
+def test_шаблон_без_доли_или_без_вех_не_даёт_стартовать():
+    check_generator_template("RESIDENTIAL_MONOLITH", TEMPLATES, NORMS)
+    broken = [replace(s, share=None) if s.code == "12.7" else s for s in TEMPLATES]
+
+    with pytest.raises(NormsError, match="share"):
+        check_generator_template("RESIDENTIAL_MONOLITH", broken, NORMS)
+    with pytest.raises(NormsError, match="шаблона вех нет"):
+        check_generator_template("ROAD", (), NORMS)

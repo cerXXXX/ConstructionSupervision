@@ -21,7 +21,7 @@ from src.api.routes import api_router
 from src.clients.analysis_client import AnalysisClient
 from src.config import settings
 from src.reference import reference
-from src.templates import templates
+from src.templates import norms, templates
 
 setup_logging(settings.service_name, settings.log_level, pretty=settings.is_dev)
 log = get_logger(__name__)
@@ -50,6 +50,8 @@ async def lifespan(app: FastAPI):
         equipment_classes=len(reference().equipment_classes),
         # Шаблон вех проверяется при старте: испорченный файл не даёт сервису подняться.
         wbs_templates={k: len(v) for k, v in templates().items()},
+        # Нормы МРР сверяются с шаблоном вех тоже при старте.
+        mrr_norms={k: len(v.rows) for k, v in norms().items()},
     )
     yield
 

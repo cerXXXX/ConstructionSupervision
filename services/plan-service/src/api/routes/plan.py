@@ -1,4 +1,4 @@
-"""«Весь план» объекта (межсервисный контракт 1) и импорт графика из файла."""
+"""«Весь план» объекта (межсервисный контракт 1), импорт графика из файла и генерация по МРР."""
 
 from typing import Annotated
 from uuid import UUID
@@ -6,8 +6,14 @@ from uuid import UUID
 from fastapi import APIRouter, File, UploadFile
 
 from src.api.deps import ActorDep, AnalysisDep, SessionDep
-from src.api.schemas.plan import Plan, PlanImportResult
+from src.api.schemas.plan import (
+    Plan,
+    PlanGenerateRequest,
+    PlanGenerateResult,
+    PlanImportResult,
+)
 from src.services.plan import PlanService
+from src.services.plan_generate import PlanGenerateService
 from src.services.plan_import import PlanImportService
 
 router = APIRouter(prefix="/objects/{object_id}/plan", tags=["График"])
@@ -45,4 +51,28 @@ async def import_plan(
     content = await file.read()
     return await PlanImportService(session, signal).import_file(
         object_id, file.filename or "", content, force=force, actor=actor
+    )
+
+
+@router.post(
+    "/generate",
+    response_model=PlanGenerateResult,
+    summary="Сгенерировать график по МРР-3.2.81-12",
+    description="Сроки периодов — табл. 1 п. 5.1.21 с интерполяцией и коэффициентами, вехи и "
+    "правила — из шаблона типа объекта, даты — по календарю объекта. У каждой вехи в `basis` — "
+    "откуда её срок. Поверх существующего графика — только с `force=true` (ручные правки "
+    "затираются). Нет норм для типа или параметры вне таблицы — `NORMS_NOT_AVAILABLE`, "
+    "график тогда импортируется из файла.",
+)
+async def generate_plan(
+    object_id: UUID,
+    session: SessionDep,
+    signal: AnalysisDep,
+    actor: ActorDep,
+    payload: PlanGenerateRequest | None = None,
+    force: bool = False,
+):
+    payload = payload or PlanGenerateRequest()
+    return await PlanGenerateService(session, signal).generate(
+        object_id, tep=payload.tep, start_date=payload.start_date, force=force, actor=actor
     )

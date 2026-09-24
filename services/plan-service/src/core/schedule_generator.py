@@ -22,6 +22,7 @@ from src.core.calendar import (
 from src.core.cpm import CpmStage, Link, order_stages
 from src.core.mrr_norms import (
     Norms,
+    NormsError,
     NormsNotAvailable,
     Params,
     period_months,
@@ -108,6 +109,25 @@ def generate_schedule(
     )
     total = table.months["total"] * shift
     return GeneratedSchedule(generated, tuple(periods.values()), total, basis)
+
+
+def check_generator_template(
+    object_type: str, templates: Sequence[TemplateStage], norms: Norms
+) -> None:
+    """Проверка при старте: у типа с нормами есть шаблон, и каждой вехе хватает данных.
+
+    Иначе ошибка всплыла бы только при первой генерации, на демо.
+    """
+    where = f"mrr_norms.json и wbs_templates.json, {object_type}"
+    if not templates:
+        raise NormsError(f"{where}: нормы есть, а шаблона вех нет")
+    for stage in templates:
+        if stage.piles:
+            continue
+        if stage.share is None:
+            raise NormsError(f"{where}: у вехи {stage.code} нет доли share")
+        if stage.phase not in norms.phase_columns:
+            raise NormsError(f"{where}: фазе {stage.phase} вехи {stage.code} не задан период")
 
 
 def _periods(

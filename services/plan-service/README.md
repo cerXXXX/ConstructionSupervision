@@ -47,7 +47,7 @@ flowchart LR
 | :--- | :--- | :--- |
 | `GET` | `/objects/{id}/plan` | **Весь план** — межсервисный контракт: вехи, связи, правила, календарь, классы техники |
 | `POST` | `/objects/{id}/plan/import` | Импорт графика из CSV/XLSX: код, наименование, начало, окончание (+ необязательно тип участка, визуальная стадия, связи, фаза); недостающее и правила — из шаблона вех; `force=true` заменяет существующий график |
-| `POST` | `/objects/{id}/plan/generate` | Сгенерировать график по МРР из типа объекта и параметров; `force=true` перезаписывает ручные правки |
+| `POST` | `/objects/{id}/plan/generate` | Сгенерировать график по МРР из типа объекта и параметров. Тело необязательно: `{tep, start_date}` дополняют карточку объекта и сохраняются в ней. `force=true` перезаписывает ручные правки. Ответ: `{object_id, plan_version, stages, rules, critical_stages, plan_start, plan_end, total_months, basis}` |
 | `GET` | `/objects/{id}/stages` | Вехи объекта по `seq`, в общем формате страницы |
 | `PATCH` | `/stages/{id}` | Изменить даты, тип участка (только роль `WORK`), нормативную длительность, `visual_stage` (`null` снимает); `plan_version` растёт, уходит сигнал «пересчитай» |
 
@@ -75,7 +75,9 @@ flowchart LR
 `OBJECT_NOT_FOUND`, `STAGE_NOT_FOUND`, `STAGE_RULE_NOT_FOUND`, `UNKNOWN_EQUIPMENT_CLASS`
 (код класса не найден в `equipment_classes.yaml`), `PLAN_ALREADY_EXISTS` (импорт или генерация
 без `force` поверх существующего графика), `PLAN_IMPORT_INVALID` (с номерами строк файла), `INVALID_DATE_RANGE`,
-`PLAN_CYCLE` (цикл в связях вех), `NORMS_NOT_AVAILABLE` (для типа объекта нет норм — используйте импорт),
+`PLAN_CYCLE` (цикл в связях вех), `NORMS_NOT_AVAILABLE` (для типа объекта нет норм или
+этажность и площадь вне пределов таблицы — используйте импорт), `GENERATOR_PARAMS_INVALID`
+(в `tep` нет `floors` или `total_area`, неверная сменность, нет даты начала),
 `WORK_TYPES_IMPORT_INVALID` (справочник работ не разобран; `details.errors` — строки и столбцы),
 `STAGE_RULE_ALREADY_EXISTS` (второе правило у вехи), `STAGE_RULE_INVALID` (класс повторяется
 в группе, `allowed` или сигнатуре), `INVALID_ZONE_TYPE` (веха на участке не с ролью `WORK`),
@@ -155,7 +157,10 @@ flowchart LR
 - **Источник каждого числа.** У каждого числа в `mrr_norms.json` есть ссылка на пункт и
   таблицу документа (поле `source`). Числа без ссылки не используются (AGENTS.md, правило 7).
 - **Если норм нет.** Для типа объекта без норм генератор отвечает `NORMS_NOT_AVAILABLE`, и
-  график импортируется из файла.
+  график импортируется из файла. Сейчас нормы есть только у `RESIDENTIAL_MONOLITH`.
+- **Запись графика** — та же, что у импорта (`services/plan_writer.py`): график заменяется
+  целиком вместе с правилами, поверх существующего — только с `force=true`, затем резервы,
+  рост `plan_version` и сигнал «пересчитай». Вехи получают `source = GENERATED`.
 - **Чего нет в генераторе.** Подбора марок машин, расчёта машино-часов и московских регламентов
   (299-ПП, закон № 42) нет: заказчик назвал ПОС ненужным.
 
@@ -250,6 +255,7 @@ flowchart LR
 | `ANALYSIS_URL` | `http://analysis-service:8000` | Куда слать сигнал «пересчитай» |
 | `SIGNAL_TIMEOUT_S` | `2.0` | Таймаут сигнала; повторов нет (interservice.md, раздел 4) |
 | `WBS_TEMPLATES_FILE` | `data/wbs_templates.json` | Шаблоны вех, путь от каталога сервиса |
+| `MRR_NORMS_FILE` | `data/mrr_norms.json` | Нормы МРР для генератора; сверяются с шаблоном вех при старте |
 | `PLAN_IMPORT_MAX_MB` | `5` | Предел размера загружаемого файла: графика и справочника работ |
 | `CONTRACTS_DIR` | `/contracts` | Каталог с `equipment_classes.yaml` и `enums.yaml` |
 | `DEFAULT_CALENDAR` | `moscow-6day` | Календарь по умолчанию для новых объектов |
