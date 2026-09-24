@@ -25,7 +25,9 @@ def test_шаблон_монолита_повторяет_таблицу_тз():
     # Группа «любой из»: стены и фасад — башенный кран, автокран или кран-манипулятор.
     envelope = MONOLITH["12.4.8"].rule["required"][0]
     assert envelope["any_of"] == ["tower_crane", "truck_crane", "manipulator_crane"]
-    assert all(s.share is None for s in MONOLITH.values())  # доли фаз заполнит T21
+    # У каждой вехи длительность для генератора: доля периода МРР или время на сваи.
+    assert all((s.share is None) == s.piles for s in MONOLITH.values())
+    assert [s.code for s in MONOLITH.values() if s.piles] == ["12.3.2"]
 
 
 def test_каждая_связь_шаблона_ведёт_на_его_веху():
@@ -44,6 +46,8 @@ def test_каждая_связь_шаблона_ведёт_на_его_веху(
         ({"rule": {"required": [{"any_of": ["ekskavator"], "min": 1}]}}, "ekskavator"),
         ({"rule": {"required": [{"any_of": [], "min": 1}]}}, "пуста"),
         ({"code": "12.3.2"}, "повторяются"),
+        ({"share": 1.5}, "доля"),
+        ({"piles": True}, "сваи"),
     ],
 )
 def test_испорченный_шаблон_не_даёт_стартовать(change, message):

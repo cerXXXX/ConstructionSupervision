@@ -4,7 +4,8 @@
     "Вехи, коды работ и правила (обязательная, допустимая техника, сигнатура) — таблица ТЗ, п. 5.2. Классы — коды из equipment_classes.yaml. «Автовышка» из строки «Стены, кровля, фасад» не перенесена: такого класса нет.",
     "Тип участка, визуальная стадия и связи — наше экспертное допущение по столбцу «Сигнатура факта» той же таблицы, а не норматив.",
     "Сигнатура «любой из» (например, «каток / асфальтоукладчик») не выражается: все классы signature.equipment должны появиться одновременно. Берётся первый класс.",
-    "share — доля вехи в своей фазе МРР для генератора (T21). До T21 доли не заданы: null.",
+    "share — длительность вехи в долях её периода таблицы 1 МРР (mrr_norms.json, phase_columns) для генератора. У вех, идущих подряд, доли в сумме дают 1; веха, идущая параллельно, берёт свою долю того же периода. Доли — наше экспертное допущение; для подземной части — пример из ТЗ, п. 8: котлован 35 %, основание 10 %, плита и стены 45 %, гидроизоляция и засыпка 10 %.",
+    "piles: true — длительность вехи не доля, а время устройства свай по МРР, п. 5.1.6 (добавляется к подземной части). Без свай веха в график не попадает, её последователи связываются с её предшественниками.",
     "min_sessions правила не задаётся: действует значение по умолчанию из stage_rule."
   ],
   "RESIDENTIAL_MONOLITH": [
@@ -15,7 +16,7 @@
       "phase": "PREPARATORY",
       "zone_type": "BUILDING_FOOTPRINT",
       "visual_stage": null,
-      "share": null,
+      "share": 0.6,
       "predecessors": [],
       "rule": {
         "required": [{"any_of": ["excavator"], "min": 1}, {"any_of": ["dump_truck"], "min": 1}],
@@ -30,7 +31,7 @@
       "phase": "PREPARATORY",
       "zone_type": "PERIMETER",
       "visual_stage": null,
-      "share": null,
+      "share": 1.0,
       "predecessors": [{"code": "10.4-10.8", "type": "SS", "lag_days": 0}],
       "rule": {
         "required": [{"any_of": ["manipulator_crane", "truck"], "min": 1}],
@@ -46,6 +47,7 @@
       "zone_type": "PIT",
       "visual_stage": "PILES",
       "share": null,
+      "piles": true,
       "predecessors": [
         {"code": "10.4-10.8", "type": "FS", "lag_days": 0},
         {"code": "10.11", "type": "FS", "lag_days": 0}
@@ -63,7 +65,7 @@
       "phase": "SUBSTRUCTURE",
       "zone_type": "PIT",
       "visual_stage": "PIT",
-      "share": null,
+      "share": 0.35,
       "predecessors": [{"code": "12.3.2", "type": "FS", "lag_days": 0}],
       "rule": {
         "required": [{"any_of": ["excavator"], "min": 1}, {"any_of": ["dump_truck"], "min": 2}],
@@ -78,7 +80,7 @@
       "phase": "SUBSTRUCTURE",
       "zone_type": "PIT",
       "visual_stage": "PIT",
-      "share": null,
+      "share": 0.1,
       "predecessors": [{"code": "12.3.1", "type": "FS", "lag_days": 0}],
       "rule": {
         "required": [{"any_of": ["dump_truck"], "min": 1}, {"any_of": ["roller", "bulldozer"], "min": 1}],
@@ -93,7 +95,7 @@
       "phase": "SUBSTRUCTURE",
       "zone_type": "BUILDING_FOOTPRINT",
       "visual_stage": null,
-      "share": null,
+      "share": 0.1,
       "predecessors": [{"code": "12.3.1", "type": "FS", "lag_days": 0}],
       "rule": {
         "required": [{"any_of": ["truck_crane"], "min": 1}],
@@ -108,7 +110,7 @@
       "phase": "SUBSTRUCTURE",
       "zone_type": "PIT",
       "visual_stage": "FOUNDATION",
-      "share": null,
+      "share": 0.45,
       "predecessors": [{"code": "12.3.3", "type": "FS", "lag_days": 0}],
       "rule": {
         "required": [{"any_of": ["concrete_mixer"], "min": 1}, {"any_of": ["concrete_pump"], "min": 1}],
@@ -123,7 +125,7 @@
       "phase": "SUBSTRUCTURE",
       "zone_type": "PIT",
       "visual_stage": "FOUNDATION",
-      "share": null,
+      "share": 0.1,
       "predecessors": [{"code": "12.3.4", "type": "FS", "lag_days": 0}],
       "rule": {
         "required": [{"any_of": ["excavator", "loader"], "min": 1}, {"any_of": ["dump_truck"], "min": 1}],
@@ -138,7 +140,7 @@
       "phase": "SUPERSTRUCTURE",
       "zone_type": "BUILDING_FOOTPRINT",
       "visual_stage": "FRAME",
-      "share": null,
+      "share": 0.6,
       "predecessors": [
         {"code": "12.3.4", "type": "FS", "lag_days": 0},
         {"code": "монтаж-крана", "type": "FS", "lag_days": 0}
@@ -156,7 +158,7 @@
       "phase": "ENVELOPE_ROOF",
       "zone_type": "BUILDING_FOOTPRINT",
       "visual_stage": "FACADE",
-      "share": null,
+      "share": 0.4,
       "predecessors": [{"code": "12.4.4", "type": "FS", "lag_days": 0}],
       "rule": {
         "required": [{"any_of": ["tower_crane", "truck_crane", "manipulator_crane"], "min": 1}],
@@ -171,7 +173,7 @@
       "phase": "NETWORKS",
       "zone_type": "PERIMETER",
       "visual_stage": null,
-      "share": null,
+      "share": 0.5,
       "predecessors": [{"code": "12.3.10", "type": "FS", "lag_days": 0}],
       "rule": {
         "required": [{"any_of": ["excavator"], "min": 1}],
@@ -186,7 +188,7 @@
       "phase": "LANDSCAPING",
       "zone_type": "PERIMETER",
       "visual_stage": "LANDSCAPING",
-      "share": null,
+      "share": 1.0,
       "predecessors": [
         {"code": "12.4.8", "type": "FS", "lag_days": 0},
         {"code": "12.5.1", "type": "FS", "lag_days": 0}

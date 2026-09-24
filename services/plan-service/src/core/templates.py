@@ -35,11 +35,13 @@ class TemplateStage:
     phase: str
     zone_type: str
     visual_stage: str | None
-    # Доля вехи в своей фазе МРР для генератора; None — ещё не задана.
+    # Длительность вехи в долях её периода таблицы 1 МРР — для генератора; None — не задана.
     share: float | None
     predecessors: tuple[TemplateLink, ...]
     # Правило в форме API: required, allowed, signature (min_sessions — по умолчанию базы).
     rule: dict[str, Any] | None
+    # Длительность — время устройства свай по МРР, п. 5.1.6, а не доля периода.
+    piles: bool = False
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,7 @@ def _stage(item: Mapping[str, Any]) -> TemplateStage:
         share=float(share) if share is not None else None,
         predecessors=links,
         rule=item.get("rule"),
+        piles=bool(item.get("piles", False)),
     )
 
 
@@ -115,6 +118,8 @@ def _check_stage(stage: TemplateStage, vocab: Vocabulary, where: str) -> None:
         raise TemplateError(f"{where}: стадии {stage.visual_stage!r} нет в stage_label")
     if stage.share is not None and not 0 < stage.share <= 1:
         raise TemplateError(f"{where}: доля вехи — число от 0 до 1")
+    if stage.piles and stage.share is not None:
+        raise TemplateError(f"{where}: у вехи свай длительность из норм на сваи, доля не нужна")
     if stage.rule is not None:
         _check_rule(stage.rule, vocab, where)
 
