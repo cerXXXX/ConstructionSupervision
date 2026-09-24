@@ -9,3 +9,4 @@ from typing import Literal
 from src.reference import enums
 
 ZoneType = Literal[enums().zone_types]
+ImageStatus = Literal[enums().values["image_status"]]

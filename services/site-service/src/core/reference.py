@@ -9,7 +9,13 @@ from dataclasses import dataclass
 from typing import Any
 
 # Перечисления, без которых site-service не может проверить свой вход и выход.
-REQUIRED_ENUMS = ("zone_type", "visibility_status", "visibility_reason", "stage_label")
+REQUIRED_ENUMS = (
+    "zone_type",
+    "visibility_status",
+    "visibility_reason",
+    "stage_label",
+    "image_status",
+)
 
 
 class ReferenceDataError(ValueError):

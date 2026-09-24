@@ -58,9 +58,9 @@ flowchart LR
 | :--- | :--- | :--- |
 | `POST` | `/images` | Пакетная загрузка (multipart: `files` до 200 штук, `object_id`, необязательно `camera_code` и `captured_at`). Частичный успех `202`: `{accepted, rejected}` |
 | `POST` | `/images/import` | Импорт из папки `IMPORT_DIR/<path>` (`{object_id, path}`): первая подпапка = код камеры, скрытые файлы пропускаются. Ответ тот же, что у пакета |
-| `GET` | `/images` | Список с фильтрами `object_id`, `camera_id`, `from`, `to`, `status` |
-| `GET` | `/images/{id}` | Метаданные, presigned-ссылка для браузера и детекции с рамками |
-| `PATCH` | `/images/{id}` | Указать время съёмки вручную для снимков в статусе `NEEDS_TIME` |
+| `GET` | `/images` | Список с фильтрами `object_id`, `camera_id`, `from`, `to` (полуинтервал по времени съёмки), `status`; по времени съёмки, снимки без времени — в конце |
+| `GET` | `/images/{id}` | Метаданные, EXIF, качество кадра, presigned-ссылка для браузера (`S3_PUBLIC_ENDPOINT`), детекции с рамками, точкой контакта и зоной, стадия по снимку |
+| `PATCH` | `/images/{id}` | `{captured_at}` — время съёмки вручную, только для статуса `NEEDS_TIME`: снимок получает окно, статус `PENDING` и источник `MANUAL` |
 | `POST` | `/images/reanalyze` | Повторное распознавание снимков объекта (после смены модели или порога) |
 
 ### Факты и окна
@@ -77,7 +77,8 @@ flowchart LR
 `IMAGE_NOT_FOUND` (в том числе эталонный кадр — не снимок этой камеры), `IMAGE_ALREADY_EXISTS` (в пакете —
 строка в `rejected` с ID существующего снимка), `UNSUPPORTED_MEDIA_TYPE`, `IMAGE_TOO_LARGE`,
 `CAMERA_REQUIRED` (в пакете: нет ни `camera_code`, ни подпапки с кодом камеры),
-`IMAGE_BATCH_TOO_LARGE` (больше 200 файлов за запрос), `IMPORT_DIR_NOT_FOUND` (папки нет
+`IMAGE_BATCH_TOO_LARGE` (больше 200 файлов за запрос), `INVALID_CAPTURED_AT` (ручное время не
+разобрано), `IMAGE_TIME_ALREADY_SET` (ручное время для снимка не в статусе `NEEDS_TIME`), `IMPORT_DIR_NOT_FOUND` (папки нет
 или она вне `IMPORT_DIR`),
 `INVALID_POLYGON` (при импорте — `details.errors` с путём `cameras[i].zones[j].polygon` по
 всему файлу), `INVALID_PERIOD`, `VISION_UNAVAILABLE`, `STORAGE_UNAVAILABLE`.

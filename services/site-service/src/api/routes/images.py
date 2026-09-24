@@ -1,14 +1,23 @@
-"""Приём снимков (F1): пакет из формы и импорт из смонтированной папки."""
+"""Снимки (F1): пакет из формы, импорт из папки, список, карточка, ручное время."""
 
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, File, Form, UploadFile, status
-from lct_common import ValidationError
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from lct_common import Page, PageParams, ValidationError
 
 from src.api.deps import SessionDep, StorageDep
-from src.api.schemas.images import FolderImport, IntakeResult
+from src.api.schemas.common import ImageStatus
+from src.api.schemas.images import (
+    FolderImport,
+    ImageDetail,
+    ImageRead,
+    ImageTimeUpdate,
+    IntakeResult,
+)
 from src.config import settings
+from src.services.image_catalog import ImageCatalog
 from src.services.images import ImageIntake
 
 router = APIRouter(prefix="/images", tags=["Снимки"])
@@ -54,6 +63,59 @@ async def upload_images(
     return await ImageIntake(session, storage).upload(
         object_id, batch, camera_code=camera_code, captured_at=captured_at
     )
+
+
+@router.get(
+    "",
+    response_model=Page[ImageRead],
+    summary="Снимки",
+    description="По времени съёмки; снимки без времени — в конце. `from` и `to` — "
+    "полуинтервал по `captured_at` (ISO-8601).",
+)
+async def list_images(
+    session: SessionDep,
+    storage: StorageDep,
+    params: Annotated[PageParams, Depends()],
+    object_id: UUID | None = None,
+    camera_id: UUID | None = None,
+    start: Annotated[datetime | None, Query(alias="from")] = None,
+    end: Annotated[datetime | None, Query(alias="to")] = None,
+    image_status: Annotated[ImageStatus | None, Query(alias="status")] = None,
+):
+    items, total = await ImageCatalog(session, storage).list(
+        object_id=object_id,
+        camera_id=camera_id,
+        start=start,
+        end=end,
+        status=image_status,
+        limit=params.limit,
+        offset=params.offset,
+    )
+    return Page[ImageRead].of([ImageRead.model_validate(i) for i in items], total, params)
+
+
+@router.get(
+    "/{image_id}",
+    response_model=ImageDetail,
+    summary="Снимок",
+    description="Метаданные, ссылка для браузера (`S3_PUBLIC_ENDPOINT`), рамки техники с "
+    "точкой контакта и зоной, стадия по снимку.",
+)
+async def get_image(image_id: UUID, session: SessionDep, storage: StorageDep):
+    return await ImageCatalog(session, storage).detail(image_id)
+
+
+@router.patch(
+    "/{image_id}",
+    response_model=ImageRead,
+    summary="Указать время съёмки вручную",
+    description="Только для статуса `NEEDS_TIME` (`IMAGE_TIME_ALREADY_SET` иначе). Снимок "
+    "получает окно наблюдения и статус `PENDING`, источник времени — `MANUAL`.",
+)
+async def set_image_time(
+    image_id: UUID, payload: ImageTimeUpdate, session: SessionDep, storage: StorageDep
+):
+    return await ImageCatalog(session, storage).set_time(image_id, payload.captured_at)
 
 
 @router.post(

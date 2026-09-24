@@ -1,5 +1,6 @@
 """Запросы к таблицам image и session."""
 
+from collections.abc import Sequence
 from datetime import datetime
 from uuid import UUID
 
@@ -7,12 +8,67 @@ from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.dal.models import Image, ObservationSession
+from src.dal.models import Detection, Image, ObservationSession, StageObservation
 
 
 class ImageRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def get(self, image_id: UUID) -> Image | None:
+        return await self._session.get(Image, image_id)
+
+    async def list(
+        self,
+        *,
+        object_id: UUID | None,
+        camera_id: UUID | None,
+        start: datetime | None,
+        end: datetime | None,
+        status: str | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[list[Image], int]:
+        """Снимки по времени съёмки; без времени — в конце, по времени получения."""
+        query = select(Image)
+        if object_id is not None:
+            query = query.where(Image.object_id == object_id)
+        if camera_id is not None:
+            query = query.where(Image.camera_id == camera_id)
+        if start is not None:
+            query = query.where(Image.captured_at >= start)
+        if end is not None:
+            query = query.where(Image.captured_at < end)
+        if status is not None:
+            query = query.where(Image.status == status)
+        total = await self._session.scalar(select(func.count()).select_from(query.subquery()))
+        rows = await self._session.scalars(
+            query.order_by(Image.captured_at.asc().nulls_last(), Image.received_at, Image.id)
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(rows), int(total or 0)
+
+    async def detections(self, image_id: UUID) -> Sequence[Detection]:
+        rows = await self._session.scalars(
+            select(Detection)
+            .where(Detection.image_id == image_id)
+            .order_by(Detection.conf.desc(), Detection.id)
+        )
+        return rows.all()
+
+    async def stage(self, image_id: UUID) -> StageObservation | None:
+        return await self._session.scalar(
+            select(StageObservation)
+            .where(StageObservation.image_id == image_id)
+            .order_by(StageObservation.created_at.desc())
+            .limit(1)
+        )
+
+    async def save(self, image: Image) -> Image:
+        await self._session.flush()
+        await self._session.refresh(image)
+        return image
 
     async def by_checksum(self, object_id: UUID, checksum: str) -> Image | None:
         return await self._session.scalar(

@@ -124,6 +124,70 @@ async def test_слишком_большой_пакет(client, monkeypatch):
     assert response.json()["error"]["code"] == "IMAGE_BATCH_TOO_LARGE"
 
 
+async def test_список_фильтры_и_снимки_без_времени_в_конце(client):
+    await _upload(
+        client,
+        [
+            ("cam-a/20261020_130000.jpg", _jpeg(120)),
+            ("cam-a/IMG_0001.jpg", _jpeg(121)),  # без времени
+            ("cam-b/20261020_120000.jpg", _jpeg(122)),
+        ],
+    )
+
+    everything = (await client.get(f"{SITE}/images", params={"object_id": OBJECT_ID})).json()
+    waiting = (await client.get(f"{SITE}/images", params={"status": "NEEDS_TIME"})).json()
+    period = (
+        await client.get(
+            f"{SITE}/images",
+            params={"from": "2026-10-20T09:30:00Z", "to": "2026-10-20T10:30:00Z"},
+        )
+    ).json()
+    wrong = await client.get(
+        f"{SITE}/images", params={"from": "2026-10-21T00:00:00Z", "to": "2026-10-20T00:00:00Z"}
+    )
+
+    assert [i["captured_at"] for i in everything["items"]] == [
+        "2026-10-20T09:00:00Z",
+        "2026-10-20T10:00:00Z",
+        None,
+    ]
+    assert (waiting["total"], period["total"]) == (1, 1)
+    assert (wrong.status_code, wrong.json()["error"]["code"]) == (400, "INVALID_PERIOD")
+
+
+async def test_карточка_со_ссылкой_для_браузера(client):
+    uploaded = await _upload(client, [("cam-a/20261020_130000.jpg", _jpeg(130))])
+    image_id = uploaded.json()["accepted"][0]["image_id"]
+
+    card = (await client.get(f"{SITE}/images/{image_id}")).json()
+    missing = await client.get(f"{SITE}/images/{OBJECT_ID}")
+
+    assert card["url"].startswith("http://localhost:9000/images/")
+    assert (card["width"], card["height"], card["detections"], card["stage"]) == (32, 24, [], None)
+    assert (missing.status_code, missing.json()["error"]["code"]) == (404, "IMAGE_NOT_FOUND")
+
+
+async def test_ручное_время_для_needs_time(client, session):
+    uploaded = await _upload(client, [("cam-a/IMG_0001.jpg", _jpeg(140))])
+    image_id = uploaded.json()["accepted"][0]["image_id"]
+    url = f"{SITE}/images/{image_id}"
+
+    garbage = await client.patch(url, json={"captured_at": "вчера"})
+    manual = await client.patch(url, json={"captured_at": "2026-10-20T12:03:00"})
+    again = await client.patch(url, json={"captured_at": "2026-10-20T13:00:00"})
+
+    assert (garbage.status_code, garbage.json()["error"]["code"]) == (400, "INVALID_CAPTURED_AT")
+    body = manual.json()
+    assert (body["captured_at"], body["captured_at_source"], body["status"]) == (
+        "2026-10-20T09:03:00Z",
+        "MANUAL",
+        "PENDING",
+    )
+    window = await session.get(ObservationSession, UUID(body["session_id"]))
+    assert (window.window_start.isoformat(), window.image_count) == ("2026-10-20T09:00:00+00:00", 1)
+    assert (again.status_code, again.json()["error"]["code"]) == (409, "IMAGE_TIME_ALREADY_SET")
+
+
 @pytest.fixture
 def import_dir(tmp_path, monkeypatch):
     (tmp_path / "day1" / "cam-a").mkdir(parents=True)

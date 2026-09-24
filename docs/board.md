@@ -448,7 +448,10 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       подпапки, заводится автоматически, первый снимок — эталонный кадр); sha256; MinIO;
       привязка к окну; MinIO в `/health/ready`
       готово, когда: api-тест частичного успеха пакета
-- [ ] `T23c` site: список, карточка снимка, ручное время
+- [x] `T23c` site: список, карточка снимка, ручное время — сделано: `services/image_catalog.py`,
+      `GET /images` (фильтры, без времени — в конце), `GET /images/{id}` (ссылка на публичный
+      MinIO, рамки, стадия), `PATCH /images/{id}` (только `NEEDS_TIME` → окно и `PENDING`);
+      3 api-теста, в стеке роуты отвечают через gateway
       ждёт: T23b
       что: `GET /images`, `GET /images/{id}` со ссылкой на `S3_PUBLIC_ENDPOINT`;
       `PATCH /images/{id}` для `NEEDS_TIME`
