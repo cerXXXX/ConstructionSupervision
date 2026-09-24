@@ -268,6 +268,44 @@ async def test_vision_отказал_снимок_failed(recognition, factory, c
     assert analysis.signals == []
 
 
+async def test_правка_зон_пересчитывает_факты_без_распознавания(
+    recognition, factory, camera, vision, analysis
+):
+    service, _ = recognition
+    # Экскаватор справа — вне котлована: пока разметки справа нет, он OUTSIDE.
+    vision.result = vision_result({**EXCAVATOR, "bbox": [0.6, 0.2, 0.8, 0.8]})
+    image = await add_image(factory, camera, T0)
+    await service.analyze_image(image.id)
+    async with factory() as db:
+        db.add(
+            Zone(
+                object_id=OBJECT_ID,
+                camera_id=camera.id,
+                zone_type="ENTRY_GATE",
+                name="Въезд",
+                polygon=[[0.5, 0], [1, 0], [1, 1], [0.5, 1]],
+            )
+        )
+        await db.commit()
+
+    assert await service.reapply_zones(OBJECT_ID) == 1
+
+    [det] = await fetch(factory, select(Detection).where(Detection.image_id == image.id))
+    [gate] = await fetch(factory, select(Zone).where(Zone.zone_type == "ENTRY_GATE"))
+    assert det.zone_id == gate.id
+    [fact] = await fetch(
+        factory, select(SessionFact).where(SessionFact.session_id == image.session_id)
+    )
+    assert (fact.area, fact.equipment_class, fact.count) == ("ENTRY_GATE:Въезд", "excavator", 1)
+    areas = await fetch(
+        factory,
+        select(AreaVisibility.area).where(AreaVisibility.session_id == image.session_id),
+    )
+    assert sorted(areas) == ["ENTRY_GATE:Въезд", "PIT:Котлован"]
+    assert len(vision.urls) == 1  # повторного распознавания не было
+    assert analysis.signals == [OBJECT_ID, OBJECT_ID]
+
+
 async def test_проход_по_базе_ставит_ждущие_и_зависшие(recognition, factory, camera):
     service, queue = recognition
     waiting = await add_image(factory, camera, T0)

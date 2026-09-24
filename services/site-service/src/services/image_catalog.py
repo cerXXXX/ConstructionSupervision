@@ -1,5 +1,6 @@
 """Снимки после приёма: список, карточка с доказательствами, ручное время для NEEDS_TIME."""
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -88,6 +89,16 @@ class ImageCatalog:
         await self._images.recount_session(session_id)
         log.info("image.time_set", image_id=str(image_id), captured_at=at.isoformat())
         return image
+
+    async def reanalyze(self, object_id: UUID, camera_id: UUID | None) -> Sequence[UUID]:
+        """Повторное распознавание после смены модели или порогов: снимки снова в PENDING.
+
+        Статус в базе, а не задача в очереди: если очередь потеряет задачи, проход воркера
+        по базе подберёт эти снимки сам (architecture.md, 7.3).
+        """
+        ids = await self._images.reset_for_reanalysis(object_id, camera_id)
+        log.info("images.reanalyze", object_id=str(object_id), images=len(ids))
+        return ids
 
 
 _COLUMNS = (

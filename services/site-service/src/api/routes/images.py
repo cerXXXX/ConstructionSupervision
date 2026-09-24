@@ -1,4 +1,4 @@
-"""Снимки (F1): пакет из формы, импорт из папки, список, карточка, ручное время."""
+"""Снимки (F1): пакет из формы, импорт из папки, список, карточка, ручное время, повтор."""
 
 from datetime import datetime
 from typing import Annotated
@@ -15,6 +15,8 @@ from src.api.schemas.images import (
     ImageRead,
     ImageTimeUpdate,
     IntakeResult,
+    ReanalyzeRequest,
+    ReanalyzeResult,
 )
 from src.clients.queue import RecognitionQueue
 from src.config import settings
@@ -149,6 +151,28 @@ async def import_images(
     result = await ImageIntake(session, storage).import_folder(payload.object_id, payload.path)
     _enqueue(background, queue, result["accepted"])
     return result
+
+
+@router.post(
+    "/reanalyze",
+    response_model=ReanalyzeResult,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Распознать снимки объекта заново",
+    description="После смены модели или её порога: распознанные (`ANALYZED`) и отказные "
+    "(`FAILED`) снимки объекта — или одной камеры — снова получают `PENDING` и распознаются "
+    "воркером; факты окон пересчитываются по мере распознавания. Пока идёт повтор, "
+    "`pending_images` в фактах больше нуля.",
+)
+async def reanalyze_images(
+    payload: ReanalyzeRequest,
+    session: SessionDep,
+    storage: StorageDep,
+    queue: QueueDep,
+    background: BackgroundTasks,
+):
+    ids = await ImageCatalog(session, storage).reanalyze(payload.object_id, payload.camera_id)
+    _enqueue(background, queue, [{"image_id": i, "status": "PENDING"} for i in ids])
+    return {"object_id": payload.object_id, "images": len(ids)}
 
 
 def _enqueue(background: BackgroundTasks, queue: RecognitionQueue, accepted: list[dict]) -> None:

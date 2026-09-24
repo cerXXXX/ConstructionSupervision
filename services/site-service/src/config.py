@@ -43,6 +43,8 @@ class Settings(BaseServiceSettings):
     sweep_interval_s: int = 30
     # Снимок в PROCESSING дольше этого — воркер упал посреди задачи, снимок берётся заново.
     stale_processing_minutes: int = 10
+    # Пересчёт фактов всех окон объекта после правки зон: без распознавания, но окон — тысячи.
+    reapply_timeout_s: int = 600
 
     # vision: 30 с и два повтора — задача идемпотентна (interservice.md, раздел 3).
     vision_url: str = "http://vision-service:8000"

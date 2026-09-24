@@ -30,6 +30,9 @@ class CameraService:
     def __init__(self, session: AsyncSession) -> None:
         self._cameras = CameraRepository(session)
         self._zones = ZoneRepository(session)
+        # Объекты, где камера включена или выключена: её кадры входят в факты окон или выходят
+        # из них, поэтому факты пересчитываются заново.
+        self.touched: set[UUID] = set()
 
     async def get(self, camera_id: UUID) -> Camera:
         camera = await self._cameras.get(camera_id)
@@ -73,6 +76,8 @@ class CameraService:
             )
         if changes.get("is_active") is False:
             await self._deactivate_zones(camera)
+        if "is_active" in changes and changes["is_active"] != camera.is_active:
+            self.touched.add(camera.object_id)
         for field, value in changes.items():
             setattr(camera, field, value.strip() if isinstance(value, str) else value)
         return await self._cameras.save(camera)
@@ -81,6 +86,8 @@ class CameraService:
         """Камера не удаляется: на неё ссылаются снимки. Её зоны уходят вместе с ней."""
         camera = await self.get(camera_id)
         await self._deactivate_zones(camera)
+        if camera.is_active:
+            self.touched.add(camera.object_id)
         camera.is_active = False
         await self._cameras.save(camera)
 

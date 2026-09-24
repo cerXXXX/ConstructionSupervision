@@ -3,10 +3,11 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Response, status
 from lct_common import Page, PageParams
 
-from src.api.deps import SessionDep
+from src.api.deps import QueueDep, SessionDep
+from src.api.routes.zones import schedule_reapply
 from src.api.schemas.cameras import CameraCreate, CameraRead, CameraUpdate
 from src.services.cameras import CameraService
 
@@ -50,10 +51,20 @@ async def get_camera(camera_id: UUID, session: SessionDep):
     response_model=CameraRead,
     summary="Изменить камеру",
     description="Название, эталонный кадр (снимок этой камеры), параметры установки, "
-    "активность. `is_active: false` деактивирует и зоны камеры.",
+    "активность. `is_active: false` деактивирует и зоны камеры; смена активности "
+    "пересчитывает факты окон объекта в фоне.",
 )
-async def update_camera(camera_id: UUID, payload: CameraUpdate, session: SessionDep):
-    return await CameraService(session).update(camera_id, payload)
+async def update_camera(
+    camera_id: UUID,
+    payload: CameraUpdate,
+    session: SessionDep,
+    queue: QueueDep,
+    background: BackgroundTasks,
+):
+    service = CameraService(session)
+    camera = await service.update(camera_id, payload)
+    schedule_reapply(background, queue, service.touched)
+    return camera
 
 
 @router.delete(
@@ -62,5 +73,9 @@ async def update_camera(camera_id: UUID, payload: CameraUpdate, session: Session
     summary="Деактивировать камеру",
     description="Камера и её зоны не удаляются: на них ссылаются снимки и детекции.",
 )
-async def delete_camera(camera_id: UUID, session: SessionDep):
-    await CameraService(session).deactivate(camera_id)
+async def delete_camera(
+    camera_id: UUID, session: SessionDep, queue: QueueDep, background: BackgroundTasks
+):
+    service = CameraService(session)
+    await service.deactivate(camera_id)
+    schedule_reapply(background, queue, service.touched)

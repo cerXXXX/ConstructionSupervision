@@ -14,7 +14,7 @@ from lct_common import get_logger, setup_logging
 from lct_common.db import create_engine, create_session_factory
 
 from src.clients.analysis_client import AnalysisClient
-from src.clients.queue import ANALYZE_IMAGE, RecognitionQueue
+from src.clients.queue import ANALYZE_IMAGE, REAPPLY_ZONES, RecognitionQueue
 from src.clients.storage import ImageStorage
 from src.clients.vision_client import VisionClient
 from src.config import settings
@@ -78,6 +78,12 @@ async def analyze_image(ctx: dict[str, Any], image_id: str) -> str:
     return outcome
 
 
+async def reapply_zones(ctx: dict[str, Any], object_id: str) -> int:
+    windows = await ctx["recognition"].reapply_zones(UUID(object_id))
+    log.info("zones.reapplied", object_id=object_id, windows=windows)
+    return windows
+
+
 async def sweep(ctx: dict[str, Any]) -> None:
     queued = await ctx["recognition"].sweep()
     if queued:
@@ -92,7 +98,8 @@ class WorkerSettings:
             name=ANALYZE_IMAGE,
             timeout=settings.vision_timeout_s * (settings.vision_retries + 1) + 60,
             max_tries=1,
-        )
+        ),
+        func(reapply_zones, name=REAPPLY_ZONES, timeout=settings.reapply_timeout_s, max_tries=1),
     ]
     # Проход по базе: SWEEP_INTERVAL_S делит минуту нацело (cron arq задаётся секундами).
     cron_jobs: ClassVar[list] = [

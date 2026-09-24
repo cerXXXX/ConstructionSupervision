@@ -15,6 +15,7 @@ from redis.exceptions import RedisError
 log = get_logger(__name__)
 
 ANALYZE_IMAGE = "analyze_image"
+REAPPLY_ZONES = "reapply_zones"
 
 
 def job_id(image_id: UUID) -> str:
@@ -42,6 +43,20 @@ class RecognitionQueue:
                 await pool.enqueue_job(ANALYZE_IMAGE, str(image_id), _job_id=job_id(image_id))
         except (RedisError, OSError) as exc:
             log.warning("queue.unavailable", images=len(ids), error=type(exc).__name__)
+
+    async def enqueue_reapply(self, object_id: UUID) -> bool:
+        """Поставить пересчёт зон объекта; False — очередь недоступна (записано в лог).
+
+        ID задачи не фиксирован: правка во время уже идущего пересчёта должна дать ещё один,
+        иначе он посчитал бы факты по разметке до правки. Два пересчёта подряд безвредны —
+        окна пересчитываются под замком и целиком.
+        """
+        try:
+            await (await self._connection()).enqueue_job(REAPPLY_ZONES, str(object_id))
+        except (RedisError, OSError) as exc:
+            log.warning("queue.unavailable", object_id=str(object_id), error=type(exc).__name__)
+            return False
+        return True
 
     async def aclose(self) -> None:
         if self._pool is not None:

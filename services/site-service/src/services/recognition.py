@@ -83,6 +83,18 @@ class Recognition:
         await self._analysis.request_run(image.object_id)
         return "analyzed"
 
+    async def reapply_zones(self, object_id: UUID) -> int:
+        """После правки зон: новая привязка детекций и факты окон, затем сигнал. Ответ — окна.
+
+        Одна транзакция на объект: analysis не должен прочитать факты, где часть окон
+        посчитана по старой разметке, а часть — по новой.
+        """
+        async with self._factory() as session:
+            windows = await WindowFacts(session).reapply(object_id)
+            await session.commit()
+        await self._analysis.request_run(object_id)
+        return windows
+
     async def sweep(self) -> int:
         """Поставить в очередь всё, что ждёт распознавания или зависло."""
         async with self._factory() as session:

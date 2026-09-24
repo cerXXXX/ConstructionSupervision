@@ -50,7 +50,7 @@ flowchart LR
 | `GET` `PATCH` `DELETE` | `/zones/{id}` | Зона; правка полигона, типа или названия; деактивация. Версия растёт, только если что-то поменялось |
 | `POST` | `/zones/import` | Загрузить камеры и зоны объекта: формат `data/seed/cameras.json` плюс `object_id`. Камеры сверяются по коду, зоны камеры — по подписи участка; повторный импорт того же файла ничего не меняет. Ответ — счётчики и участки объекта |
 | `GET` | `/objects/{id}/areas` | Участки объекта: ключ, роль типа, камеры и зоны, на которых он размечен; `zones_version` |
-| `POST` | `/zones/reapply` | Заново отнести детекции к зонам и пересчитать факты окон — без повторного распознавания |
+| `POST` | `/zones/reapply` | `{object_id}` → `202 {object_id, queued}`: заново отнести детекции к зонам и пересчитать факты окон — без повторного распознавания. Создание, правка и деактивация зон, импорт с изменениями и смена активности камеры ставят этот пересчёт сами; вручную он нужен, если очередь была недоступна |
 
 ### Снимки
 
@@ -61,7 +61,7 @@ flowchart LR
 | `GET` | `/images` | Список с фильтрами `object_id`, `camera_id`, `from`, `to` (полуинтервал по времени съёмки), `status`; по времени съёмки, снимки без времени — в конце |
 | `GET` | `/images/{id}` | Метаданные, EXIF, качество кадра, presigned-ссылка для браузера (`S3_PUBLIC_ENDPOINT`), детекции с рамками, точкой контакта и зоной, стадия по снимку |
 | `PATCH` | `/images/{id}` | `{captured_at}` — время съёмки вручную, только для статуса `NEEDS_TIME`: снимок получает окно, статус `PENDING` и источник `MANUAL` |
-| `POST` | `/images/reanalyze` | Повторное распознавание снимков объекта (после смены модели или порога) |
+| `POST` | `/images/reanalyze` | `{object_id, camera_id?}` → `202 {object_id, images}`: повторное распознавание после смены модели или порога. Снимки `ANALYZED` и `FAILED` снова получают `PENDING` и идут в очередь |
 
 ### Факты и окна
 
@@ -81,7 +81,8 @@ flowchart LR
 разобрано), `IMAGE_TIME_ALREADY_SET` (ручное время для снимка не в статусе `NEEDS_TIME`), `IMPORT_DIR_NOT_FOUND` (папки нет
 или она вне `IMPORT_DIR`),
 `INVALID_POLYGON` (при импорте — `details.errors` с путём `cameras[i].zones[j].polygon` по
-всему файлу), `INVALID_PERIOD`, `SESSION_NOT_FOUND`, `VISION_UNAVAILABLE`, `STORAGE_UNAVAILABLE`.
+всему файлу), `INVALID_PERIOD`, `SESSION_NOT_FOUND`, `VISION_UNAVAILABLE`, `STORAGE_UNAVAILABLE`,
+`QUEUE_UNAVAILABLE` (`POST /zones/reapply`: Redis недоступен, пересчёт не поставлен).
 
 ## 4. Конвейер обработки
 
@@ -112,8 +113,18 @@ analyze_image(image_id)                     # site-worker, services/recognition.
 sweep()                                      # site-worker, каждые SWEEP_INTERVAL_S
   └─ в очередь — все PENDING и PROCESSING старше STALE_PROCESSING_MINUTES
 
-reapply_zones(object_id)    # после правки зон
-  └─ заново отнести детекции к зонам → пересчитать факты затронутых окон → сигнал
+правка зон или активности камеры (после commit) и POST /zones/reapply
+  └─ в очередь — reapply_zones(object_id)
+
+reapply_zones(object_id)                     # site-worker, WindowFacts.reapply
+  ├─ окна объекта с распознанными снимками, по времени, каждое — под замок
+  ├─ детекции окна заново привязываются к активным зонам своей камеры  (core/zones.py)
+  ├─ пересчёт факта окна целиком                          (services/window_facts.py)
+  ├─ всё в одной транзакции: факты не бывают наполовину по старой разметке
+  └─ сигнал POST /api/v1/analysis/runs {FACTS_UPDATED}
+
+POST /images/reanalyze
+  └─ ANALYZED и FAILED → PENDING одним UPDATE → после commit в очередь analyze_image
 ```
 
 - **Источник истины — `image.status` в БД**, а не очередь. Потерянную задачу (упал Redis,
@@ -152,6 +163,7 @@ reapply_zones(object_id)    # после правки зон
 | `REDIS_URL` | `redis://redis:6379/0` | Очередь задач; без неё загрузка работает, `/health/ready` показывает `redis: fail` |
 | `SWEEP_INTERVAL_S` | `30` | Проход воркера по базе; делит минуту нацело |
 | `STALE_PROCESSING_MINUTES` | `10` | Снимок в `PROCESSING` дольше — воркер упал, снимок берётся заново |
+| `REAPPLY_TIMEOUT_S` | `600` | Предел задачи `reapply_zones`: пересчёт фактов всех окон объекта после правки зон |
 | `S3_ENDPOINT` | `http://minio:9000` | MinIO внутри сети: загрузка файлов и ссылки для vision |
 | `S3_PUBLIC_ENDPOINT` | `http://localhost:9000` | Адрес MinIO, доступный браузеру: на него подписываются ссылки для интерфейса |
 | `S3_*` | см. [runbook](../../docs/runbook.md) | Ключи, бакеты, срок жизни ссылок |
@@ -248,5 +260,13 @@ make logs s=site-worker f=1
   собираются при чтении из распознанных снимков (`core/aggregation.py`, `camera_states`), по
   тем же правилам, что и видимость участков. `cameras[].images` и `image_ids` — только
   распознанные снимки; ждущие распознавания видны в `pending_images` и в `/sessions/{id}`.
+- **Пересчёт после правки зон ставится в очередь, и его можно потерять:** если Redis
+  недоступен, правка сохраняется, а факты остаются по старой разметке до `POST /zones/reapply`
+  (в лог пишется `queue.unavailable`). Задача пересчёта без фиксированного ID: правка во время
+  идущего пересчёта ставит ещё один, а не теряется.
+- **Пересчёт зон не трогает смещение** (`moved`, `displacement`): оно считается между рамками
+  одной камеры и от зон не зависит.
+- **Во время повторного распознавания факты неполные:** окно пересчитывается по мере того, как
+  распознаются его снимки, а ждущие снимки в факт не входят; это видно по `pending_images > 0`.
 - **Время без смещения в `from` и `to` считается UTC** — так договорено для всех контрактов;
   местное время камеры (`CAMERA_TIMEZONE`) относится только к времени съёмки снимков.

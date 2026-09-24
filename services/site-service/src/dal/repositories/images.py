@@ -94,6 +94,22 @@ class ImageRepository:
             )
         )
 
+    async def reset_for_reanalysis(self, object_id: UUID, camera_id: UUID | None) -> Sequence[UUID]:
+        """Распознанные и отказные снимки — снова в PENDING одним UPDATE; ответ — их ID.
+
+        Снимки в работе не трогаются: воркер допишет их сам. Прежние детекции остаются до
+        нового результата — тот заменит их целиком.
+        """
+        query = update(Image).where(
+            Image.object_id == object_id, Image.status.in_(("ANALYZED", "FAILED"))
+        )
+        if camera_id is not None:
+            query = query.where(Image.camera_id == camera_id)
+        rows = await self._session.scalars(
+            query.values(status="PENDING", error=None).returning(Image.id)
+        )
+        return rows.all()
+
     async def recount_session(self, session_id: UUID) -> None:
         """Сколько снимков и камер в окне — пересчётом, а не +1: поздний снимок не собьёт счёт."""
         counts = (

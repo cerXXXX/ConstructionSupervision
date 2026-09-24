@@ -96,6 +96,15 @@ class ObjectAreas(BaseModel):
     areas: list[AreaRead]
 
 
+class ZonesReapply(BaseModel):
+    object_id: UUID
+
+
+class ReapplyQueued(BaseModel):
+    object_id: UUID
+    queued: bool = Field(description="Пересчёт поставлен в очередь site-worker")
+
+
 class ZonesImportResult(ObjectAreas):
     cameras_created: int
     cameras_updated: int

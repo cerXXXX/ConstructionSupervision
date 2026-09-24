@@ -91,6 +91,16 @@ class ImageTimeUpdate(BaseModel):
     )
 
 
+class ReanalyzeRequest(BaseModel):
+    object_id: UUID
+    camera_id: UUID | None = Field(default=None, description="Только снимки этой камеры")
+
+
+class ReanalyzeResult(BaseModel):
+    object_id: UUID
+    images: int = Field(description="Сколько распознанных и отказных снимков снова в PENDING")
+
+
 class FolderImport(BaseModel):
     object_id: UUID
     path: str = Field(

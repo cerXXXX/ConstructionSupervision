@@ -499,7 +499,12 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: `GET /objects/{id}/facts` строго по контракту, включая `cameras[].image_ids`
       (добавлено 23.09 для доказательств D1); `/sessions`, `/sessions/{id}`
       готово, когда: ответ совпадает по форме с фикстурами T06 (разбирается моделью analysis)
-- [ ] `T26b` site: пересчёт фактов после правки зон и повторное распознавание
+- [x] `T26b` site: пересчёт фактов после правки зон и повторное распознавание — сделано:
+      задача `reapply_zones` (`WindowFacts.reapply`: новая привязка детекций и факты всех окон
+      объекта одной транзакцией, затем сигнал), её ставят правки зон и активности камер после
+      commit и `POST /zones/reapply` (`QUEUE_UNAVAILABLE`); `POST /images/reanalyze` — снимки
+      в `PENDING` одним UPDATE (architecture §7.3 поправлена отдельным коммитом); 6 тестов. В
+      стеке правка полигона пересчитала 3 окна за 0,11 с без вызова vision
       спец: [architecture.md](architecture.md) §5.5, §7.3 · ждёт: T26a
       что: задачи воркера `reapply_zones` и `reanalyze_object`; `POST /zones/reapply`;
       `POST /images/reanalyze`; правка, деактивация и импорт зон сами ставят `reapply_zones`

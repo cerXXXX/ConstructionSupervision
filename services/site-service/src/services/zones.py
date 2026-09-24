@@ -45,6 +45,8 @@ class ZoneService:
         self._zones = ZoneRepository(session)
         self._cameras = CameraRepository(session)
         self._camera_service = CameraService(session)
+        # Объекты, чья разметка поменялась: после commit их факты пересчитываются заново.
+        self.touched: set[UUID] = self._camera_service.touched
 
     async def get(self, zone_id: UUID) -> Zone:
         zone = await self._zones.get(zone_id)
@@ -65,6 +67,7 @@ class ZoneService:
             polygon=_polygon(payload.polygon),
         )
         zone = await self._zones.add(zone)
+        self.touched.add(zone.object_id)
         log.info("zone.created", zone_id=str(zone.id), area=area_key(zone.zone_type, zone.name))
         return zone
 
@@ -80,6 +83,7 @@ class ZoneService:
             for field, value in changed.items():
                 setattr(zone, field, value)
             zone.version = Zone.version + 1
+            self.touched.add(zone.object_id)
         return await self._zones.save(zone)
 
     async def deactivate(self, zone_id: UUID) -> None:
@@ -87,6 +91,7 @@ class ZoneService:
         if zone.is_active:
             zone.is_active = False
             zone.version = Zone.version + 1
+            self.touched.add(zone.object_id)
             await self._zones.save(zone)
 
     async def import_markup(self, payload: ZonesImport) -> dict[str, Any]:
@@ -122,6 +127,8 @@ class ZoneService:
             counts["zones_updated"] += len(sync.update)
             counts["zones_deactivated"] += len(sync.deactivate)
             counts["zones_unchanged"] += sync.unchanged
+        if any(counts[k] for k in ("zones_created", "zones_updated", "zones_deactivated")):
+            self.touched.add(payload.object_id)
         result = counts | await self.areas(payload.object_id)
         log.info("zones.imported", object_id=str(payload.object_id), **counts)
         return result
@@ -160,6 +167,8 @@ class ZoneService:
         if camera is None:
             counts["cameras_created"] += 1
             return await self._cameras.add(Camera(object_id=object_id, code=code, name=title))
+        if not camera.is_active:
+            self.touched.add(object_id)
         if camera.name != title or not camera.is_active:
             counts["cameras_updated"] += 1
             camera.name, camera.is_active = title, True

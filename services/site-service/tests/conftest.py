@@ -132,13 +132,21 @@ def storage() -> FakeStorage:
 
 
 class FakeQueue:
-    """Очередь распознавания в тестах: запоминает, какие снимки в неё поставили."""
+    """Очередь в тестах: запоминает снимки и объекты; `broken` — Redis недоступен."""
 
     def __init__(self) -> None:
         self.enqueued: list = []
+        self.reapplied: list = []
+        self.broken = False
 
     async def enqueue(self, image_ids) -> None:
         self.enqueued.extend(image_ids)
+
+    async def enqueue_reapply(self, object_id) -> bool:
+        if self.broken:
+            return False
+        self.reapplied.append(object_id)
+        return True
 
 
 @pytest.fixture
