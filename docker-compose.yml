@@ -104,10 +104,16 @@ services:
     environment:
       <<: *python-env
       SITE_DB_DSN: ${SITE_DB_DSN}
-    volumes: [*contracts-volume]
+      IMPORT_DIR: /import
+    volumes:
+      - *contracts-volume
+      # Демо-хронология для POST /images/import: подпапка = код камеры (data/README.md).
+      - ./data/seed/images:/import:ro
     ports: ["8002:8000"]
     depends_on:
       postgres:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health/ready')"]

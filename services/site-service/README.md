@@ -56,8 +56,8 @@ flowchart LR
 
 | Метод | Путь | Описание |
 | :--- | :--- | :--- |
-| `POST` | `/images` | Пакетная загрузка (multipart, до 200 файлов). Частичный успех `202` |
-| `POST` | `/images/import` | Импорт из смонтированной папки: подпапка = код камеры |
+| `POST` | `/images` | Пакетная загрузка (multipart: `files` до 200 штук, `object_id`, необязательно `camera_code` и `captured_at`). Частичный успех `202`: `{accepted, rejected}` |
+| `POST` | `/images/import` | Импорт из папки `IMPORT_DIR/<path>` (`{object_id, path}`): первая подпапка = код камеры, скрытые файлы пропускаются. Ответ тот же, что у пакета |
 | `GET` | `/images` | Список с фильтрами `object_id`, `camera_id`, `from`, `to`, `status` |
 | `GET` | `/images/{id}` | Метаданные, presigned-ссылка для браузера и детекции с рамками |
 | `PATCH` | `/images/{id}` | Указать время съёмки вручную для снимков в статусе `NEEDS_TIME` |
@@ -76,6 +76,9 @@ flowchart LR
 `CAMERA_NOT_FOUND`, `CAMERA_ALREADY_EXISTS` (повтор кода камеры в объекте), `ZONE_NOT_FOUND`,
 `IMAGE_NOT_FOUND` (в том числе эталонный кадр — не снимок этой камеры), `IMAGE_ALREADY_EXISTS` (в пакете —
 строка в `rejected` с ID существующего снимка), `UNSUPPORTED_MEDIA_TYPE`, `IMAGE_TOO_LARGE`,
+`CAMERA_REQUIRED` (в пакете: нет ни `camera_code`, ни подпапки с кодом камеры),
+`IMAGE_BATCH_TOO_LARGE` (больше 200 файлов за запрос), `IMPORT_DIR_NOT_FOUND` (папки нет
+или она вне `IMPORT_DIR`),
 `INVALID_POLYGON` (при импорте — `details.errors` с путём `cameras[i].zones[j].polygon` по
 всему файлу), `INVALID_PERIOD`, `VISION_UNAVAILABLE`, `STORAGE_UNAVAILABLE`.
 
@@ -85,10 +88,12 @@ flowchart LR
 POST /images
   ├─ время: EXIF → имя файла → поле формы → иначе статус NEEDS_TIME (снимок не теряется)
   ├─ камера: поле формы → подпапка; новая камера заводится автоматически
+  ├─ формат по содержимому, размер, EXIF                           (core/image_meta.py)
   ├─ дедупликация по sha256 в пределах объекта
-  ├─ оригинал в MinIO (images/{object}/{camera}/{date}/{image}.jpg)
-  ├─ image (status=PENDING), привязка к окну сессии (30 мин, по :00 и :30)
-  └─ задача analyze_image в очередь
+  ├─ оригинал в MinIO: бакет images, ключ {object}/{camera}/{дата UTC | no-time}/{image}.{jpeg|png|webp}
+  ├─ image (status=PENDING или NEEDS_TIME), привязка к окну сессии (core/sessions.py),
+  │  пересчёт числа снимков и камер окна; первый снимок камеры — её эталонный кадр
+  └─ задача analyze_image в очередь                                 (T25; пока снимок ждёт в PENDING)
 
 analyze_image(image_id)                           # core/ — чистые функции, кроме вызова vision
   ├─ POST /api/v1/vision/analyze {image_url}  → рамки, стадия по фото, качество кадра
@@ -142,6 +147,8 @@ reapply_zones(object_id)    # после правки зон
 | `SESSION_WINDOW_MINUTES` | `30` | Длина окна сессии; должна делить сутки нацело |
 | `CAMERA_TIMEZONE` | `Europe/Moscow` | Пояс часов камер: время из EXIF без смещения, из имени файла и из поля формы без смещения считается местным для этого пояса |
 | `MAX_IMAGE_MB` | `20` | Предел размера файла |
+| `MAX_FILES_PER_REQUEST` | `200` | Предел числа файлов в одном `POST /images` |
+| `IMPORT_DIR` | `/import` | Папка для `POST /images/import`; в compose — `./data/seed/images`, только чтение |
 | `WORKER_CONCURRENCY` | `4` | Параллелизм воркера |
 | `MOVE_THRESHOLD` | `0.01` | Смещение центра рамки (доля диагонали кадра), начиная с которого единица считается сдвинувшейся |
 | `MIN_BRIGHTNESS` / `MAX_BLUR` | `0.15` / `0.6` | Пригодность кадра |
@@ -196,9 +203,11 @@ make logs s=site-worker f=1
 - **Время снимка** (`core/timestamp.py`): EXIF `DateTimeOriginal` (или `DateTime`) → дата и
   время в имени файла (`20261020_090000`, `IMG_20261020_090000`, `2026-10-20_09-00-00` и
   подобные; подпапка — это камера, а не время) → поле формы (ISO-8601). Берётся первое
-  правдоподобное: не раньше 2000 года и не позже суток от текущего момента — сброшенные
-  часы камеры не должны ставить снимок в 1980 год. `OffsetTimeOriginal` из EXIF и смещение в
-  поле формы главнее `CAMERA_TIMEZONE`.
+  правдоподобное — не раньше 2000 года: сброшенные часы камеры не должны ставить снимок в
+  1980 год. Верхней границы нет: демо-хронология живёт в датах графика, которые бывают позже
+  дня загрузки. `OffsetTimeOriginal` из EXIF и смещение в поле формы главнее `CAMERA_TIMEZONE`.
+- **Файл в MinIO пишется до строки в базе.** Если после записи файла строка не сохранилась,
+  в бакете остаётся объект без снимка; обратного случая — снимка без файла — не бывает.
 - **Формат кадра — по содержимому** (`core/image_meta.py`, Pillow): JPEG, PNG, WebP; иначе
   `UNSUPPORTED_MEDIA_TYPE`, даже если расширение `.jpg`.
 - **Неподвижность — не трекинг.** Рамка сопоставляется с ближайшей рамкой того же класса

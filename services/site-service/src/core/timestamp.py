@@ -38,26 +38,24 @@ def resolve_captured_at(
     filename: str,
     form_value: str | None,
     camera_tz: tzinfo,
-    *,
-    now: datetime,
 ) -> CapturedAt:
     """Время съёмки по первому источнику, который дал правдоподобное время.
 
-    Правдоподобное — не раньше 2000 года и не позже `now` плюс сутки (часы камеры бывают
-    сбиты на часовой пояс, но не на годы).
+    Правдоподобное — не раньше 2000 года: сброшенные часы камеры дают 1970 или 1980 год.
+    Верхней границы нет намеренно: демо-хронология живёт в датах графика, которые могут быть
+    позже сегодняшнего дня, а время загрузки со временем съёмки не связано.
     """
-    latest = now + timedelta(days=1)
     tried = []
     exif_at = parse_exif(exif, camera_tz)
-    if exif_at is not None and EARLIEST <= exif_at <= latest:
+    if exif_at is not None and exif_at >= EARLIEST:
         return CapturedAt(exif_at, "EXIF", _exif_detail(exif))
     if exif_at is not None:
         tried.append(f"EXIF {exif_at.isoformat()} неправдоподобно")
     name_at = parse_filename(filename, camera_tz)
-    if name_at is not None and EARLIEST <= name_at <= latest:
+    if name_at is not None and name_at >= EARLIEST:
         return CapturedAt(name_at, "FILENAME", f"имя файла {PurePath(filename).name}")
     form_at = parse_form_value(form_value, camera_tz) if form_value else None
-    if form_at is not None and EARLIEST <= form_at <= latest:
+    if form_at is not None and form_at >= EARLIEST:
         return CapturedAt(form_at, "MANUAL", f"поле формы {form_value}")
     if form_value:
         tried.append(f"поле формы {form_value!r} не разобрано или неправдоподобно")

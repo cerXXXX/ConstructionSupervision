@@ -18,6 +18,7 @@ from lct_common import (
 from lct_common.db import create_engine, create_session_factory, make_db_check
 
 from src.api.routes import api_router
+from src.clients.storage import ImageStorage, StorageUnavailable
 from src.config import settings
 from src.reference import enums
 
@@ -27,10 +28,24 @@ log = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ресурсы, живущие столько же, сколько процесс: пул БД."""
+    """Ресурсы, живущие столько же, сколько процесс: пул БД и клиент хранилища снимков."""
     engine = create_engine(settings.site_db_dsn, echo=settings.db_echo)
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
+    app.state.storage = ImageStorage(
+        endpoint=settings.s3_endpoint,
+        public_endpoint=settings.s3_public_endpoint,
+        access_key=settings.s3_access_key,
+        secret_key=settings.s3_secret_key,
+        bucket=settings.s3_bucket_images,
+        presign_ttl_s=settings.s3_presign_ttl_s,
+    )
+    try:
+        await app.state.storage.ensure_bucket()
+    except StorageUnavailable:
+        # Сервис всё равно стартует: камеры и зоны без MinIO работают, а /health/ready
+        # покажет minio: fail, пока хранилище не поднимется.
+        log.warning("storage.unavailable_at_start", endpoint=settings.s3_endpoint)
 
     log.info(
         "service.started",
@@ -66,7 +81,11 @@ app.include_router(
     make_health_router(
         settings.service_name,
         settings.version,
-        checks=[HealthCheck("db", lambda: make_db_check(app.state.engine)())],
+        checks=[
+            HealthCheck("db", lambda: make_db_check(app.state.engine)()),
+            # Проверка заодно заводит бакет, если MinIO поднялся позже сервиса.
+            HealthCheck("minio", lambda: app.state.storage.ensure_bucket()),
+        ],
     )
 )
 app.include_router(api_router)

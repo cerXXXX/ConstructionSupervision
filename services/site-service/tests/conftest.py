@@ -105,11 +105,37 @@ async def session(engine) -> AsyncIterator:
     await connection.close()
 
 
+class FakeStorage:
+    """MinIO в тестах: объекты в словаре; `broken` имитирует недоступное хранилище."""
+
+    def __init__(self) -> None:
+        self.objects: dict[str, tuple[bytes, str]] = {}
+        self.broken = False
+
+    async def put(self, key: str, content: bytes, content_type: str) -> None:
+        from src.clients.storage import StorageUnavailable
+
+        if self.broken:
+            raise StorageUnavailable("Хранилище снимков недоступно")
+        self.objects[key] = (content, content_type)
+
+    async def presigned_url(self, key: str) -> str:
+        return f"http://localhost:9000/images/{key}?X-Amz-Signature=test"
+
+    async def internal_url(self, key: str) -> str:
+        return f"http://minio:9000/images/{key}?X-Amz-Signature=test"
+
+
 @pytest.fixture
-async def client(session) -> AsyncIterator:
-    """HTTP-клиент поверх приложения, с подменённой сессией и ключом."""
+def storage() -> FakeStorage:
+    return FakeStorage()
+
+
+@pytest.fixture
+async def client(session, storage) -> AsyncIterator:
+    """HTTP-клиент поверх приложения, с подменённой сессией, хранилищем и ключом."""
     from httpx import ASGITransport, AsyncClient
-    from src.api.deps import get_session
+    from src.api.deps import get_session, get_storage
     from src.config import settings
     from src.main import app
 
@@ -117,6 +143,7 @@ async def client(session) -> AsyncIterator:
         yield session
 
     app.dependency_overrides[get_session] = _session_override
+    app.dependency_overrides[get_storage] = lambda: storage
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",

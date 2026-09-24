@@ -20,5 +20,20 @@ class Settings(BaseServiceSettings):
     # Часовой пояс часов камер: EXIF и имена файлов хранят местное время без пояса.
     camera_timezone: str = "Europe/Moscow"
 
+    # Приём снимков (api-guidelines.md, раздел 7).
+    max_image_mb: int = 20
+    max_files_per_request: int = 200
+    # Папка для POST /images/import, смонтированная только для чтения: подпапка = код камеры.
+    import_dir: str = "/import"
+
+    # MinIO: оригиналы снимков. Внутренний адрес — для загрузки и для vision-service,
+    # публичный — для подписи ссылок, которые открывает браузер.
+    s3_endpoint: str = "http://minio:9000"
+    s3_public_endpoint: str = "http://localhost:9000"
+    s3_access_key: str = "minioadmin"
+    s3_secret_key: str = "minioadmin"
+    s3_bucket_images: str = "images"
+    s3_presign_ttl_s: int = 3600
+
 
 settings = Settings()

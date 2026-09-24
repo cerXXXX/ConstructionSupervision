@@ -11,12 +11,11 @@ from src.core.sessions import WindowError, session_window
 from src.core.timestamp import parse_filename, resolve_captured_at
 
 MSK = ZoneInfo("Europe/Moscow")
-NOW = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
 EXIF_TIME = {"DateTimeOriginal": "2026:10:20 12:03:00"}
 
 
 def _resolve(exif=None, filename="IMG_0042.jpg", form=None):
-    return resolve_captured_at(exif or {}, filename, form, MSK, now=NOW)
+    return resolve_captured_at(exif or {}, filename, form, MSK)
 
 
 def test_exif_главнее_имени_файла_и_формы():
@@ -69,14 +68,21 @@ def test_без_времени_снимок_ждёт_ручного_ввода()
     assert "вчера" in result.detail
 
 
-def test_пустой_и_неправдоподобный_exif_пропускается():
+def test_пустой_и_сброшенный_exif_пропускается():
     zeros = _resolve({"DateTimeOriginal": "0000:00:00 00:00:00"}, "20261020_120000.jpg")
     reset_clock = _resolve({"DateTimeOriginal": "1980:01:01 00:00:00"}, "20261020_120000.jpg")
-    future = _resolve({"DateTimeOriginal": "2031:01:01 00:00:00"})
+    only_reset = _resolve({"DateTimeOriginal": "1970:01:01 00:00:00"})
 
     assert zeros.source == reset_clock.source == "FILENAME"
-    assert (future.source, future.at) == ("UNKNOWN", None)
-    assert "неправдоподобно" in future.detail
+    assert (only_reset.source, only_reset.at) == ("UNKNOWN", None)
+    assert "неправдоподобно" in only_reset.detail
+
+
+def test_дата_позже_сегодняшней_принимается():
+    """Демо-хронология живёт в датах графика — они бывают позже дня загрузки."""
+    later = _resolve({"DateTimeOriginal": "2031:01:01 00:00:00"})
+
+    assert (later.source, later.at) == ("EXIF", datetime(2030, 12, 31, 21, 0, tzinfo=UTC))
 
 
 def _jpeg(**exif_tags) -> bytes:
