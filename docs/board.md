@@ -469,13 +469,22 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       20 минут, сначала CPU-вариант
       готово, когда: тесты постобработки на модели-заглушке; снимки из `ml/datasets/lct-raw/`
       распознаются в контейнере; время на снимок (CPU, GPU при H6) записано в README vision, §8
-- [ ] `T25` site-worker: конвейер распознавания и факт окна
+- [x] `T25a` site: смещение и факт окна как чистые функции — сделано: `core/movement.py`
+      (ближайшая рамка класса, смещение в долях диагонали с пропорциями кадра),
+      `core/aggregation.py` (`frame_usability`, `aggregate_window`: максимум по кадрам и
+      камерам, `static`, опасные зоны поверх, видимость с причиной, стадия за окно); 26 тестов
       спец: [methodology.md](methodology.md) §4, [site-service README](../services/site-service/README.md) §4 · ждёт: T23, T24
+      что: `core/movement.py` (смещение относительно прошлого окна камеры);
+      `core/aggregation.py` (пригодность кадра, максимум по камерам, `static`, видимость
+      участков, `OUTSIDE`, опасные зоны поверх, стадия за окно)
+      готово, когда: unit-тесты: максимум по камерам, непригодный кадр, `OK` / `PARTIAL` /
+      `BLIND`, нет прошлого окна
+- [ ] `T25b` site-worker: конвейер распознавания
+      спец: [site-service README](../services/site-service/README.md) §4, [interservice.md](../packages/contracts/interservice.md) §3, §4 · ждёт: T25a
       что: `src/worker.py` (arq), задача `analyze_image`; клиент vision (30 с, 2 повтора);
-      `core/movement.py`; `core/aggregation.py` (максимум по камерам, `static`, видимость
-      участков, `OUTSIDE`, стадия за окно); сигнал в analysis; контейнер `site-worker` в compose
-      готово, когда: unit-тесты агрегации; загруженный снимок доходит до `ANALYZED`, факт окна
-      появляется
+      запись детекций, стадии, пересчёт факта окна; сигнал в analysis; постановка в очередь
+      при загрузке; контейнер `site-worker` в compose
+      готово, когда: загруженный снимок доходит до `ANALYZED`, факт окна появляется
 - [ ] `T26` site: «факты за период» и пересчёты
       спец: [interservice.md](../packages/contracts/interservice.md) §2 · ждёт: T25
       что: `GET /objects/{id}/facts` строго по контракту, включая `cameras[].image_ids`
