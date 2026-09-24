@@ -428,13 +428,26 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: CRUD `/cameras` и `/zones`; `POST /zones/import` из формата `data/seed/cameras.json`;
       `zones_version`
       готово, когда: api-тесты; импорт демо-камер из data/README.md даёт участки въезда на двух камерах
-- [ ] `T23` site: приём снимков
-      спец: [site-service README](../services/site-service/README.md) §4, [api-guidelines.md](api-guidelines.md) §7 · ждёт: T22
-      что: `core/timestamp.py` (EXIF → имя файла → поле формы → `NEEDS_TIME`); `POST /images` и
-      `/images/import` (камера из подпапки, заводится автоматически, первый снимок — эталонный
-      кадр); sha256; MinIO; привязка к окну; `GET /images`, `GET /images/{id}` со ссылкой на
-      `S3_PUBLIC_ENDPOINT`; `PATCH /images/{id}`
-      готово, когда: unit-тесты времени; api-тест частичного успеха пакета
+- [x] `T23a` site: время снимка, метаданные кадра, окно сессии — чистые функции — сделано:
+      `core/timestamp.py` (проверка правдоподобия, смещение EXIF главнее пояса камеры),
+      `core/image_meta.py` (формат по содержимому, EXIF из Exif IFD), `core/sessions.py`,
+      `CAMERA_TIMEZONE`, `timestamptz` в моделях site; 23 unit-теста
+      спец: [site-service README](../services/site-service/README.md) §4 · ждёт: T22
+      что: `core/timestamp.py` (EXIF → имя файла → поле формы → `NEEDS_TIME`; наивное время —
+      в `CAMERA_TIMEZONE`), `core/image_meta.py` (размер, EXIF, формат; Pillow),
+      `core/sessions.py` (окно 30 мин по :00 и :30 UTC); `timestamptz` в моделях (раздел 9)
+      готово, когда: unit-тесты времени, включая нестандартные имена файлов и EXIF со смещением
+- [ ] `T23b` site: загрузка снимков в MinIO
+      спец: [api-guidelines.md](api-guidelines.md) §7, §8 · ждёт: T23a
+      что: `POST /images` (до 200 файлов, частичный успех `202`) и `/images/import` (камера из
+      подпапки, заводится автоматически, первый снимок — эталонный кадр); sha256; MinIO;
+      привязка к окну; MinIO в `/health/ready`
+      готово, когда: api-тест частичного успеха пакета
+- [ ] `T23c` site: список, карточка снимка, ручное время
+      ждёт: T23b
+      что: `GET /images`, `GET /images/{id}` со ссылкой на `S3_PUBLIC_ENDPOINT`;
+      `PATCH /images/{id}` для `NEEDS_TIME`
+      готово, когда: api-тесты
 - [ ] `T24` vision: распознавание
       спец: [interservice.md](../packages/contracts/interservice.md) §3, [vision-service README](../services/vision-service/README.md) · ждёт: T01
       что: `POST /analyze` (YOLO-World с промптами из `equipment_classes.yaml`; OpenCLIP с
@@ -555,12 +568,11 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
   `lct_lct` с каталогом сервиса, смонтированным в `/app/services/<сервис>`, `pip install pytest
   pytest-asyncio`, `TEST_DB_DSN` на `postgres:5432`. Стоит записать в §2 или в `scripts/`.
   Для analysis-service ещё смонтировать `packages/contracts` в `/app/packages/contracts`.
-- `services/plan-service/src/dal/models.py` и `services/site-service/src/dal/models.py`:
-  поля `Mapped[datetime]` без `DateTime(timezone=True)`, хотя колонки в миграциях —
-  `timestamptz`. SQLAlchemy шлёт момент как наивный `TIMESTAMP`, и запись момента с часовым
-  поясом падает (`can't subtract offset-naive and offset-aware datetimes`); в analysis это
-  всплыло в T15a и исправлено `type_annotation_map` в `Base`. site пишет `window_start`,
-  `captured_at` — упадёт в T23/T25.
+- `services/plan-service/src/dal/models.py`: поля `Mapped[datetime]` без
+  `DateTime(timezone=True)`, хотя колонки в миграциях — `timestamptz`. SQLAlchemy шлёт момент
+  как наивный `TIMESTAMP`, и запись момента с часовым поясом падает (`can't subtract
+  offset-naive and offset-aware datetimes`); в analysis это исправлено в T15a, в site — в T23a
+  тем же `type_annotation_map` в `Base`. plan сам моменты пока не пишет, поэтому не падает.
 - ~~`services/plan-service/src/api/schemas/common.py` дублирует в коде списки `object_type`,
   `construction_phase`, `zone_type` и др. в виде `StrEnum`, что запрещено AGENTS.md §7.~~
   Закрыто в T17: типы строятся из `enums.yaml`.

@@ -17,6 +17,8 @@ class Settings(BaseServiceSettings):
     # Длина окна сессии наблюдения: состав техники считается по сессии, а не по
     # кадру, иначе одна машина в двух камерах была бы посчитана дважды.
     session_window_minutes: int = 30
+    # Часовой пояс часов камер: EXIF и имена файлов хранят местное время без пояса.
+    camera_timezone: str = "Europe/Moscow"
 
 
 settings = Settings()

@@ -8,5 +8,6 @@ alembic==1.14.0
 httpx==0.28.1
 structlog==24.4.0
 python-multipart==0.0.20
+pillow==11.0.0
 pyyaml==6.0.2
 shapely==2.0.6
