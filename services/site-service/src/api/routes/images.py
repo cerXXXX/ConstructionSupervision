@@ -4,10 +4,10 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile, status
 from lct_common import Page, PageParams, ValidationError
 
-from src.api.deps import SessionDep, StorageDep
+from src.api.deps import QueueDep, SessionDep, StorageDep
 from src.api.schemas.common import ImageStatus
 from src.api.schemas.images import (
     FolderImport,
@@ -16,6 +16,7 @@ from src.api.schemas.images import (
     ImageTimeUpdate,
     IntakeResult,
 )
+from src.clients.queue import RecognitionQueue
 from src.config import settings
 from src.services.image_catalog import ImageCatalog
 from src.services.images import ImageIntake
@@ -46,6 +47,8 @@ class BatchTooLarge(ValidationError):
 async def upload_images(
     session: SessionDep,
     storage: StorageDep,
+    queue: QueueDep,
+    background: BackgroundTasks,
     object_id: Annotated[UUID, Form()],
     files: Annotated[list[UploadFile], File(description="Снимки: JPEG, PNG, WebP")],
     camera_code: Annotated[str | None, Form()] = None,
@@ -60,9 +63,11 @@ async def upload_images(
             received=len(files),
         )
     batch = [(f.filename or "", await f.read()) for f in files]
-    return await ImageIntake(session, storage).upload(
+    result = await ImageIntake(session, storage).upload(
         object_id, batch, camera_code=camera_code, captured_at=captured_at
     )
+    _enqueue(background, queue, result["accepted"])
+    return result
 
 
 @router.get(
@@ -113,9 +118,16 @@ async def get_image(image_id: UUID, session: SessionDep, storage: StorageDep):
     "получает окно наблюдения и статус `PENDING`, источник времени — `MANUAL`.",
 )
 async def set_image_time(
-    image_id: UUID, payload: ImageTimeUpdate, session: SessionDep, storage: StorageDep
+    image_id: UUID,
+    payload: ImageTimeUpdate,
+    session: SessionDep,
+    storage: StorageDep,
+    queue: QueueDep,
+    background: BackgroundTasks,
 ):
-    return await ImageCatalog(session, storage).set_time(image_id, payload.captured_at)
+    image = await ImageCatalog(session, storage).set_time(image_id, payload.captured_at)
+    _enqueue(background, queue, [{"image_id": image.id, "status": image.status}])
+    return image
 
 
 @router.post(
@@ -127,5 +139,24 @@ async def set_image_time(
     f"заводятся сами, скрытые файлы пропускаются. {TIME_NOTE} Повторный импорт той же папки "
     "отклоняет уже загруженные снимки как `IMAGE_ALREADY_EXISTS`.",
 )
-async def import_images(payload: FolderImport, session: SessionDep, storage: StorageDep):
-    return await ImageIntake(session, storage).import_folder(payload.object_id, payload.path)
+async def import_images(
+    payload: FolderImport,
+    session: SessionDep,
+    storage: StorageDep,
+    queue: QueueDep,
+    background: BackgroundTasks,
+):
+    result = await ImageIntake(session, storage).import_folder(payload.object_id, payload.path)
+    _enqueue(background, queue, result["accepted"])
+    return result
+
+
+def _enqueue(background: BackgroundTasks, queue: RecognitionQueue, accepted: list[dict]) -> None:
+    """Поставить принятые снимки в очередь распознавания — после ответа, то есть после commit.
+
+    Задача, поставленная раньше commit, не нашла бы снимок в базе. Если постановка не удалась,
+    снимок всё равно в PENDING, и воркер подберёт его проходом по базе.
+    """
+    ids = [item["image_id"] for item in accepted if item["status"] == "PENDING"]
+    if ids:
+        background.add_task(queue.enqueue, ids)

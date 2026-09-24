@@ -35,5 +35,28 @@ class Settings(BaseServiceSettings):
     s3_bucket_images: str = "images"
     s3_presign_ttl_s: int = 3600
 
+    # Конвейер распознавания (README, раздел 4). Очередь — только ускоритель: источник истины —
+    # статус снимка в базе, и проход по базе раз в SWEEP_INTERVAL_S подбирает всё, что
+    # очередь потеряла.
+    redis_url: str = "redis://redis:6379/0"
+    worker_concurrency: int = 4
+    sweep_interval_s: int = 30
+    # Снимок в PROCESSING дольше этого — воркер упал посреди задачи, снимок берётся заново.
+    stale_processing_minutes: int = 10
+
+    # vision: 30 с и два повтора — задача идемпотентна (interservice.md, раздел 3).
+    vision_url: str = "http://vision-service:8000"
+    vision_timeout_s: float = 30.0
+    vision_retries: int = 2
+    # Сигнал «пересчитай»: 2 с без повторов, потерянный сигнал безопасен (раздел 4).
+    analysis_url: str = "http://analysis-service:8000"
+    analysis_timeout_s: float = 2.0
+
+    # Факт окна (methodology.md, раздел 4): пригодность кадра и порог смещения — доля
+    # диагонали кадра, с которой единица считается сдвинувшейся.
+    min_brightness: float = 0.15
+    max_blur: float = 0.6
+    move_threshold: float = 0.01
+
 
 settings = Settings()

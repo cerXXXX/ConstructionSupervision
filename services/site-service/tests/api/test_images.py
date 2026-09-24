@@ -33,7 +33,7 @@ async def _upload(client, files, **form):
     )
 
 
-async def test_пакет_принимается_частично(client, session, storage, monkeypatch):
+async def test_пакет_принимается_частично(client, session, storage, queue, monkeypatch):
     monkeypatch.setattr(settings, "max_image_mb", 1)
     good = _jpeg(10, "2026:10:20 12:03:00")
     files = [
@@ -71,6 +71,8 @@ async def test_пакет_принимается_частично(client, sessio
     assert len(storage.objects) == 2
     key = next(k for k in storage.objects if first["image_id"] in k)
     assert key.startswith(f"{OBJECT_ID}/{camera.id}/2026-10-20/")
+    # В очередь распознавания — только снимки со временем: без него нет окна.
+    assert [str(i) for i in queue.enqueued] == [first["image_id"]]
 
 
 async def test_камера_из_подпапки_и_время_из_имени_файла(client):
@@ -167,9 +169,10 @@ async def test_карточка_со_ссылкой_для_браузера(clie
     assert (missing.status_code, missing.json()["error"]["code"]) == (404, "IMAGE_NOT_FOUND")
 
 
-async def test_ручное_время_для_needs_time(client, session):
+async def test_ручное_время_для_needs_time(client, session, queue):
     uploaded = await _upload(client, [("cam-a/IMG_0001.jpg", _jpeg(140))])
     image_id = uploaded.json()["accepted"][0]["image_id"]
+    assert queue.enqueued == []
     url = f"{SITE}/images/{image_id}"
 
     garbage = await client.patch(url, json={"captured_at": "вчера"})
@@ -186,6 +189,7 @@ async def test_ручное_время_для_needs_time(client, session):
     window = await session.get(ObservationSession, UUID(body["session_id"]))
     assert (window.window_start.isoformat(), window.image_count) == ("2026-10-20T09:00:00+00:00", 1)
     assert (again.status_code, again.json()["error"]["code"]) == (409, "IMAGE_TIME_ALREADY_SET")
+    assert [str(i) for i in queue.enqueued] == [image_id]
 
 
 @pytest.fixture

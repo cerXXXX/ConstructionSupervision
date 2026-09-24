@@ -18,6 +18,7 @@ from lct_common import (
 from lct_common.db import create_engine, create_session_factory, make_db_check
 
 from src.api.routes import api_router
+from src.clients.queue import RecognitionQueue
 from src.clients.storage import ImageStorage, StorageUnavailable
 from src.config import settings
 from src.reference import enums
@@ -40,6 +41,7 @@ async def lifespan(app: FastAPI):
         bucket=settings.s3_bucket_images,
         presign_ttl_s=settings.s3_presign_ttl_s,
     )
+    app.state.queue = RecognitionQueue(settings.redis_url)
     try:
         await app.state.storage.ensure_bucket()
     except StorageUnavailable:
@@ -56,6 +58,7 @@ async def lifespan(app: FastAPI):
     )
     yield
 
+    await app.state.queue.aclose()
     await engine.dispose()
     log.info("service.stopped")
 
@@ -85,6 +88,9 @@ app.include_router(
             HealthCheck("db", lambda: make_db_check(app.state.engine)()),
             # Проверка заодно заводит бакет, если MinIO поднялся позже сервиса.
             HealthCheck("minio", lambda: app.state.storage.ensure_bucket()),
+            # Без очереди загрузка работает: снимки ждут в PENDING, воркер подберёт их проходом
+            # по базе. Это деградация, а не отказ.
+            HealthCheck("redis", lambda: app.state.queue.ping(), required=False),
         ],
     )
 )

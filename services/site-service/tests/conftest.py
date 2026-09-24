@@ -131,11 +131,26 @@ def storage() -> FakeStorage:
     return FakeStorage()
 
 
+class FakeQueue:
+    """Очередь распознавания в тестах: запоминает, какие снимки в неё поставили."""
+
+    def __init__(self) -> None:
+        self.enqueued: list = []
+
+    async def enqueue(self, image_ids) -> None:
+        self.enqueued.extend(image_ids)
+
+
 @pytest.fixture
-async def client(session, storage) -> AsyncIterator:
-    """HTTP-клиент поверх приложения, с подменённой сессией, хранилищем и ключом."""
+def queue() -> FakeQueue:
+    return FakeQueue()
+
+
+@pytest.fixture
+async def client(session, storage, queue) -> AsyncIterator:
+    """HTTP-клиент поверх приложения, с подменённой сессией, хранилищем, очередью и ключом."""
     from httpx import ASGITransport, AsyncClient
-    from src.api.deps import get_session, get_storage
+    from src.api.deps import get_queue, get_session, get_storage
     from src.config import settings
     from src.main import app
 
@@ -144,6 +159,7 @@ async def client(session, storage) -> AsyncIterator:
 
     app.dependency_overrides[get_session] = _session_override
     app.dependency_overrides[get_storage] = lambda: storage
+    app.dependency_overrides[get_queue] = lambda: queue
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",

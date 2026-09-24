@@ -115,12 +115,39 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health/ready')"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 20s
+
+  # Воркер распознавания: тот же образ, другой процесс (services/site-service/README.md, раздел 2).
+  # Реплик может быть сколько угодно: снимок забирается в работу одним UPDATE.
+  site-worker:
+    <<: *service-base
+    image: ${IMAGE_REGISTRY:-lct}/site-service:${IMAGE_TAG:-latest}
+    command: ["arq", "src.worker.WorkerSettings"]
+    environment:
+      <<: *python-env
+      SITE_DB_DSN: ${SITE_DB_DSN}
+      # Схему ведёт site-service, воркер ждёт его готовности: две реплики не мигрируют разом.
+      RUN_MIGRATIONS: "false"
+    volumes: [*contracts-volume]
+    depends_on:
+      site-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # arq сам пишет отметку живости в Redis; --check читает её.
+      test: ["CMD", "arq", "--check", "src.worker.WorkerSettings"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   analysis-service:
     <<: *service-base

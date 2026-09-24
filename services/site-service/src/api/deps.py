@@ -8,6 +8,7 @@ from lct_common import make_api_key_dependency
 from lct_common.db import session_dependency
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.clients.queue import RecognitionQueue
 from src.clients.storage import ImageStorage
 from src.config import settings
 
@@ -27,3 +28,10 @@ def get_storage(request: Request) -> ImageStorage:
 
 
 StorageDep = Annotated[ImageStorage, Depends(get_storage)]
+
+
+def get_queue(request: Request) -> RecognitionQueue:
+    return request.app.state.queue
+
+
+QueueDep = Annotated[RecognitionQueue, Depends(get_queue)]

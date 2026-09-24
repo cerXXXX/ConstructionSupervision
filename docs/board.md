@@ -479,7 +479,12 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       участков, `OUTSIDE`, опасные зоны поверх, стадия за окно)
       готово, когда: unit-тесты: максимум по камерам, непригодный кадр, `OK` / `PARTIAL` /
       `BLIND`, нет прошлого окна
-- [ ] `T25b` site-worker: конвейер распознавания
+- [x] `T25b` site-worker: конвейер распознавания — сделано: `src/worker.py` (arq, задача
+      `analyze_image` и проход по базе каждые 30 с), `services/recognition.py` (захват снимка
+      одним UPDATE, vision с тремя попытками → иначе снова `PENDING`, отказ → `FAILED`, замок на
+      окно), `services/window_facts.py`, клиенты vision, analysis и очереди; постановка в
+      очередь после ответа; контейнер `site-worker`; 8 тестов конвейера на базе. В стеке:
+      снимок `ANALYZED` за ~1 с, факт окна и видимость записаны, остановка vision переживается
       спец: [site-service README](../services/site-service/README.md) §4, [interservice.md](../packages/contracts/interservice.md) §3, §4 · ждёт: T25a
       что: `src/worker.py` (arq), задача `analyze_image`; клиент vision (30 с, 2 повтора);
       запись детекций, стадии, пересчёт факта окна; сигнал в analysis; постановка в очередь
