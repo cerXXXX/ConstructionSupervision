@@ -411,11 +411,19 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: сценарий и роут (`force`, `NORMS_NOT_AVAILABLE`), запись вех и правил как при
       импорте, критический путь, `plan_version` и сигнал; README
       готово, когда: api-тест; график демо-объекта строится в стеке
-- [ ] `T22` site: зоны, участки, камеры
-      спец: [methodology.md](methodology.md) §3, [site-service README](../services/site-service/README.md) §3 · ждёт: T01, T04
-      что: `core/zones.py` (точка контакта, основная зона, опасные поверх, `shapely`); CRUD
-      `/cameras` и `/zones`; `POST /zones/import` из формата `data/seed/cameras.json`; `zones_version`
+- [x] `T22a` site: привязка к зонам как чистая функция — сделано: `core/zones.py`
+      (точка контакта, основная зона — наименьшая не опасная, опасные поверх по роли `SAFETY`,
+      граница — внутри, `check_polygon`), `core/reference.py` (типы и роли зон из `enums.yaml`),
+      `shapely` и `pyyaml` в зависимостях; 18 unit-тестов; тестовая база `sitedb_test`
+      спец: [methodology.md](methodology.md) §3, [ADR-0013](decisions/0013-zones-and-areas.md) · ждёт: T01, T04
+      что: `core/zones.py` (точка контакта, основная зона, опасные поверх, ключ участка,
+      проверка полигона; `shapely`); `core/reference.py` — типы зон и их роли из `enums.yaml`
       готово, когда: unit-тесты: граница, перекрытие, опасная зона поверх рабочей, вне зон
+- [ ] `T22b` site: API камер и зон
+      спец: [site-service README](../services/site-service/README.md) §3 · ждёт: T22a
+      что: CRUD `/cameras` и `/zones`; `POST /zones/import` из формата `data/seed/cameras.json`;
+      `zones_version`
+      готово, когда: api-тесты; импорт демо-камер из data/README.md даёт участки въезда на двух камерах
 - [ ] `T23` site: приём снимков
       спец: [site-service README](../services/site-service/README.md) §4, [api-guidelines.md](api-guidelines.md) §7 · ждёт: T22
       что: `core/timestamp.py` (EXIF → имя файла → поле формы → `NEEDS_TIME`); `POST /images` и
