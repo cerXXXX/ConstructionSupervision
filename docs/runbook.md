@@ -28,11 +28,20 @@ docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
 Без GPU система работает целиком, но распознавание идёт секунды вместо миллисекунд. Для
 отладки этого достаточно, для показа нет.
 
+Карту в `vision-service` пробрасывает оверлей `docker-compose.gpu.yml` (раздел 5). На стенде
+с картой стек поднимается так:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+```
+
+Фактическое устройство показывает `GET /api/v1/vision/model` (поле `device`).
+
 ## 2. Первый запуск
 
 ```bash
 cp .env.example .env               # при необходимости поменять пароли и ключ API
-python scripts/fetch_models.py     # веса детектора и OpenCLIP в data/models
+python scripts/fetch_models.py     # веса детектора, OpenCLIP и текстового CLIP в data/models
 docker compose up -d --build       # весь стек
 python scripts/seed.py             # демо-объект, график, камеры, зоны, снимки, прогон анализа
 ```
@@ -183,7 +192,7 @@ LLM внешняя: видеопамять полностью отдана ра�
 | Профиль | Что добавит | Когда | Состояние |
 | :--- | :--- | :--- | :--- |
 | `llm` | Ollama + загрузка модели | Закрытый контур без внешнего API | появится вместе с резюме |
-| `gpu` | `vision-service` с пробросом видеокарты | Целевой стенд | появится вместе с распознаванием |
+| `gpu` | `vision-service` с пробросом видеокарты | Целевой стенд | сделан **оверлеем** `docker-compose.gpu.yml`: профиль добавляет сервисы, но не дополняет описанный |
 
 ## 6. Демо-сценарий (5 минут)
 

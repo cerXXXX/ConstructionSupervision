@@ -456,7 +456,12 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: `GET /images`, `GET /images/{id}` со ссылкой на `S3_PUBLIC_ENDPOINT`;
       `PATCH /images/{id}` для `NEEDS_TIME`
       готово, когда: api-тесты
-- [ ] `T24` vision: распознавание
+- [x] `T24` vision: распознавание — сделано: `POST /analyze` (JSON-ссылка или файл) и
+      `GET /model`; `core/` — словарь, склейка рамок, качество кадра, стадия; адаптеры моделей в
+      `src/models/`, фоновая загрузка с прогревом; образ torch cu128 (сборка 26 мин, CPU-вариант —
+      аргументом `VISION_TORCH_INDEX_URL`), GPU — оверлей `docker-compose.gpu.yml`; веса CLIP для
+      промптов в `fetch_models.py`, контейнер работает без сети; 63 теста. На 100 снимках
+      lct-raw: GPU медиана 56 мс, CPU (960) — 900 мс (README vision §8)
       спец: [interservice.md](../packages/contracts/interservice.md) §3, [vision-service README](../services/vision-service/README.md) · ждёт: T01
       что: `POST /analyze` (YOLO-World с промптами из `equipment_classes.yaml`; OpenCLIP с
       метками из `data/stage_prompts.yaml`; яркость и размытость), `GET /model`, устройство по
@@ -568,9 +573,16 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
   каждого сервиса в `environment`.
 - `scripts/backup.py` (`make backup`, runbook §8) не закреплён ни за одной задачей: сейчас это
   заготовка.
-- YOLO-World в Ultralytics для `set_classes`, насколько известно, берёт текстовый энкодер CLIP
-  и при первом вызове качает его из интернета (не проверено запуском). Для работы без сети в контейнере `vision-service` его тоже нужно
-  положить в `data/models/` — проверить в T24.
+- ~~YOLO-World в Ultralytics для `set_classes`, насколько известно, берёт текстовый энкодер CLIP
+  и при первом вызове качает его из интернета.~~ Подтвердилось и закрыто в T24: веса в
+  `data/models/clip/`, `weights_dir` Ultralytics в образе — `/models`.
+- `packages/contracts/equipment_classes.yaml`: промпт `tipper truck` у `dump_truck` забирает на
+  себя почти всю технику. На 100 снимках lct-raw (T24) — 825 рамок `dump_truck` и ни одного
+  `excavator`, хотя экскаваторы на кадрах есть (Screenshot_100: подписаны `tipper truck`).
+  Промпты нужно подбирать по размеченному набору H5 вместе с метриками T36, а не вслепую.
+- Docker Desktop на демо-стенде ограничен в `%USERPROFILE%\.wslconfig`: `memory=4GB`,
+  `processors=2`. Стек с vision на GPU помещается (~1 ГБ у vision), но запас мал: для показа
+  лучше поднять лимит (человек, нужен `wsl --shutdown`).
 - Раздел 2 этого файла: `pytest -q` на хосте не работает — нет `lct_common`, `pytest-asyncio`
   и зависимостей сервиса. Рабочий способ (T03): одноразовый контейнер из образа сервиса в сети
   `lct_lct` с каталогом сервиса, смонтированным в `/app/services/<сервис>`, `pip install pytest

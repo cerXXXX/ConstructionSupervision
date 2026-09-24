@@ -149,17 +149,26 @@ services:
     build:
       context: .
       dockerfile: services/vision-service/Dockerfile
+      args:
+        TORCH_INDEX_URL: ${VISION_TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}
     environment:
       <<: *python-env
-      VISION_DEVICE: ${VISION_DEVICE}
-    volumes: [*contracts-volume]
+      VISION_DEVICE: ${VISION_DEVICE:-cuda}
+    volumes:
+      - *contracts-volume
+      # Веса моделей (python scripts/fetch_models.py), в том числе текстовый энкодер CLIP для
+      # промптов YOLO-World в /models/clip: образ указывает Ultralytics этот каталог.
+      - ./data/models:/models:ro
     ports: ["8004:8000"]
+    # Видеокарту пробрасывает оверлей docker-compose.gpu.yml: без карты на машине запрос
+    # устройства в этом файле не дал бы стеку подняться вовсе.
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health/ready')"]
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 20s
+      # Веса грузятся в память и прогреваются: на CPU это до минуты.
+      start_period: 90s
 
   gateway:
     <<: *service-base

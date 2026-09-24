@@ -9,11 +9,11 @@
 | ID | Требование | Сервис | Модуль | Приоритет | Статус |
 | :--- | :--- | :--- | :--- | :--- | :---: |
 | F1 | Загрузка снимков, извлечение времени и камеры | `site-service` | `api/routes/images.py`, `core/timestamp.py` | Must | ~ |
-| F2 | Детекция и классификация техники, mAP50 на своём тесте | `vision-service`, `ml/` | `core/detector.py`, `ml/eval/evaluate.py` | Must | — |
+| F2 | Детекция и классификация техники, mAP50 на своём тесте | `vision-service`, `ml/` | `models/detector.py`, `core/detections.py`, `ml/eval/evaluate.py` | Must | ~ |
 | F3 | Привязка детекций к зонам по точке контакта | `site-service` | `core/zones.py` | Must | ~ |
 | F4 | Статус техники: работает / простой / вне зоны | `analysis-service` (смещение — `site-service`) | `core/equipment_state.py`, site `core/movement.py` | Must | — |
 | F5 | Контроль видимости участков | `site-service`, `analysis-service` | site `core/aggregation.py`, analysis `core/stage_predicates.py` (D10) | Must | ~ |
-| F6 | Классификация стадии объекта по снимку | `vision-service`, `site-service` | `core/stage_classifier.py`, site `core/aggregation.py` | Must | — |
+| F6 | Классификация стадии объекта по снимку | `vision-service`, `site-service` | `models/stage_classifier.py`, `core/stages.py`, site `core/aggregation.py` | Must | ~ |
 | F7 | Сопоставление сессии с активными вехами графика | `analysis-service` | `core/plan_on_date.py`, `core/rules.py`, `core/run.py` | Must | ~ |
 | F8 | Выявление отклонений D1–D10 с объяснением | `analysis-service` | `core/predicates.py`, `core/explain.py` | Must | ~ |
 | F9 | Прогноз задержки и даты окончания | `analysis-service` | `core/activity.py`, `core/forecast.py` | Must | ~ |
@@ -27,6 +27,10 @@
 Статус `~` у F1: пакетная загрузка и импорт папки с временем из EXIF и имени файла, камерой
 из подпапки и частичным успехом, просмотр снимков и ручной ввод времени через API готовы
 (T23); экрана загрузки в интерфейсе ещё нет — T39.
+
+Статус `~` у F2 и F6: `POST /api/v1/vision/analyze` распознаёт технику (YOLO-World, классы из
+`equipment_classes.yaml`) и стадию (OpenCLIP zero-shot) на GPU и CPU (T24). Метрик на
+размеченном наборе ещё нет — T36 после H5; в конвейер site распознавание встанет в T25.
 
 Статус `~` у F3: привязка по точке контакта, камеры, зоны, участки и импорт разметки готовы
 и покрыты тестами (T22), но детекций к ним пока не приходит — конвейер распознавания в T25.

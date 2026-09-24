@@ -49,6 +49,17 @@ MODELS = [
         path="openclip-vit-b32/open_clip_model.safetensors",
         sha256="ac4f8c4b88af6d963118cbf40ad93176d092abbedfcb752601ae1866352656e6",
     ),
+    # YOLO-World кодирует промпты классов текстовым энкодером OpenAI CLIP ViT-B/32 и без этого
+    # файла качает его при старте. Адрес и sha256 (она же — каталог в адресе) — из пакета clip.
+    Weights(
+        name="OpenAI CLIP ViT-B/32 (текстовый энкодер промптов YOLO-World)",
+        url=(
+            "https://openaipublic.azureedge.net/clip/models/"
+            "40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af/ViT-B-32.pt"
+        ),
+        path="clip/ViT-B-32.pt",
+        sha256="40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af",
+    ),
 ]
 
 
