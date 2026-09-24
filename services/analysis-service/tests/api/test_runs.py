@@ -6,6 +6,7 @@ from sqlalchemy import func, select, update
 from src.clients.plan_client import ObjectNotFound, PlanServiceUnavailable
 from src.clients.site_client import SiteServiceUnavailable
 from src.dal.models import AnalysisRun, Deviation, DeviationRule, ObjectStatus, StageFact
+from src.services.runs import OPEN_END
 
 from tests.factories import load_facts, make_facts
 
@@ -126,6 +127,21 @@ async def test_факты_запрашиваются_с_местной_полу�
     # 21.09.2026 00:00 по Москве.
     assert period_from == datetime(2026, 9, 20, 21, tzinfo=UTC)
     assert period_to == datetime(2026, 10, 20, 12, tzinfo=UTC)
+
+
+async def test_без_as_of_факты_без_верхней_границы_и_момент_по_последней_сессии(client, upstream):
+    # Сигналы site и plan приходят без as_of, а демо-хронология живёт в датах графика — позже
+    # «сейчас». Граница «сейчас» отрезала бы все факты, и прогон закрыл бы все отклонения.
+    upstream.site.facts = _all_days()
+    last_end = max(s.window_end for s in upstream.site.facts.sessions)
+
+    body = (await _run(client)).json()
+
+    (_, _, period_to) = upstream.site.calls[0]
+    assert period_to == OPEN_END
+    assert body["status"] == "DONE"
+    assert body["as_of"] == last_end.isoformat().replace("+00:00", "Z")
+    assert body["stats"]["sessions"] > 0
 
 
 async def test_без_ожидания_прогон_идёт_в_фоне(client, upstream):

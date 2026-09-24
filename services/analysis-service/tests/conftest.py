@@ -123,7 +123,8 @@ class StubPlanClient:
 
 
 class StubSiteClient:
-    """site-service на фикстуре: запоминает запрошенный период."""
+    """site-service на фикстуре: запоминает запрошенный период и, как настоящий, отдаёт
+    только сессии с началом окна в [from, to) — иначе ошибка в периоде была бы не видна."""
 
     def __init__(self) -> None:
         self.facts = None
@@ -134,7 +135,12 @@ class StubSiteClient:
         self.calls.append((object_id, period_from, period_to))
         if self.error is not None:
             raise self.error
-        return self.facts
+        if self.facts is None:
+            return None
+        sessions = tuple(
+            s for s in self.facts.sessions if period_from <= s.window_start < period_to
+        )
+        return self.facts.model_copy(update={"sessions": sessions})
 
 
 @pytest.fixture

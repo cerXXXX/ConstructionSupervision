@@ -35,6 +35,8 @@ from src.dal.repositories.runs import RunRepository
 
 log = get_logger(__name__)
 SERVICE_ROOT = Path(__file__).resolve().parents[2]
+# Конец периода фактов, когда as_of не задан: «без верхней границы», а не порог.
+OPEN_END = datetime(9999, 12, 31, tzinfo=UTC)
 
 
 class RunNotFound(NotFoundError):
@@ -214,7 +216,11 @@ class RunService:
 
     async def _compute_and_save(self, run: AnalysisRun) -> None:
         plan = await self._plan.get_plan(run.object_id)
-        period_to = run.as_of or self._now()
+        # Без as_of верхней границы у фактов нет: момент по умолчанию — конец последней сессии
+        # с фактами (interservice.md, раздел 4), и он бывает позже «сейчас» — демо-хронология
+        # живёт в датах графика. Граница «сейчас» отрезала бы такие факты, и прогон по
+        # сигналу от site или plan закрыл бы все отклонения объекта.
+        period_to = run.as_of or OPEN_END
         facts = await self._site.get_facts(run.object_id, period_start(plan), period_to)
 
         async with self._factory() as session, session.begin():
@@ -223,7 +229,7 @@ class RunService:
             rules = tuple(await rules_repo.all())
 
         # Без фактов «сегодня» — момент запуска (interservice.md, раздел 4).
-        as_of = run.as_of or (None if facts.sessions else period_to)
+        as_of = run.as_of or (None if facts.sessions else self._now())
         result = await run_in_threadpool(
             partial(
                 analyze,
