@@ -11,6 +11,7 @@ import pytest
 from src.core.calendar import (
     CalendarError,
     WorkCalendar,
+    add_months,
     add_working_days,
     check_calendar,
     count_working_days,
@@ -60,6 +61,20 @@ def test_прибавление_учитывает_праздник():
 
 def test_отсчёт_назад_для_обратного_прохода_cpm():
     assert add_working_days(FIVE_DAY, NEXT_MONDAY, -1) == FRIDAY
+
+
+@pytest.mark.parametrize(
+    ("start", "months", "expected"),
+    [
+        (date(2026, 9, 21), 1.0, date(2026, 10, 21)),
+        (date(2026, 10, 21), 1.5, date(2026, 12, 6)),  # 21.11 + половина 30 дней до 21.12
+        (date(2026, 1, 31), 1.0, date(2026, 2, 28)),  # 31 февраля нет — конец месяца
+        (date(2026, 12, 6), 4.7, date(2027, 4, 27)),  # 06.04 + 0,7 × 30 дней до 06.05
+        (date(2026, 9, 21), 0.0, date(2026, 9, 21)),
+    ],
+)
+def test_месяцы_откладываются_по_обычному_календарю(start, months, expected):
+    assert add_months(start, months) == expected
 
 
 def test_подсчёт_рабочих_дней_в_полуинтервале():

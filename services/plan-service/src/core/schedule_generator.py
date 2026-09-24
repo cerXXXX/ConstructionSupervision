@@ -14,6 +14,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from src.core.calendar import (
     WorkCalendar,
+    add_months,
     add_working_days,
     count_working_days,
     next_working_day,
@@ -28,20 +29,17 @@ from src.core.mrr_norms import (
 )
 from src.core.templates import TemplateLink, TemplateStage
 
-# Средняя длина месяца григорианского календаря (365,25 / 12 сут.) — определение, а не норматив:
-# МРР дают сроки в месяцах и не задают, сколько в месяце рабочих дней.
-DAYS_PER_MONTH = 365.25 / 12
-
 
 @dataclass(frozen=True)
 class Period:
-    """Период таблицы норм в календаре объекта."""
+    """Период таблицы норм в календаре объекта: месяцы МРР, отложенные по обычному календарю."""
 
     column: str
     title: str
     months: float
     start: date
-    calendar_days: int
+    # Первый день после периода: с него начинается следующий.
+    end: date
     working_days: int
 
 
@@ -124,10 +122,10 @@ def _periods(
     current = next_working_day(calendar, start)
     for column in norms.periods:
         value = months[column] * shift
-        days = round(value * DAYS_PER_MONTH)
-        working = count_working_days(calendar, current, current + timedelta(days=days))
-        result[column] = Period(column, norms.titles[column], value, current, days, max(working, 1))
-        current += timedelta(days=days)
+        end = add_months(current, value)
+        working = max(count_working_days(calendar, current, end), 1)
+        result[column] = Period(column, norms.titles[column], value, current, end, working)
+        current = end
     return result
 
 
@@ -150,9 +148,9 @@ def _duration(
     period = periods[column]
     days = max(math.floor(stage.share * period.working_days + 0.5), 1)
     return days, (
-        f"{basis}. {period.title.capitalize()} {_num(period.months)} мес. = "
-        f"{period.calendar_days} кал. дн. = {period.working_days} раб. дн. по календарю объекта "
-        f"(периоды подряд от начала, этот — с {period.start:%d.%m.%Y}); доля вехи "
+        f"{basis}. {period.title.capitalize()} {_num(period.months)} мес.: периоды подряд от "
+        f"начала, этот — с {period.start:%d.%m.%Y} по {period.end - timedelta(days=1):%d.%m.%Y}, "
+        f"{period.working_days} раб. дн. по календарю объекта; доля вехи "
         f"{_num(stage.share)} (шаблон) = {days} раб. дн."
     )
 

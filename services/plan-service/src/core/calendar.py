@@ -8,6 +8,8 @@
 завысил бы выработку примерно на четверть.
 """
 
+import math
+from calendar import monthrange
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, time, timedelta
@@ -82,6 +84,26 @@ def add_working_days(calendar: WorkCalendar, start: date, days: int) -> date:
         if calendar.is_working_day(current):
             remaining -= 1
     return current
+
+
+def add_months(start: date, months: float) -> date:
+    """Дата через `months` календарных месяцев: 21.09 + 1 мес. = 21.10.
+
+    Сроки МРР даны в месяцах, поэтому они откладываются по обычному календарю. Число месяца,
+    которого нет в целевом месяце, прижимается к его концу (31.01 + 1 мес. = 28.02). Дробная
+    часть — доля следующего месяца в днях, с округлением половины вверх: 21.10 + 0,5 мес. =
+    21.10 + 16 дн. (между 21.10 и 21.11 — 31 день).
+    """
+    whole = math.floor(months)
+    begin = _shift_months(start, whole)
+    following = _shift_months(start, whole + 1)
+    return begin + timedelta(days=math.floor((months - whole) * (following - begin).days + 0.5))
+
+
+def _shift_months(day: date, months: int) -> date:
+    index = day.year * 12 + day.month - 1 + months
+    year, month = divmod(index, 12)
+    return date(year, month + 1, min(day.day, monthrange(year, month + 1)[1]))
 
 
 def count_working_days(calendar: WorkCalendar, start: date, end: date) -> int:
