@@ -3,7 +3,7 @@
  *
  * Единственное место, где интерфейс знает про конверт ошибки
  * `{"error": {code, message, details, request_id}}` и про ключ доступа.
- * Типы ответов сюда придут из `packages/ts-api-client` (задача D-04);
+ * Типы ответов — из `packages/ts-api-client` (`shared/api/schemas.ts`);
  * дублировать их руками нельзя.
  */
 
@@ -29,6 +29,19 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> 
   const response = await fetch(`${API_BASE}${path}`, {
     headers: { "X-API-Key": API_KEY },
     signal,
+  });
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+  return (await response.json()) as T;
+}
+
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "X-API-Key": API_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

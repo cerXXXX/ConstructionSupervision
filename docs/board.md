@@ -534,7 +534,12 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что в CI, + TS-типы в `packages/ts-api-client`); web видит типы, gateway собирает с ними
       готово, когда: `python scripts/contracts.py` повторно ничего не меняет; `npm run build`;
       образ gateway собирается
-- [ ] `T29b` web: объекты и дашборд
+- [x] `T29b` web: объекты и дашборд — сделано: `features/objects` (объекты plan со статусом,
+      отставанием и числом отклонений из analysis), `features/dashboard` (статус, SPI,
+      уверенность с числами из `facts`, слепые участки, отклонения по серьёзности, вехи по
+      статусам и в риске, последние снимки, кнопка «Пересчитать» на том же `as_of`),
+      `shared/ui` (загрузка / пусто / ошибка с `request_id`), `entities/` (форматтеры).
+      Проверено в стеке на «Демо T19» с 8 снимками lct-raw, собранном вручную
       спец: [apps/web/README.md](../apps/web/README.md) · ждёт: T29a
       что: экраны «Объекты» и «Дашборд»: статус, SPI, уверенность, счётчики, вехи в риске
       готово, когда: `npm run build`; экраны показывают данные после `seed.py` (до T27 — на
@@ -632,6 +637,18 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
   как наивный `TIMESTAMP`, и запись момента с часовым поясом падает (`can't subtract
   offset-naive and offset-aware datetimes`); в analysis это исправлено в T15a, в site — в T23a
   тем же `type_annotation_map` в `Base`. plan сам моменты пока не пишет, поэтому не падает.
+- `services/analysis-service/src/services/runs.py`: без `as_of` прогон запрашивает факты
+  до текущего момента. Демо-хронология датирована графиком (октябрь 2026), поэтому любой
+  сигнал без `as_of` — от site-worker после снимка или правки зон, от plan после правки вехи
+  или правила — считает «на сейчас», видит 0 сессий и закрывает все отклонения как `RESOLVED`
+  (проверено в T29b). Это ломает показ T31 «правило 2 → 1, D2 исчезает»: исчезнут все.
+  Вариант: `as_of` по умолчанию — конец последней сессии с фактами без верхней границы
+  «сейчас», как и сказано в interservice.md §4. Кнопка дашборда обходит это, передавая
+  `as_of` показанного статуса.
+- `services/analysis-service/src/api/schemas/objects.py`: `stages_at_risk` — `list[dict]`,
+  в OpenAPI это объекты без схемы, и web разбирает их вручную (`useDashboard.ts`). Стоит
+  описать элемент моделью (`stage_id`, `name`, `plan_end`, `forecast_end`, `delay_days`) —
+  изменение совместимое.
 - ~~`services/plan-service/src/api/schemas/common.py` дублирует в коде списки `object_type`,
   `construction_phase`, `zone_type` и др. в виде `StrEnum`, что запрещено AGENTS.md §7.~~
   Закрыто в T17: типы строятся из `enums.yaml`.
