@@ -21,6 +21,8 @@ class Enums:
     values: dict[str, tuple[str, ...]]
     # Роль типа зоны: WORK, SERVICE или SAFETY (methodology.md, раздел 2).
     zone_roles: dict[str, str]
+    # Русское название типа — название участка по умолчанию (data-model.md, 2.2).
+    zone_names: dict[str, str]
 
     @property
     def zone_types(self) -> tuple[str, ...]:
@@ -37,10 +39,17 @@ def parse_enums(raw: Any) -> Enums:
     missing = [name for name in REQUIRED_ENUMS if not values.get(name)]
     if missing:
         raise ReferenceDataError(f"enums.yaml: нет перечислений {missing}")
-    roles = raw.get("zone_type_role")
-    if not isinstance(roles, dict):
-        raise ReferenceDataError("enums.yaml: нет словаря zone_type_role")
-    without_role = [z for z in values["zone_type"] if z not in roles]
-    if without_role:
-        raise ReferenceDataError(f"enums.yaml: у типов зон нет роли: {without_role}")
-    return Enums(values, {str(zone): str(role) for zone, role in roles.items()})
+    roles = _zone_dict(raw, "zone_type_role", values["zone_type"], "роли")
+    names = _zone_dict(raw, "zone_type_name", values["zone_type"], "названия")
+    return Enums(values, roles, names)
+
+
+def _zone_dict(raw: dict, key: str, zone_types: tuple[str, ...], what: str) -> dict[str, str]:
+    """Словарь «тип зоны → значение», где значение есть у каждого типа."""
+    items = raw.get(key)
+    if not isinstance(items, dict):
+        raise ReferenceDataError(f"enums.yaml: нет словаря {key}")
+    missing = [z for z in zone_types if not str(items.get(z) or "").strip()]
+    if missing:
+        raise ReferenceDataError(f"enums.yaml: у типов зон нет {what} в {key}: {missing}")
+    return {str(zone): str(value).strip() for zone, value in items.items()}

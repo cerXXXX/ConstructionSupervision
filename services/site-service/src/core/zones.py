@@ -88,6 +88,65 @@ def check_polygon(points: Any) -> tuple[Point2, ...]:
     return tuple(vertices)
 
 
+@dataclass(frozen=True)
+class ZoneDraft:
+    """Зона из файла разметки: тип, название участка и проверенный полигон."""
+
+    zone_type: str
+    name: str
+    polygon: tuple[Point2, ...]
+
+    @property
+    def area(self) -> str:
+        return area_key(self.zone_type, self.name)
+
+
+@dataclass(frozen=True)
+class ZoneSync:
+    """Что сделать с зонами камеры, чтобы они совпали с файлом разметки."""
+
+    create: tuple[ZoneDraft, ...]
+    # (id зоны, новый полигон): подпись та же, контур другой.
+    update: tuple[tuple[UUID, tuple[Point2, ...]], ...]
+    deactivate: tuple[UUID, ...]
+    unchanged: int
+
+
+class ZoneImportError(ValueError):
+    """Разметку камеры нельзя однозначно сопоставить с зонами."""
+
+
+def sync_zones(existing: Sequence[ZoneShape], incoming: Sequence[ZoneDraft]) -> ZoneSync:
+    """Сверка активных зон камеры с файлом по подписи участка `ТИП:Название`.
+
+    Повторный импорт того же файла ничего не меняет: версии зон и `zones_version` не растут,
+    и факты не пересчитываются зря. Зона, которой нет в файле, деактивируется, а не удаляется.
+    """
+    labels = [z.area for z in incoming]
+    repeated = sorted({a for a in labels if labels.count(a) > 1})
+    if repeated:
+        raise ZoneImportError(f"Участок размечен на камере дважды: {', '.join(repeated)}")
+    current = {z.area: z for z in existing}
+    create, update, unchanged = [], [], 0
+    for draft in incoming:
+        zone = current.get(draft.area)
+        if zone is None:
+            create.append(draft)
+        elif _same_polygon(zone.polygon, draft.polygon):
+            unchanged += 1
+        else:
+            update.append((zone.id, draft.polygon))
+    wanted = set(labels)
+    deactivate = tuple(z.id for z in existing if z.area not in wanted)
+    return ZoneSync(tuple(create), tuple(update), deactivate, unchanged)
+
+
+def _same_polygon(a: Sequence[Point2], b: Sequence[Point2]) -> bool:
+    return len(a) == len(b) and all(
+        abs(p[0] - q[0]) < 1e-9 and abs(p[1] - q[1]) < 1e-9 for p, q in zip(a, b, strict=True)
+    )
+
+
 def anchor_point(bbox: Sequence[float]) -> Point2:
     """Середина нижней стороны рамки `[x1, y1, x2, y2]` — точка касания машины с землёй.
 

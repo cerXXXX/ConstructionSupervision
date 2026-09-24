@@ -9,11 +9,14 @@ from src.core.reference import ReferenceDataError, parse_enums
 from src.core.zones import (
     OUTSIDE,
     PolygonError,
+    ZoneDraft,
+    ZoneImportError,
     ZoneShape,
     anchor_point,
     area_key,
     check_polygon,
     place,
+    sync_zones,
 )
 
 from tests.conftest import SERVICE_ROOT
@@ -120,6 +123,38 @@ def test_замыкающая_вершина_убирается():
 def test_бессмысленный_полигон_отклоняется(polygon, message):
     with pytest.raises(PolygonError, match=message):
         check_polygon(polygon)
+
+
+def test_сверка_разметки_по_подписи_участка():
+    moved_pit = ZoneDraft("PIT", "Котлован", check_polygon([[0.1, 0.5], [0.45, 0.5], [0.4, 0.9]]))
+    same_gate = ZoneDraft("ENTRY_GATE", "Въезд", GATE.polygon)
+    storage = ZoneDraft("STORAGE", "Склад", check_polygon([[0.7, 0.1], [0.9, 0.1], [0.9, 0.3]]))
+
+    sync = sync_zones([PIT, GATE, DANGER], [moved_pit, same_gate, storage])
+
+    assert sync.create == (storage,)
+    assert sync.update == ((PIT.id, moved_pit.polygon),)
+    assert sync.deactivate == (DANGER.id,)  # в файле её нет — деактивируется, а не удаляется
+    assert sync.unchanged == 1
+
+
+def test_повторная_сверка_того_же_файла_ничего_не_меняет():
+    drafts = [ZoneDraft(z.zone_type, z.name, z.polygon) for z in ZONES]
+
+    sync = sync_zones(ZONES, drafts)
+
+    assert (sync.create, sync.update, sync.deactivate, sync.unchanged) == ((), (), (), 4)
+
+
+def test_участок_дважды_на_одной_камере_ошибка():
+    twice = [ZoneDraft("PIT", "Котлован", PIT.polygon)] * 2
+
+    with pytest.raises(ZoneImportError, match="PIT:Котлован"):
+        sync_zones([], twice)
+
+
+def test_названия_типов_зон_из_enums():
+    assert parse_enums(RAW_ENUMS).zone_names["PIT"] == "Котлован"
 
 
 def test_роли_типов_зон_из_enums():

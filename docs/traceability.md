@@ -10,7 +10,7 @@
 | :--- | :--- | :--- | :--- | :--- | :---: |
 | F1 | Загрузка снимков, извлечение времени и камеры | `site-service` | `api/routes/images.py`, `core/timestamp.py` | Must | — |
 | F2 | Детекция и классификация техники, mAP50 на своём тесте | `vision-service`, `ml/` | `core/detector.py`, `ml/eval/evaluate.py` | Must | — |
-| F3 | Привязка детекций к зонам по точке контакта | `site-service` | `core/zones.py` | Must | — |
+| F3 | Привязка детекций к зонам по точке контакта | `site-service` | `core/zones.py` | Must | ~ |
 | F4 | Статус техники: работает / простой / вне зоны | `analysis-service` (смещение — `site-service`) | `core/equipment_state.py`, site `core/movement.py` | Must | — |
 | F5 | Контроль видимости участков | `site-service`, `analysis-service` | site `core/aggregation.py`, analysis `core/stage_predicates.py` (D10) | Must | ~ |
 | F6 | Классификация стадии объекта по снимку | `vision-service`, `site-service` | `core/stage_classifier.py`, site `core/aggregation.py` | Must | — |
@@ -23,6 +23,9 @@
 | F13 | % готовности объекта по снимку | `analysis-service` | `core/forecast.py` (только по стадии, без этажей) | Could | — |
 | F14 | Опасные зоны | `analysis-service` | `core/equipment_predicates.py` (D6) | Could | ~ |
 | F15 | REST API + Swagger для интеграции | все | `api/`, `gateway` | Must | — |
+
+Статус `~` у F3: привязка по точке контакта, камеры, зоны, участки и импорт разметки готовы
+и покрыты тестами (T22), но детекций к ним пока не приходит — конвейер распознавания в T25.
 
 Оговорка по F11: зоны в MVP правятся через API и файл `data/seed/cameras.json`. Редактор
 полигонов в интерфейсе — Could; пока его нет, статус F11 — «частично».

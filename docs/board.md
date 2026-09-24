@@ -419,7 +419,11 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: `core/zones.py` (точка контакта, основная зона, опасные поверх, ключ участка,
       проверка полигона; `shapely`); `core/reference.py` — типы зон и их роли из `enums.yaml`
       готово, когда: unit-тесты: граница, перекрытие, опасная зона поверх рабочей, вне зон
-- [ ] `T22b` site: API камер и зон
+- [x] `T22b` site: API камер и зон — сделано: `/cameras`, `/zones` (CRUD, деактивация с
+      ростом версии), `POST /zones/import` (сверка по коду камеры и подписи участка,
+      повтор ничего не меняет, ошибки полигонов с путём), `GET /objects/{id}/areas` с
+      `zones_version`; названия типов зон — `zone_type_name` в `enums.yaml` (отдельный коммит);
+      7 api-тестов, демо-разметка даёт въезд на `cam-north` и `cam-gate`
       спец: [site-service README](../services/site-service/README.md) §3 · ждёт: T22a
       что: CRUD `/cameras` и `/zones`; `POST /zones/import` из формата `data/seed/cameras.json`;
       `zones_version`
