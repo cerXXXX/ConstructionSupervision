@@ -523,11 +523,22 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
 
 ### R3. Интерфейс, отчёт, качество — 27.09
 
-- [ ] `T29` web: типы API, объекты, дашборд
-      спец: [apps/web/README.md](../apps/web/README.md) · ждёт: T16, T19
-      что: `scripts/contracts.py` (снапшоты OpenAPI + TS-типы в `packages/ts-api-client`);
-      экраны «Объекты» и «Дашборд»: статус, SPI, уверенность, счётчики, вехи в риске
-      готово, когда: `npm run build`; экраны показывают данные после `seed.py`
+- [x] `T29a` contracts: снапшоты OpenAPI и TS-типы — сделано: `scripts/contracts.py`
+      (снапшот — `openapi_dump.py` в одноразовом контейнере из образа сервиса, настройки по
+      умолчанию, как в CI; `openapi_dump.py` сам находит `packages/contracts`), типы
+      `openapi-typescript` 7.13 по файлу на сервис в `packages/ts-api-client/src`, алиас
+      `@api` и `shared/api/schemas.ts` в web, gateway копирует типы в сборку; повторный
+      запуск ничего не меняет, `npm run build` и образ gateway собираются
+      спец: [scripts/README.md](../scripts/README.md), [packages/ts-api-client](../packages/ts-api-client/README.md) · ждёт: T16, T19
+      что: `scripts/contracts.py` (снапшоты OpenAPI четырёх сервисов тем же `openapi_dump.py`,
+      что в CI, + TS-типы в `packages/ts-api-client`); web видит типы, gateway собирает с ними
+      готово, когда: `python scripts/contracts.py` повторно ничего не меняет; `npm run build`;
+      образ gateway собирается
+- [ ] `T29b` web: объекты и дашборд
+      спец: [apps/web/README.md](../apps/web/README.md) · ждёт: T29a
+      что: экраны «Объекты» и «Дашборд»: статус, SPI, уверенность, счётчики, вехи в риске
+      готово, когда: `npm run build`; экраны показывают данные после `seed.py` (до T27 — на
+      объекте, собранном вручную в стеке)
 - [ ] `T30` web: лента предупреждений и карточка
       ждёт: T29
       что: лента с фильтрами; карточка: текст, числа из `facts`, правило, снимок с рамками
