@@ -18,7 +18,7 @@ class Settings(BaseServiceSettings):
     contracts_dir: str = "/contracts"
     # Шаблоны вех по типам объектов, путь от каталога сервиса.
     wbs_templates_file: str = "data/wbs_templates.json"
-    # Предел размера файла графика при импорте.
+    # Предел размера загружаемого файла: графика и справочника работ.
     plan_import_max_mb: int = 5
 
     # Сигнал «пересчитай» после правки плана (interservice.md, раздел 4): отправитель
