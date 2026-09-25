@@ -37,9 +37,28 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> 
   return (await response.json()) as T;
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+export function apiPost<T>(path: string, body: unknown): Promise<T> {
+  return sendJson<T>("POST", path, body);
+}
+
+export function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  return sendJson<T>("PATCH", path, body);
+}
+
+/** Удаление: сервисы отвечают `204` без тела, поэтому результата нет. */
+export async function apiDelete(path: string): Promise<void> {
   const response = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
+    method: "DELETE",
+    headers: { "X-API-Key": API_KEY },
+  });
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+}
+
+async function sendJson<T>(method: "POST" | "PATCH", path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method,
     headers: { "X-API-Key": API_KEY, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });

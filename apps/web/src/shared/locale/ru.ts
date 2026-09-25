@@ -3,6 +3,10 @@
  * Строки конкретного экрана пишутся прямо в JSX (apps/web/README.md, §5). Названия значений
  * перечислений повторяют enums.yaml: новое значение без строки здесь покажется как есть.
  */
+import type { SiteSchema } from "@/shared/api/schemas";
+
+export type ZoneType = SiteSchema<"ZoneCreate">["zone_type"];
+
 export const ru = {
   app: {
     title: "СтройКонтроль",
@@ -59,6 +63,33 @@ export const ru = {
     DONE: "завершены",
     LATE: "с опозданием",
     AHEAD: "с опережением",
+  } as Record<string, string>,
+  // enums.yaml: zone_type_name. `satisfies` ловит новый тип зоны в контракте на сборке.
+  zoneType: {
+    PIT: "Котлован",
+    BUILDING_FOOTPRINT: "Пятно застройки",
+    PERIMETER: "Периметр",
+    ENTRY_GATE: "Въезд",
+    STORAGE: "Склад",
+    DANGER: "Опасная зона",
+    ROAD: "Дорога",
+  } satisfies Record<ZoneType, string>,
+  // enums.yaml: zone_type_role — что значит машина на участке этого типа (methodology.md, §6).
+  zoneRole: {
+    PIT: "рабочий: техника здесь работает",
+    BUILDING_FOOTPRINT: "рабочий: техника здесь работает",
+    PERIMETER: "рабочий: техника здесь работает",
+    ROAD: "рабочий: техника здесь работает",
+    ENTRY_GATE: "служебный: стоящая здесь техника простаивает",
+    STORAGE: "служебный: стоящая здесь техника простаивает",
+    DANGER: "опасная зона: техника и люди здесь — нарушение",
+  } satisfies Record<ZoneType, string>,
+  imageStatus: {
+    PENDING: "ждёт распознавания",
+    PROCESSING: "распознаётся",
+    ANALYZED: "распознан",
+    FAILED: "ошибка распознавания",
+    NEEDS_TIME: "нет времени съёмки",
   } as Record<string, string>,
 } as const;
 

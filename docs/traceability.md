@@ -18,7 +18,7 @@
 | F8 | Выявление отклонений D1–D10 с объяснением | `analysis-service` | `core/predicates.py`, `core/explain.py` | Must | ~ |
 | F9 | Прогноз задержки и даты окончания | `analysis-service` | `core/activity.py`, `core/forecast.py` | Must | ~ |
 | F10 | Отчёт план-факт: Гант, загрузка техники, лента, PDF | `analysis-service`, `web` | `report/`, web `features/gantt` | Must | — |
-| F11 | Редактирование графика, правил и зон с пересчётом | `plan-service`, `site-service`, `web` | `api/routes/stages.py`, `api/routes/rules.py`, site `api/routes/zones.py`, web `features/rules-editor` | Should | — |
+| F11 | Редактирование графика, правил и зон с пересчётом | `plan-service`, `site-service`, `web` | `api/routes/stages.py`, `api/routes/rules.py`, site `api/routes/zones.py`, web `features/zones-editor`, `features/rules-editor` | Should | ~ |
 | F12 | LLM-резюме строго по фактам | `analysis-service` | `report/summary.py` | Should | — |
 | F13 | % готовности объекта по снимку | `analysis-service` | `core/forecast.py` (только по стадии, без этажей) | Could | — |
 | F14 | Опасные зоны | `analysis-service` | `core/equipment_predicates.py` (D6) | Could | ~ |
@@ -40,10 +40,12 @@ site-worker сам распознаёт загруженные снимки, п�
 в analysis по контракту «факты за период» (`GET /site/objects/{id}/facts`), и прогон анализа
 в стеке доходит до `DONE`. С T26b правка зон пересчитывает факты окон без повторного
 распознавания (задача `reapply_zones`), `POST /site/images/reanalyze` распознаёт снимки
-заново — серверная часть F11 для зон готова, редактора в интерфейсе ещё нет.
+заново — серверная часть F11 для зон готова. С T33 и T40 зоны и рамки видны на экране камер,
+а полигоны правятся в редакторе зон интерфейса (`/objects/:id/settings/zones`) с пересчётом
+фактов без повторного распознавания.
 
-Оговорка по F11: зоны в MVP правятся через API и файл `data/seed/cameras.json`. Редактор
-полигонов в интерфейсе — Could; пока его нет, статус F11 — «частично».
+Оговорка по F11: зоны правятся в интерфейсе (T40), график и правила — пока через API; редактор
+правил — T31, Гант с правкой дат — T32. До них статус F11 — «частично».
 
 ## Нефункциональные требования (ТЗ, п. 4)
 

@@ -39,15 +39,29 @@ export function DashboardScreen() {
             {formatPlanDate(object.data.plan_start)} · версия плана {object.data.plan_version}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => recompute.mutate()}
-          disabled={recompute.isPending}
-          title="Прогон анализа на тот же момент, что показан ниже"
-          className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent disabled:opacity-50"
-        >
-          {recompute.isPending ? "Пересчитываем…" : "Пересчитать"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to={`/objects/${objectId}/cameras`}
+            className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent"
+          >
+            Камеры
+          </Link>
+          <Link
+            to={`/objects/${objectId}/settings/zones`}
+            className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent"
+          >
+            Зоны
+          </Link>
+          <button
+            type="button"
+            onClick={() => recompute.mutate()}
+            disabled={recompute.isPending}
+            title="Прогон анализа на тот же момент, что показан ниже"
+            className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent disabled:opacity-50"
+          >
+            {recompute.isPending ? "Пересчитываем…" : "Пересчитать"}
+          </button>
+        </div>
       </div>
       {recompute.isError && <ErrorBox error={recompute.error} />}
 
