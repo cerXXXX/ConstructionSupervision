@@ -1,0 +1,16 @@
+{
+  "cameras": [
+    {
+      "code": "cam-torre-h",
+      "name": "Обзорная с башни H",
+      "reference_image": "cam-torre-h/20261019_090500.jpg",
+      "zones": []
+    },
+    {
+      "code": "cam-d3",
+      "name": "Павильон D3",
+      "reference_image": "cam-d3/20261019_090500.jpg",
+      "zones": []
+    }
+  ]
+}

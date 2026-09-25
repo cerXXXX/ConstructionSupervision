@@ -1,13 +1,180 @@
-"""Заготовка: загрузка демо-данных и прогон анализа."""
+"""Демо-данные в поднятый стек и прогон анализа.
 
+    python scripts/seed.py [--force-plan] [--timeout 900]
+
+Шаги: объект из data/seed/object.json (ищется по имени, иначе создаётся) → график из
+data/seed/schedule.xlsx (если у объекта его ещё нет; --force-plan заменяет) → снимки из
+data/seed/images через POST /images/import → камеры и зоны из data/seed/cameras.json →
+ожидание распознавания → POST /analysis/runs?wait=true → сводка отклонений.
+
+Снимки грузятся раньше зон: эталонным кадром камеры становится её первый снимок
+(services/site-service/README.md, раздел 9). Всё повторяемо: объект находится по имени, дубли
+снимков отклоняются по sha256, повторный импорт зон ничего не меняет. Адрес gateway и ключ —
+из .env (GATEWAY_PORT, API_KEY).
+"""
+
+import argparse
+import json
 import sys
+import time
+from collections import Counter
 
-from _common import not_implemented
+import httpx
+from _common import ROOT, load_env, use_utf8_output
 
-WHAT = (
-    "демо-объект, импорт графика data/seed/schedule.xlsx, камеры и зоны из "
-    "data/seed/cameras.json, загрузка снимков, ожидание распознавания, прогон анализа"
-)
+SEED = ROOT / "data" / "seed"
+# Сколько снимков ещё не распознано: пока не ноль, прогон увидел бы неполные окна.
+WAITING_STATUSES = ("PENDING", "PROCESSING")
+POLL_S = 3.0
+
+
+class SeedError(Exception):
+    """Шаг не удался; сообщение — для человека."""
+
+
+def check(resp: httpx.Response, step: str) -> dict:
+    """Тело успешного ответа или понятная ошибка с кодом и сообщением сервиса."""
+    if resp.is_success:
+        return resp.json() if resp.content else {}
+    try:
+        error = resp.json()["error"]
+        detail = f"{error['code']}: {error['message']}"
+    except (ValueError, KeyError, TypeError):
+        detail = resp.text[:300]
+    raise SeedError(f"{step}: HTTP {resp.status_code} — {detail}")
+
+
+def ensure_object(client: httpx.Client) -> dict:
+    """Объект с именем из object.json: найденный или только что созданный."""
+    spec = json.loads((SEED / "object.json").read_text(encoding="utf-8"))
+    page = check(client.get("/plan/objects", params={"limit": 200}), "список объектов")
+    for item in page["items"]:
+        if item["name"] == spec["name"] and item["status"] != "ARCHIVED":
+            print(f"объект     найден {item['id']}")
+            return item
+    created = check(client.post("/plan/objects", json=spec), "создание объекта")
+    print(f"объект     создан {created['id']}")
+    return created
+
+
+def import_plan(client: httpx.Client, obj: dict, force: bool) -> None:
+    """График из XLSX; существующий не трогается без --force-plan."""
+    if obj["plan_version"] > 0 and not force:
+        print(f"график     уже есть (plan_version {obj['plan_version']}), --force-plan заменит")
+        return
+    path = SEED / "schedule.xlsx"
+    with path.open("rb") as file:
+        files = {"file": (path.name, file, "application/octet-stream")}
+        params = {"force": "true"} if force else {}
+        body = check(
+            client.post(f"/plan/objects/{obj['id']}/plan/import", files=files, params=params),
+            "импорт графика",
+        )
+    print(f"график     {body['stages']} вех, plan_version {body['plan_version']}")
+
+
+def import_images(client: httpx.Client, object_id: str) -> None:
+    """Все подпапки data/seed/images: первая подпапка — код камеры."""
+    body = check(
+        client.post("/site/images/import", json={"object_id": object_id, "path": ""}),
+        "загрузка снимков",
+    )
+    reasons = Counter(item["code"] for item in body["rejected"])
+    skipped = ", ".join(f"{code} {n}" for code, n in reasons.items()) or "нет"
+    print(f"снимки     принято {len(body['accepted'])}, отклонено: {skipped}")
+    no_time = [item["file"] for item in body["accepted"] if item["status"] == "NEEDS_TIME"]
+    if no_time:
+        raise SeedError(f"снимки без времени (имя файла не ГГГГММДД_ЧЧММСС): {no_time[:5]}")
+
+
+def import_zones(client: httpx.Client, object_id: str) -> None:
+    """Камеры и зоны из cameras.json; камеры сверяются по коду, зоны — по участку."""
+    spec = json.loads((SEED / "cameras.json").read_text(encoding="utf-8"))
+    body = check(
+        client.post("/site/zones/import", json={"object_id": object_id, **spec}), "импорт зон"
+    )
+    print(
+        f"зоны       камер новых {body['cameras_created']}, обновлено {body['cameras_updated']};"
+        f" зон новых {body['zones_created']}, обновлено {body['zones_updated']};"
+        f" участков {len(body['areas'])}"
+    )
+    if not body["areas"]:
+        print("           зон нет: вся техника окажется вне участков, а вехи — без участков (D10)")
+
+
+def wait_recognition(client: httpx.Client, object_id: str, timeout_s: float) -> None:
+    """Ждать, пока воркер распознает все снимки объекта."""
+    deadline = time.monotonic() + timeout_s
+    while True:
+        left = 0
+        for status in WAITING_STATUSES:
+            page = check(
+                client.get(
+                    "/site/images", params={"object_id": object_id, "status": status, "limit": 1}
+                ),
+                "статус снимков",
+            )
+            left += page["total"]
+        if left == 0:
+            break
+        if time.monotonic() > deadline:
+            raise SeedError(f"за {timeout_s:.0f} с не распознано {left} снимков: site-worker жив?")
+        print(f"распознавание: осталось {left}", end="\r", flush=True)
+        time.sleep(POLL_S)
+    failed = check(
+        client.get("/site/images", params={"object_id": object_id, "status": "FAILED", "limit": 1}),
+        "статус снимков",
+    )["total"]
+    print(f"распознавание готово{' ' * 20}" + (f"; с ошибкой {failed}" if failed else ""))
+
+
+def run_analysis(client: httpx.Client, object_id: str) -> None:
+    """Прогон анализа с ожиданием и сводка отклонений по кодам."""
+    run = check(
+        client.post(
+            "/analysis/runs",
+            params={"wait": "true"},
+            json={"object_id": object_id, "triggered_by": "MANUAL"},
+        ),
+        "прогон анализа",
+    )
+    print(f"прогон     {run.get('status')}, as_of {run.get('as_of')}")
+    page = check(
+        client.get("/analysis/deviations", params={"object_id": object_id, "limit": 200}),
+        "отклонения",
+    )
+    codes = Counter(item["code"] for item in page["items"])
+    summary = ", ".join(f"{code} {n}" for code, n in sorted(codes.items())) or "нет"
+    print(f"отклонения {page['total']}: {summary}")
+
+
+def main() -> int:
+    use_utf8_output()
+    parser = argparse.ArgumentParser(description="Демо-данные и прогон анализа")
+    parser.add_argument("--force-plan", action="store_true", help="заменить график объекта")
+    parser.add_argument("--timeout", type=float, default=900, help="ожидание распознавания, с")
+    args = parser.parse_args()
+
+    env = load_env()
+    base = f"http://localhost:{env.get('GATEWAY_PORT', '8080')}/api/v1"
+    headers = {"X-API-Key": env.get("API_KEY", ""), "X-Actor": "seed.py"}
+    # Прогон с ожиданием держит соединение, пока analysis не закончит (RUN_WAIT_TIMEOUT_S).
+    with httpx.Client(base_url=base, headers=headers, timeout=180) as client:
+        try:
+            obj = ensure_object(client)
+            import_plan(client, obj, args.force_plan)
+            import_images(client, obj["id"])
+            import_zones(client, obj["id"])
+            wait_recognition(client, obj["id"], args.timeout)
+            run_analysis(client, obj["id"])
+        except SeedError as exc:
+            print(f"\nОшибка: {exc}")
+            return 1
+        except httpx.TransportError as exc:
+            print(f"\nСтек недоступен по {base}: {exc}. Поднят ли docker compose?")
+            return 1
+    return 0
+
 
 if __name__ == "__main__":
-    sys.exit(not_implemented("seed.py", "T27", WHAT))
+    sys.exit(main())

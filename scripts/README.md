@@ -12,7 +12,8 @@
 | `openapi_dump.py` | Снимает OpenAPI сервиса импортом приложения, без докера и БД; используется в CI |
 | `fetch_models.py` | Скачивает веса в `data/models/`: `yolov8s-worldv2.pt` и `openclip-vit-b32/open_clip_model.safetensors`; сверяет sha256, повторно не качает. `--force` — скачать заново |
 | `health.py` | Опрашивает `/health/ready` сервисов и `/health` gateway (порт из `GATEWAY_PORT`), печатает сводку; код 1, если кто-то не готов |
-| `seed.py` | Демо-данные: объект → график (импорт `data/seed/schedule.xlsx` или генерация) → камеры и зоны из `data/seed/cameras.json` → загрузка снимков → ожидание распознавания → `POST /analysis/runs?wait=true` |
+| `seed_images.py` | Собирает демо-хронологию снимков `data/seed/images/<камера>/ГГГГММДД_ЧЧММСС.jpg` из датасета Лимы по `data/seed/chronology.json`; `--yes` удаляет папки камер не из хронологии |
+| `seed.py` | Демо-данные: объект из `data/seed/object.json` (находится по имени) → график из `data/seed/schedule.xlsx`, если его ещё нет (`--force-plan` заменяет) → снимки → камеры и зоны из `data/seed/cameras.json` → ожидание распознавания → `POST /analysis/runs?wait=true` → сводка отклонений. Снимки грузятся раньше зон, чтобы эталонным кадром камеры стал её первый снимок |
 | `demo.py` | Проигрывает демо-сценарий по дням с паузами для показа |
 | `e2e.py` | Сквозной сценарий на поднятом стеке: проверяет, что найдены заложенные отклонения и нет лишних |
 | `contracts.py` | Снапшоты OpenAPI всех сервисов (`packages/contracts/openapi/`) и TS-типы (`packages/ts-api-client/src/`). Снапшот снимается `openapi_dump.py` в одноразовом контейнере из образа сервиса, с кодом рабочей копии и настройками по умолчанию, как в CI. Нужны собранные образы (`docker compose build`) и Node.js с npm; повторный запуск без правок ничего не меняет |
