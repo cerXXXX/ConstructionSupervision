@@ -191,10 +191,11 @@ cp ml/runs/world-s-ulima-v3/weights/last.pt data/models/yolov8s-worldv2-ulima-v3
 миксером. Для подсказок он не годится, и это же — первый честный вывод о переносе дообучения
 с одной площадки на другие (метрики — T36).
 
-**Как проверять** (один раз `pip install labelme`, дальше из корня репозитория):
+**Как проверять** (LabelMe — в окружении проекта `.venv`, runbook, раздел 3; из корня
+репозитория):
 
 ```powershell
-labelme ml\datasets\lct-test\review --labels ml\datasets\lct-test\labels.txt --flags проверено
+.venv\Scripts\labelme ml\datasets\lct-test\review --labels ml\datasets\lct-test\labels.txt --flags проверено
 ```
 
 - `D` / `A` — следующий / предыдущий снимок; правки сохраняются сами.

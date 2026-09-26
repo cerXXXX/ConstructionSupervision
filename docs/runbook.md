@@ -7,8 +7,8 @@
 | Что | Версия | Зачем |
 | :--- | :--- | :--- |
 | Docker + Docker Compose | 24+ / v2; на Windows — Docker Desktop с бэкендом WSL2 | Единственный обязательный способ запуска |
-| Python | 3.12 | Скрипты `scripts/*.py`, локальные тесты сервисов |
-| ruff | **0.16.8** (как в `requirements-dev.txt`) | Линт. Другая версия ruff проверяет по другим правилам |
+| Python | 3.12 | Только чтобы создать `.venv` (раздел 3): скрипты, ruff и LabelMe ставятся туда |
+| ruff | **0.16.8** (как в `requirements-dev.txt`), ставится в `.venv` | Линт. Другая версия ruff проверяет по другим правилам |
 | Node.js | 20+ | Локальная разработка фронтенда |
 | GNU Make + bash | любая | Удобные обёртки. На Windows без bash не работают — раздел 3 |
 | Оперативная память | 8 ГБ минимум, 16+ комфортно | CV-сервис + Postgres + MinIO + воркеры |
@@ -40,10 +40,12 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 ## 2. Первый запуск
 
 ```bash
-cp .env.example .env               # при необходимости поменять пароли и ключ API
-python scripts/fetch_models.py     # веса детектора, OpenCLIP и текстового CLIP в data/models
-docker compose up -d --build       # весь стек
-python scripts/seed.py             # демо-объект, график, камеры, зоны, снимки, прогон анализа
+cp .env.example .env                        # при необходимости поменять пароли и ключ API
+py -3.12 -m venv .venv                      # окружение хоста (раздел 3)
+.venv/Scripts/python -m pip install -r tools/requirements.txt
+.venv/Scripts/python scripts/fetch_models.py  # веса детектора, OpenCLIP и текстового CLIP
+docker compose up -d --build                # весь стек
+.venv/Scripts/python scripts/seed.py        # демо-объект, график, камеры, зоны, снимки, анализ
 ```
 
 | Адрес | Что |
@@ -66,23 +68,34 @@ python scripts/seed.py             # демо-объект, график, кам
 | `make restart s=site` | `docker compose restart site-service` | Перезапустить один сервис |
 | `make logs s=analysis f=1` | `docker compose logs -f --tail=200 analysis-service` | Логи сервиса |
 | `make ps` | `docker compose ps` | Состояние контейнеров |
-| `make health` | `python scripts/health.py` | Опросить `/health/ready` всех сервисов |
-| `make seed` | `python scripts/seed.py` | Загрузить демо-данные и прогнать анализ |
-| `make demo` | `python scripts/demo.py` | Сценарий показа: четыре дня объекта с заложенными отклонениями, ссылки на снимки |
+| `make health` | `.venv\Scripts\python scripts/health.py` | Опросить `/health/ready` всех сервисов |
+| `make seed` | `.venv\Scripts\python scripts/seed.py` | Загрузить демо-данные и прогнать анализ |
+| `make demo` | `.venv\Scripts\python scripts/demo.py` | Сценарий показа: четыре дня объекта с заложенными отклонениями, ссылки на снимки |
 | `make reset` | `docker compose down -v` | Полная очистка: тома БД, бакеты MinIO, очередь |
 | `make test s=plan` | `cd services/plan-service; $env:PYTHONPATH='.'; pytest -q; cd ../..` | Тесты одного сервиса |
-| `make lint` | `ruff check --config tools/ruff.toml packages services scripts; ruff format --check --config tools/ruff.toml packages services scripts` | Линт и проверка формата |
-| `make fmt` | `ruff format --config tools/ruff.toml packages services scripts` | Автоформатирование |
-| `make e2e` | `python scripts/e2e.py` | Сквозной сценарий на поднятом стеке |
-| `make contracts` | `python scripts/contracts.py` | Пересобрать снапшоты OpenAPI и TS-клиент |
+| `make lint` | `.venv\Scripts\ruff check --config tools/ruff.toml packages services scripts; .venv\Scripts\ruff format --check --config tools/ruff.toml packages services scripts` | Линт и проверка формата |
+| `make fmt` | `.venv\Scripts\ruff format --config tools/ruff.toml packages services scripts` | Автоформатирование |
+| `make e2e` | `.venv\Scripts\python scripts/e2e.py` | Сквозной сценарий на поднятом стеке |
+| `make contracts` | `.venv\Scripts\python scripts/contracts.py` | Пересобрать снапшоты OpenAPI и TS-клиент |
 | `make migrate s=plan m="…"` | `cd services/plan-service; $env:PYTHONPATH='.'; alembic revision --autogenerate -m "…"` | Создать миграцию Alembic |
-| `make models` | `python scripts/fetch_models.py` | Скачать веса моделей |
+| `make models` | `.venv\Scripts\python scripts/fetch_models.py` | Скачать веса моделей |
 | `make dev` | `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build` | Стек с hot-reload |
-| `make backup` | `python scripts/backup.py` | Дамп баз и зеркало бакетов MinIO |
+| `make backup` | `.venv\Scripts\python scripts/backup.py` | Дамп баз и зеркало бакетов MinIO |
 
-Если локальный ruff другой версии: `python -m pip install ruff==0.16.8`. Если установка из
-сессии агента не видна в терминале пользователя (Windows Store Python хранит пакеты отдельно),
-установку делает человек.
+**Окружение хоста — `.venv` в корне репозитория, глобальный Python не используется.** В нём
+всё, что запускается вне контейнеров: скрипты `scripts/` и `ml/prepare`, ruff той же версии,
+что в CI, LabelMe. Список — `tools/requirements.txt`; сервисы, их тесты, torch и Ultralytics
+живут в образах. Создать или обновить:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install -r tools\requirements.txt
+```
+
+Команды вызывают `.venv\Scripts\python` и `.venv\Scripts\ruff` прямо, без активации: на стенде
+политика PowerShell `AllSigned` не даёт запустить `Activate.ps1`. В Linux и macOS — `.venv/bin/`,
+там можно и `source .venv/bin/activate`. Окружение лежит в каталоге проекта, а не в профиле
+пользователя, поэтому пакеты, поставленные из сессии агента, видны и в терминале человека.
 
 ## 4. Переменные окружения
 

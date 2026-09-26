@@ -59,9 +59,12 @@
 `make` здесь не работает: рецепты Makefile требуют bash. Используй прямые команды.
 
 ```powershell
-# линт (версия ruff — 0.16.8; при другой: python -m pip install ruff==0.16.8)
-ruff check --config tools/ruff.toml packages services scripts
-ruff format --check --config tools/ruff.toml packages services scripts
+# окружение хоста — .venv (runbook, раздел 3); глобальный Python не используется
+py -3.12 -m venv .venv; .venv\Scripts\python -m pip install -r tools\requirements.txt
+
+# линт (ruff 0.16.8 из .venv)
+.venv\Scripts\ruff check --config tools/ruff.toml packages services scripts
+.venv\Scripts\ruff format --check --config tools/ruff.toml packages services scripts
 
 # тесты одного сервиса (unit-тесты core/ работают без Docker)
 cd services/analysis-service; $env:PYTHONPATH='.'; pytest -q; cd ../..
