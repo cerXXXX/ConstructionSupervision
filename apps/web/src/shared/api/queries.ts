@@ -7,12 +7,24 @@ import { queryOptions } from "@tanstack/react-query";
 import { ApiError, apiGet } from "@/shared/api/client";
 import type { AnalysisSchema, PlanSchema, SiteSchema } from "@/shared/api/schemas";
 
+/** Фильтры ленты отклонений; пустой список — без фильтра по этому полю. */
+export type DeviationFilter = {
+  codes: string[];
+  severities: string[];
+  statuses: string[];
+  /** Сутки по Москве, `YYYY-MM-DD`: эпизоды, пересекающиеся с [from, to]. */
+  from: string | null;
+  to: string | null;
+};
+
 export type ObjectRead = PlanSchema<"ObjectRead">;
 export type ObjectStatus = AnalysisSchema<"ObjectStatusRead">;
 export type CameraRead = SiteSchema<"CameraRead">;
 export type ZoneRead = SiteSchema<"ZoneRead">;
 export type ImageRead = SiteSchema<"ImageRead">;
 export type ImageDetail = SiteSchema<"ImageDetail">;
+export type DeviationRead = AnalysisSchema<"DeviationRead">;
+export type ExplainRead = AnalysisSchema<"ExplainRead">;
 
 // Камер и зон у объекта единицы, снимков в демо — десятки: одной страницы в 200 хватает.
 // Больше 200 снимков у камеры — экран покажет последние 200 и скажет об этом.
@@ -76,6 +88,39 @@ export function objectQuery(objectId: string) {
     queryKey: ["plan", "objects", objectId],
     queryFn: ({ signal }) => apiGet<ObjectRead>(`/plan/objects/${objectId}`, signal),
   });
+}
+
+// Москва — UTC+3 без перехода на летнее время: сутки фильтра — от полуночи по Москве.
+const MOSCOW_OFFSET = "+03:00";
+
+/** Лента отклонений объекта; новые сверху (сортировка API по умолчанию — по `last_seen_at`). */
+export function deviationsQuery(objectId: string, filter: DeviationFilter) {
+  const params = new URLSearchParams({ object_id: objectId, limit: String(PAGE) });
+  filter.codes.forEach((c) => params.append("code", c));
+  filter.severities.forEach((s) => params.append("severity", s));
+  filter.statuses.forEach((s) => params.append("status", s));
+  if (filter.from) params.set("from", `${filter.from}T00:00:00${MOSCOW_OFFSET}`);
+  if (filter.to) params.set("to", `${nextDay(filter.to)}T00:00:00${MOSCOW_OFFSET}`);
+  return queryOptions({
+    queryKey: ["analysis", "deviations", objectId, filter],
+    queryFn: ({ signal }) =>
+      apiGet<AnalysisSchema<"Page_DeviationRead_">>(`/analysis/deviations?${params}`, signal),
+  });
+}
+
+/** Полное объяснение: настройка правила, проверенные сессии с фактами участка, снимки. */
+export function explainQuery(deviationId: string) {
+  return queryOptions({
+    queryKey: ["analysis", "explain", deviationId],
+    queryFn: ({ signal }) =>
+      apiGet<ExplainRead>(`/analysis/deviations/${deviationId}/explain`, signal),
+  });
+}
+
+function nextDay(day: string): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 /**

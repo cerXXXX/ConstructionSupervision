@@ -84,6 +84,30 @@ export const ru = {
     STORAGE: "служебный: стоящая здесь техника простаивает",
     DANGER: "опасная зона: техника и люди здесь — нарушение",
   } satisfies Record<ZoneType, string>,
+  // docs/methodology.md, раздел 9: коды отклонений и их короткие названия.
+  deviationCode: {
+    D1: "Нет обязательной техники",
+    D2: "Неполный комплект",
+    D3: "Техника не по этапу",
+    D4: "Простой",
+    D5: "Не та зона",
+    D6: "Опасная зона",
+    D7: "Стадия не совпадает",
+    D8: "Этап затянулся",
+    D9: "Не начат в срок",
+    D10: "Вне контроля ИИ",
+  } as Record<string, string>,
+  deviationStatus: {
+    NEW: "Новое",
+    CONFIRMED: "Подтверждено",
+    REJECTED: "Ложное",
+    RESOLVED: "Закрыто",
+  } as Record<string, string>,
+  visibility: {
+    OK: "виден",
+    PARTIAL: "виден частично",
+    BLIND: "не виден",
+  } as Record<string, string>,
   imageStatus: {
     PENDING: "ждёт распознавания",
     PROCESSING: "распознаётся",

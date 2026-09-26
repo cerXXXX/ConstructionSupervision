@@ -24,6 +24,9 @@ export class ApiError extends Error {
 // запрос проксирует Vite. Абсолютный адрес сервиса в коде — ошибка.
 const API_BASE = "/api/v1";
 const API_KEY = import.meta.env.VITE_API_KEY ?? "dev-key-change-me";
+// Кто правит — для журналов сервисов (вердикт, правка правила). Ролей нет (ADR-0010),
+// поэтому это одно имя на интерфейс. В заголовке — URL-кодировка: кириллица не ASCII.
+const ACTOR = encodeURIComponent(import.meta.env.VITE_ACTOR ?? "оператор");
 
 export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -49,7 +52,7 @@ export function apiPatch<T>(path: string, body: unknown): Promise<T> {
 export async function apiDelete(path: string): Promise<void> {
   const response = await fetch(`${API_BASE}${path}`, {
     method: "DELETE",
-    headers: { "X-API-Key": API_KEY },
+    headers: { "X-API-Key": API_KEY, "X-Actor": ACTOR },
   });
   if (!response.ok) {
     throw await toApiError(response);
@@ -59,7 +62,7 @@ export async function apiDelete(path: string): Promise<void> {
 async function sendJson<T>(method: "POST" | "PATCH", path: string, body: unknown): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: { "X-API-Key": API_KEY, "Content-Type": "application/json" },
+    headers: { "X-API-Key": API_KEY, "X-Actor": ACTOR, "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 

@@ -41,6 +41,12 @@ export function DashboardScreen() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
+            to={`/objects/${objectId}/deviations`}
+            className="rounded bg-ink px-3 py-1.5 text-sm text-white hover:bg-ink/80"
+          >
+            Предупреждения
+          </Link>
+          <Link
             to={`/objects/${objectId}/cameras`}
             className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent"
           >
@@ -73,14 +79,14 @@ export function DashboardScreen() {
           плана; можно запустить и вручную — кнопкой «Пересчитать».
         </Empty>
       )}
-      {status.data && <StatusPanels status={status.data} />}
+      {status.data && <StatusPanels objectId={objectId} status={status.data} />}
 
       <LatestImages objectId={objectId} />
     </section>
   );
 }
 
-function StatusPanels({ status }: { status: ObjectStatus }) {
+function StatusPanels({ objectId, status }: { objectId: string; status: ObjectStatus }) {
   const facts = status.facts as Record<string, unknown>;
   const risk = stagesAtRisk(status.stages_at_risk);
   const total = openDeviations(status.deviations);
@@ -133,11 +139,16 @@ function StatusPanels({ status }: { status: ObjectStatus }) {
         <Tile title={`Открытые отклонения: ${total}`}>
           <div className="mt-1 flex flex-wrap gap-2">
             {SEVERITY_ORDER.map((severity) => (
-              <Badge key={severity} tone={severityTone(severity)}>
-                {label(ru.severity, severity)}: {status.deviations[severity] ?? 0}
-              </Badge>
+              <Link key={severity} to={`/objects/${objectId}/deviations?status=open&severity=${severity}`}>
+                <Badge tone={severityTone(severity)}>
+                  {label(ru.severity, severity)}: {status.deviations[severity] ?? 0}
+                </Badge>
+              </Link>
             ))}
           </div>
+          <Link to={`/objects/${objectId}/deviations`} className="mt-2 inline-block text-sm text-accent underline">
+            Вся лента, включая закрытые
+          </Link>
         </Tile>
         <Tile title={`Вехи: ${status.stages.total ?? 0}`}>
           <ul className="mt-1 text-sm">

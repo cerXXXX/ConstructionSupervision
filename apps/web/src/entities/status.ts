@@ -19,6 +19,17 @@ const SEVERITY_TONE: Record<string, string> = {
   INFO: "bg-stone-200 text-stone-800",
 };
 
+const DEVIATION_STATUS_TONE: Record<string, string> = {
+  NEW: "bg-accent/15 text-ink",
+  CONFIRMED: "bg-red-100 text-red-900",
+  REJECTED: "bg-stone-200 text-stone-700 line-through",
+  RESOLVED: "bg-emerald-50 text-emerald-900",
+};
+
+export function deviationStatusTone(status: string): string {
+  return DEVIATION_STATUS_TONE[status] ?? DEVIATION_STATUS_TONE.RESOLVED!;
+}
+
 export function objectStatusTone(status: string | null | undefined): string {
   return OBJECT_STATUS_TONE[status ?? "UNKNOWN"] ?? OBJECT_STATUS_TONE.UNKNOWN!;
 }

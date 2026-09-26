@@ -21,6 +21,29 @@ const planDate = new Intl.DateTimeFormat("ru-RU", {
   year: "numeric",
 });
 
+const day = new Intl.DateTimeFormat("ru-RU", {
+  timeZone: MOSCOW,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+
+const clock = new Intl.DateTimeFormat("ru-RU", {
+  timeZone: MOSCOW,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** Сутки момента по Москве: «20.10.2026». */
+export function formatDay(iso: string): string {
+  return day.format(new Date(iso));
+}
+
+/** Время момента по Москве: «09:30». */
+export function formatClock(iso: string): string {
+  return clock.format(new Date(iso));
+}
+
 /** Момент (ISO-8601 UTC) по московскому времени: «20.10.2026, 09:30». */
 export function formatMoment(iso: string | null | undefined): string {
   return iso ? dateTime.format(new Date(iso)) : "—";

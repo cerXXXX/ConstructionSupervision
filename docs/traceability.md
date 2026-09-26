@@ -17,7 +17,7 @@
 | F7 | Сопоставление сессии с активными вехами графика | `analysis-service` | `core/plan_on_date.py`, `core/rules.py`, `core/run.py` | Must | ~ |
 | F8 | Выявление отклонений D1–D10 с объяснением | `analysis-service` | `core/predicates.py`, `core/explain.py` | Must | ~ |
 | F9 | Прогноз задержки и даты окончания | `analysis-service` | `core/activity.py`, `core/forecast.py` | Must | ~ |
-| F10 | Отчёт план-факт: Гант, загрузка техники, лента, PDF | `analysis-service`, `web` | `report/`, web `features/gantt` | Must | — |
+| F10 | Отчёт план-факт: Гант, загрузка техники, лента, PDF | `analysis-service`, `web` | `report/`, web `features/gantt`, `features/deviations` | Must | частично |
 | F11 | Редактирование графика, правил и зон с пересчётом | `plan-service`, `site-service`, `web` | `api/routes/stages.py`, `api/routes/rules.py`, site `api/routes/zones.py`, web `features/zones-editor`, `features/rules-editor` | Should | ~ |
 | F12 | LLM-резюме строго по фактам | `analysis-service` | `report/summary.py` | Should | — |
 | F13 | % готовности объекта по снимку | `analysis-service` | `core/forecast.py` (только по стадии, без этажей) | Could | — |
@@ -44,6 +44,10 @@ site-worker сам распознаёт загруженные снимки, п�
 а полигоны правятся в редакторе зон интерфейса (`/objects/:id/settings/zones`) с пересчётом
 фактов без повторного распознавания.
 
+Оговорка по F10: лента предупреждений с карточкой отклонения — числа из `facts`, правило,
+снимок с рамками, проверенные сессии, вердикт оператора — готова (T30,
+`/objects/:id/deviations`). Ганта (T32) и PDF (T34) ещё нет.
+
 Оговорка по F11: зоны правятся в интерфейсе (T40), график и правила — пока через API; редактор
 правил — T31, Гант с правкой дат — T32. До них статус F11 — «частично».
 
@@ -61,19 +65,21 @@ site-worker сам распознаёт загруженные снимки, п�
 
 | Код | Отклонение | Предикат | Статус |
 | :--- | :--- | :--- | :---: |
-| D1 | Нет обязательной техники | `missing_required` | ~ |
-| D2 | Неполный комплект | `incomplete_set` | ~ |
-| D3 | Техника не по этапу | `unexpected_equipment` | ~ |
-| D4 | Простой | `idle_equipment` | ~ |
+| D1 | Нет обязательной техники | `missing_required` | ✓ |
+| D2 | Неполный комплект | `incomplete_set` | ✓ |
+| D3 | Техника не по этапу | `unexpected_equipment` | ✓ |
+| D4 | Простой | `idle_equipment` | ✓ |
 | D5 | Не та зона | `wrong_zone` | ~ |
 | D6 | Опасная зона | `danger_zone` | ~ |
-
-Статус `~` у D1–D10 и F7–F9: методика целиком собрана в `core/run.py` и проверена на
-фикстурах демо-дней (рубеж R1), но сервис её ещё не вызывает (T15).
 | D7 | Стадия не совпадает | `stage_mismatch` | ~ |
 | D8 | Этап затянулся | `stage_overrun` | ~ |
 | D9 | Не начат в срок | `late_start` | ~ |
-| D10 | Участок вне контроля ИИ | `blind_area` | ~ |
+| D10 | Участок вне контроля ИИ | `blind_area` | ✓ |
+
+Статус `✓` у D1–D4 и D10: сервис находит их на демо-данных в свои дни, `python scripts/e2e.py`
+сверяет ленту со сценарием `data/seed/expected.json` (T28), карточка с числами, правилом и
+снимком — на экране предупреждений (T30). Статус `~` у D5–D9: предикаты покрыты unit-тестами
+на фикстурах, но в демо-сценарии их нет.
 
 ## Критерии оценки (ТЗ, п. 8)
 
