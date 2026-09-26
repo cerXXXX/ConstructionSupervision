@@ -24,18 +24,19 @@
 #               датасетов в ml/prepare. Пустой список — сведения ещё не было.
 
 equipment_classes:
-  - {code: excavator,         name_ru: "Экскаватор",                   group: EARTHWORKS, transient: false, prompts: ["excavator", "digger", "backhoe"],             aliases: ["ulima:Excavator"]}
-  - {code: dump_truck,        name_ru: "Самосвал",                     group: TRANSPORT,  transient: true,  prompts: ["dump truck", "tipper truck"],                 aliases: ["ulima:Dump_truck"]}
+  - {code: excavator,         name_ru: "Экскаватор",                   group: EARTHWORKS, transient: false, prompts: ["excavator", "digger", "backhoe"],             aliases: ["ulima:Excavator", "ce:Excavator", "ce:Bucket loader Big"]}
+  - {code: dump_truck,        name_ru: "Самосвал",                     group: TRANSPORT,  transient: true,  prompts: ["dump truck", "tipper truck"],                 aliases: ["ulima:Dump_truck", "ce:Dump truck"]}
   - {code: bulldozer,         name_ru: "Бульдозер",                    group: EARTHWORKS, transient: false, prompts: ["bulldozer", "crawler dozer"],                 aliases: []}
-  - {code: loader,            name_ru: "Погрузчик",                    group: EARTHWORKS, transient: false, prompts: ["wheel loader", "front loader"],               aliases: ["ulima:Skid_steer"]}
+  - {code: loader,            name_ru: "Погрузчик",                    group: EARTHWORKS, transient: false, prompts: ["wheel loader", "front loader"],               aliases: ["ulima:Skid_steer", "ce:Motor grader", "ce:Bucket loader Standart", "ce:Cleaning equipment"]}
   - {code: roller,            name_ru: "Каток",                        group: ROAD,       transient: false, prompts: ["road roller", "compactor roller"],            aliases: []}
   - {code: tower_crane,       name_ru: "Башенный кран",                group: LIFTING,    transient: false, works_in_place: true, prompts: ["tower crane"],                                aliases: ["ulima:Tower_crane"]}
-  - {code: truck_crane,       name_ru: "Автокран",                     group: LIFTING,    transient: false, works_in_place: true, prompts: ["mobile crane", "truck crane"],                aliases: []}
-  - {code: manipulator_crane, name_ru: "Кран-манипулятор",             group: LIFTING,    transient: false, prompts: ["knuckle boom truck", "truck mounted crane"],  aliases: []}
-  - {code: concrete_mixer,    name_ru: "Автобетоносмеситель",          group: CONCRETE,   transient: true,  prompts: ["concrete mixer truck", "cement mixer truck"], aliases: ["ulima:Concrete_mixer_truck"]}
+  - {code: truck_crane,       name_ru: "Автокран",                     group: LIFTING,    transient: false, works_in_place: true, prompts: ["mobile crane", "truck crane"],                aliases: ["ce:Autocran"]}
+  - {code: manipulator_crane, name_ru: "Кран-манипулятор",             group: LIFTING,    transient: false, prompts: ["knuckle boom truck", "truck mounted crane"],  aliases: ["ce:Crane manipulator"]}
+  - {code: concrete_mixer,    name_ru: "Автобетоносмеситель",          group: CONCRETE,   transient: true,  prompts: ["concrete mixer truck", "cement mixer truck"], aliases: ["ulima:Concrete_mixer_truck", "ce:Mixer"]}
   - {code: concrete_pump,     name_ru: "Автобетононасос",              group: CONCRETE,   transient: false, works_in_place: true, prompts: ["concrete pump truck", "boom pump"],           aliases: ["ulima:Truck_crane"]}
   - {code: pile_driver,       name_ru: "Буровая/сваебойная установка", group: EARTHWORKS, transient: false, prompts: ["pile driver", "drilling rig"],                 aliases: []}
-  - {code: truck,             name_ru: "Грузовик",                     group: TRANSPORT,  transient: true,  prompts: ["truck", "lorry"],                             aliases: ["ulima:Truck"]}
+  - {code: truck,             name_ru: "Грузовик",                     group: TRANSPORT,  transient: true,  prompts: ["truck", "lorry"],                             aliases: ["ulima:Truck", "ce:Truck", "ce:Trailer"]}
   - {code: asphalt_paver,     name_ru: "Асфальтоукладчик",             group: ROAD,       transient: false, prompts: ["asphalt paver", "asphalt finisher"],          aliases: []}
   - {code: grader,            name_ru: "Грейдер",                      group: ROAD,       transient: false, prompts: ["motor grader"],                               aliases: []}
   - {code: person,            name_ru: "Человек",                      group: OTHER,      transient: false, prompts: ["person", "construction worker"],              aliases: ["ulima:Person"]}
+  - {code: light_truck,       name_ru: "Малотоннажный грузовик",       group: TRANSPORT,  transient: true,  prompts: ["cargo van", "light truck", "van"],            aliases: ["ce:Gazelle"]}
