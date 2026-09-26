@@ -34,6 +34,8 @@ class LedgerRow:
     last_seen_at: datetime
     # Оператор поставил вердикт: такая строка не удаляется, даже если эпизод пересмотрен.
     has_verdict: bool = False
+    # CONFIRMED / REJECTED; None — вердикта нет или его значение не сохранилось.
+    verdict: str | None = None
 
 
 @dataclass(frozen=True)
@@ -90,8 +92,9 @@ def reconcile(
         if not finding.active and status in OPEN:
             status = RESOLVED
         elif finding.active and status == RESOLVED:
-            # Эпизод снова держится на as_of (например, дозагрузили снимки): открываем.
-            status = NEW
+            # Эпизод снова держится на as_of (например, дозагрузили снимки): открываем. Вердикт
+            # оператора на этот эпизод остаётся в силе: ложное не всплывает заново как новое.
+            status = row.verdict or NEW
         updates.append((row.id, finding, status))
     unmatched = [r for r in existing if r.id not in used]
     start, end = period

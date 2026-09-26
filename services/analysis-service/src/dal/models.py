@@ -96,6 +96,9 @@ class Deviation(Base, TimestampMixin):
     __table_args__ = (
         CheckConstraint(_in("severity", SEVERITIES), name="ck_deviation_severity"),
         CheckConstraint(_in("status", DEVIATION_STATUSES), name="ck_deviation_status"),
+        CheckConstraint(
+            "verdict IS NULL OR verdict IN ('CONFIRMED', 'REJECTED')", name="ck_deviation_verdict"
+        ),
         # Открытое отклонение единственно по ключу «объект + веха + участок + код +
         # класс»: повторный прогон обновляет строку, а не плодит дубли. NULLS NOT
         # DISTINCT обязателен — у D7 нет участка, у D1 нет класса, и без него два
@@ -132,7 +135,9 @@ class Deviation(Base, TimestampMixin):
     rule_ref: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
     evidence: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     status: Mapped[str] = mapped_column(String(16), server_default=text("'NEW'"), index=True)
-    # Вердикт оператора прямо в строке: кто, когда и почему подтвердил или отклонил.
+    # Вердикт оператора прямо в строке: что решил, кто, когда и почему. Вердикт отдельно от
+    # статуса: у закрытого отклонения статус RESOLVED, а вердикт остаётся (методика, 9, п. 3).
+    verdict: Mapped[str | None] = mapped_column(String(16))
     verdict_comment: Mapped[str | None] = mapped_column(Text)
     verdict_by: Mapped[str | None] = mapped_column(String(200))
     verdict_at: Mapped[datetime | None]

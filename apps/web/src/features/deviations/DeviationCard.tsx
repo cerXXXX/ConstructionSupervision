@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
-import { acceptsVerdict, factLines, groupRows, sessionRows } from "@/entities/deviation";
+import { factLines, groupRows, sessionRows } from "@/entities/deviation";
 import { formatMoment } from "@/entities/format";
 import { deviationStatusTone, severityTone } from "@/entities/status";
 import { zoneColor } from "@/entities/zones";
@@ -111,24 +111,20 @@ function Verdict({ deviation }: { deviation: DeviationRead }) {
   const [comment, setComment] = useState(deviation.verdict_comment ?? "");
   const recorded =
     deviation.verdict_at != null
-      ? `${label(ru.deviationStatus, deviation.status)}: ${deviation.verdict_by ?? "оператор"}, ${formatMoment(deviation.verdict_at)}${
+      ? `${label(ru.verdict, deviation.verdict)}: ${deviation.verdict_by ?? "оператор"}, ${formatMoment(deviation.verdict_at)}${
           deviation.verdict_comment ? ` — «${deviation.verdict_comment}»` : ""
         }`
       : null;
 
-  if (!acceptsVerdict(deviation.status)) {
-    return (
-      <p className="rounded bg-ink/5 p-3 text-sm text-muted">
-        {recorded ?? "Вердикт не нужен: условие отклонения уже не выполняется, оно закрыто."}
-        {deviation.status === "REJECTED" &&
-          !recorded &&
-          " Отмечено ложным: пока условие держится, заново не откроется."}
-      </p>
-    );
-  }
   return (
     <div className="space-y-2 rounded bg-ink/5 p-3 text-sm">
-      {recorded && <p className="text-muted">{recorded}</p>}
+      {recorded && <p className="font-medium">{recorded}</p>}
+      {deviation.status === "RESOLVED" && (
+        <p className="text-muted">
+          Отклонение закрыто: условие уже не выполняется. Вердикт останется в истории — «да, это
+          было» или «ложное срабатывание».
+        </p>
+      )}
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}

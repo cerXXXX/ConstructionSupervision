@@ -173,6 +173,9 @@ function Feed({
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge tone={severityTone(item.severity)}>{item.code}</Badge>
                 <Badge tone={deviationStatusTone(item.status)}>{label(ru.deviationStatus, item.status)}</Badge>
+                {item.verdict && item.status === "RESOLVED" && (
+                  <Badge tone={deviationStatusTone(item.verdict)}>{label(ru.verdict, item.verdict)}</Badge>
+                )}
                 <span className="ml-auto text-xs tabular-nums text-muted">
                   {formatClock(item.first_seen_at)}–{formatClock(item.last_seen_at)}
                 </span>

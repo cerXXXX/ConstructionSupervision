@@ -130,8 +130,3 @@ export function sessionRows(sessions: unknown[], area: string | null, names: Nam
     return [{ id: text(session.session_id) ?? String(index), at, visibility, equipment }];
   });
 }
-
-/** Вердикт ставится только открытому отклонению: закрытое и отклонённое API не примет (409). */
-export function acceptsVerdict(status: string): boolean {
-  return status === "NEW" || status === "CONFIRMED";
-}

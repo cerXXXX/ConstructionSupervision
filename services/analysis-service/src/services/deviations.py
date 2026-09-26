@@ -97,20 +97,19 @@ class DeviationService:
     async def verdict(
         self, deviation_id: UUID, status: str, comment: str | None, actor: str | None
     ) -> Deviation:
-        """Подтвердить или пометить ложным. Закрытое отклонение вердикт не принимает.
+        """Подтвердить или пометить ложным — открытое или закрытое (методика, раздел 9, п. 3).
 
-        `REJECTED` прогон не открывает заново, пока условие держится (core/ledger.py).
+        Открытое получает вердикт и в статус; закрытое остаётся `RESOLVED`, вердикт — в поле
+        `verdict`. `REJECTED` прогон не открывает заново, пока условие держится (core/ledger.py).
         """
         if status not in VERDICTS:
             raise InvalidVerdict(
                 "Вердикт — CONFIRMED или REJECTED", status=status, allowed=list(VERDICTS)
             )
         row = await self.get(deviation_id)
-        if row.status == RESOLVED:
-            raise VerdictConflict(
-                "Отклонение закрыто: условие перестало выполняться", deviation_id=str(row.id)
-            )
-        row.status = status
+        if row.status != RESOLVED:
+            row.status = status
+        row.verdict = status
         row.verdict_comment = comment
         row.verdict_by = actor
         row.verdict_at = datetime.now(UTC)

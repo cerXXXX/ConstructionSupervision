@@ -103,6 +103,10 @@ export const ru = {
     REJECTED: "Ложное",
     RESOLVED: "Закрыто",
   } as Record<string, string>,
+  verdict: {
+    CONFIRMED: "Подтверждено оператором",
+    REJECTED: "Ложное срабатывание",
+  } as Record<string, string>,
   visibility: {
     OK: "виден",
     PARTIAL: "виден частично",

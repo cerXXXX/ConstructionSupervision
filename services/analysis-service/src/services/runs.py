@@ -273,6 +273,7 @@ class RunService:
                         first_seen_at=r.first_seen_at,
                         last_seen_at=r.last_seen_at,
                         has_verdict=r.verdict_at is not None,
+                        verdict=r.verdict,
                     )
                     for r in rows
                 ],

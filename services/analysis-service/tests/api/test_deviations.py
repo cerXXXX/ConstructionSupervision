@@ -156,13 +156,33 @@ async def test_подтверждённое_остаётся_подтвержд�
     assert (await _one(client, "D10"))["status"] == "CONFIRMED"
 
 
-async def test_закрытому_отклонению_вердикт_не_ставится(client, analyzed):
+async def test_закрытому_отклонению_вердикт_ставится_статус_остаётся(client, analyzed):
+    """Методика, раздел 9, правило 3: «да, это было» — вердикт, а не новое открытое."""
     d2 = await _one(client, "D2")
+    assert d2["status"] == "RESOLVED"
 
-    response = await client.patch(f"{BASE}/{d2['id']}", json={"status": "CONFIRMED"})
+    response = await client.patch(
+        f"{BASE}/{d2['id']}", json={"status": "CONFIRMED", "comment": "было"}
+    )
 
-    assert response.status_code == 409
-    assert response.json()["error"]["code"] == "VERDICT_CONFLICT"
+    assert response.status_code == 200
+    body = response.json()
+    assert (body["status"], body["verdict"], body["verdict_comment"]) == (
+        "RESOLVED",
+        "CONFIRMED",
+        "было",
+    )
+    await _rerun(client)
+    after = await _one(client, "D2")
+    assert (after["status"], after["verdict"]) == ("RESOLVED", "CONFIRMED")
+
+
+async def test_вердикт_открытого_пишется_и_в_статус_и_в_поле(client, analyzed):
+    d10 = await _one(client, "D10")
+
+    body = (await client.patch(f"{BASE}/{d10['id']}", json={"status": "REJECTED"})).json()
+
+    assert (body["status"], body["verdict"]) == ("REJECTED", "REJECTED")
 
 
 async def test_вердикт_только_подтвердить_или_отклонить(client, analyzed):

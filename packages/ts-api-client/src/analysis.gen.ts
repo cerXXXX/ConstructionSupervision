@@ -296,6 +296,11 @@ export interface components {
             status: string;
             /** Title */
             title: string;
+            /**
+             * Verdict
+             * @description CONFIRMED / REJECTED — вердикт оператора; у закрытого статус остаётся RESOLVED
+             */
+            verdict: string | null;
             /** Verdict At */
             verdict_at: string | null;
             /** Verdict By */

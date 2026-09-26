@@ -31,6 +31,9 @@ class DeviationRead(BaseModel):
     first_seen_at: datetime
     last_seen_at: datetime
     occurrences: int
+    verdict: str | None = Field(
+        description="CONFIRMED / REJECTED — вердикт оператора; у закрытого статус остаётся RESOLVED"
+    )
     verdict_comment: str | None
     verdict_by: str | None
     verdict_at: datetime | None

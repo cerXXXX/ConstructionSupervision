@@ -150,6 +150,18 @@
             "title": "Title",
             "type": "string"
           },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "CONFIRMED / REJECTED — вердикт оператора; у закрытого статус остаётся RESOLVED",
+            "title": "Verdict"
+          },
           "verdict_at": {
             "anyOf": [
               {
@@ -203,6 +215,7 @@
           "first_seen_at",
           "last_seen_at",
           "occurrences",
+          "verdict",
           "verdict_comment",
           "verdict_by",
           "verdict_at"

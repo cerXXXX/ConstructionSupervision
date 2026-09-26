@@ -1,8 +1,10 @@
 """Сверка эпизодов прогона с лентой отклонений (docs/methodology.md, раздел 9)."""
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
+import pytest
 from src.core.ledger import LedgerRow, reconcile
 from src.core.predicates import Finding
 
@@ -102,6 +104,15 @@ def test_строка_с_вердиктом_без_эпизода_не_удал�
     plan = _reconcile([confirmed, rejected, resolved], [])
 
     assert plan.delete == () and plan.resolve == (confirmed.id,)
+
+
+@pytest.mark.parametrize("verdict", ["CONFIRMED", "REJECTED"])
+def test_закрытый_с_вердиктом_снова_держится_открывается_со_своим_вердиктом(verdict):
+    resolved = replace(_row("RESOLVED", start_h=0, end_h=1, verdict=True), verdict=verdict)
+
+    plan = _reconcile([resolved], [_finding(0, 3)])
+
+    assert [(i, s) for i, _, s in plan.update] == [(resolved.id, verdict)]
 
 
 def test_открытая_строка_вне_пересчитанного_периода_закрывается_а_не_удаляется():
