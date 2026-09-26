@@ -3,9 +3,10 @@
  * Строки конкретного экрана пишутся прямо в JSX (apps/web/README.md, §5). Названия значений
  * перечислений повторяют enums.yaml: новое значение без строки здесь покажется как есть.
  */
-import type { SiteSchema } from "@/shared/api/schemas";
+import type { PlanSchema, SiteSchema } from "@/shared/api/schemas";
 
 export type ZoneType = SiteSchema<"ZoneCreate">["zone_type"];
+export type StageLabel = NonNullable<PlanSchema<"Signature">["stage_label"]>;
 
 export const ru = {
   app: {
@@ -103,6 +104,15 @@ export const ru = {
     REJECTED: "Ложное",
     RESOLVED: "Закрыто",
   } as Record<string, string>,
+  // enums.yaml: stage_label — стадия объекта по снимку (methodology.md, раздел 8).
+  stageLabel: {
+    PIT: "Котлован",
+    PILES: "Сваи",
+    FOUNDATION: "Фундамент",
+    FRAME: "Каркас",
+    FACADE: "Фасад",
+    LANDSCAPING: "Благоустройство",
+  } satisfies Record<StageLabel, string>,
   verdict: {
     CONFIRMED: "Подтверждено оператором",
     REJECTED: "Ложное срабатывание",

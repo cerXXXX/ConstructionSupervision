@@ -24,6 +24,8 @@ export type ZoneRead = SiteSchema<"ZoneRead">;
 export type ImageRead = SiteSchema<"ImageRead">;
 export type ImageDetail = SiteSchema<"ImageDetail">;
 export type DeviationRead = AnalysisSchema<"DeviationRead">;
+export type StageRead = PlanSchema<"StageRead">;
+export type RuleRead = PlanSchema<"RuleRead">;
 export type ExplainRead = AnalysisSchema<"ExplainRead">;
 
 // Камер и зон у объекта единицы, снимков в демо — десятки: одной страницы в 200 хватает.
@@ -82,6 +84,15 @@ export const objectsQuery = queryOptions({
   // Объектов на демо-стенде единицы: одной страницы в 200 хватает с запасом.
   queryFn: ({ signal }) => apiGet<PlanSchema<"Page_ObjectRead_">>("/plan/objects?limit=200", signal),
 });
+
+/** Вехи объекта по `seq` вместе с правилами «веха → техника». */
+export function stagesQuery(objectId: string) {
+  return queryOptions({
+    queryKey: ["plan", "stages", objectId],
+    queryFn: ({ signal }) =>
+      apiGet<PlanSchema<"Page_StageRead_">>(`/plan/objects/${objectId}/stages?limit=${PAGE}`, signal),
+  });
+}
 
 export function objectQuery(objectId: string) {
   return queryOptions({
