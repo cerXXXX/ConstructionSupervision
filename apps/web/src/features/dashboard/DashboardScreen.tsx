@@ -47,6 +47,12 @@ export function DashboardScreen() {
             Предупреждения
           </Link>
           <Link
+            to={`/objects/${objectId}/gantt`}
+            className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent"
+          >
+            График
+          </Link>
+          <Link
             to={`/objects/${objectId}/cameras`}
             className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent"
           >
@@ -186,7 +192,11 @@ function StatusPanels({ objectId, status }: { objectId: string; status: ObjectSt
             <tbody>
               {risk.map((stage) => (
                 <tr key={stage.stageId} className="border-b border-ink/10">
-                  <td className="py-2 pr-4">{stage.name}</td>
+                  <td className="py-2 pr-4">
+                    <Link to={`/objects/${objectId}/gantt?stage=${stage.stageId}`} className="underline decoration-ink/30 hover:text-accent">
+                      {stage.name}
+                    </Link>
+                  </td>
                   <td className="py-2 pr-4">{formatPlanDate(stage.planEnd)}</td>
                   <td className="py-2 pr-4">{formatPlanDate(stage.forecastEnd)}</td>
                   <td className="py-2">

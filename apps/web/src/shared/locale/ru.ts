@@ -65,6 +65,21 @@ export const ru = {
     LATE: "с опозданием",
     AHEAD: "с опережением",
   } as Record<string, string>,
+  // Статус одной вехи (карточка вехи на Ганте); выше — те же значения во множественном числе.
+  stageStatus: {
+    NOT_STARTED: "Не начата",
+    IN_PROGRESS: "В работе",
+    DONE: "Завершена",
+    LATE: "С опозданием",
+    AHEAD: "С опережением",
+  } as Record<string, string>,
+  // Типы связей вех (interservice.md, §1): что с чем связано.
+  linkType: {
+    FS: "окончание → начало",
+    SS: "начало → начало",
+    FF: "окончание → окончание",
+    SF: "начало → окончание",
+  } as Record<string, string>,
   // enums.yaml: zone_type_name. `satisfies` ловит новый тип зоны в контракте на сборке.
   zoneType: {
     PIT: "Котлован",

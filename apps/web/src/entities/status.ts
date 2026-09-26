@@ -26,6 +26,31 @@ const DEVIATION_STATUS_TONE: Record<string, string> = {
   RESOLVED: "bg-emerald-50 text-emerald-900",
 };
 
+const STAGE_STATUS_TONE: Record<string, string> = {
+  NOT_STARTED: "bg-stone-200 text-stone-800",
+  IN_PROGRESS: "bg-amber-100 text-amber-900",
+  DONE: "bg-emerald-100 text-emerald-900",
+  LATE: "bg-red-100 text-red-900",
+  AHEAD: "bg-sky-100 text-sky-900",
+};
+
+// Заливка выполненной части полосы на Ганте — тем же цветом, что бейдж статуса вехи.
+const STAGE_STATUS_FILL: Record<string, string> = {
+  NOT_STARTED: "fill-stone-400",
+  IN_PROGRESS: "fill-amber-500",
+  DONE: "fill-emerald-600",
+  LATE: "fill-red-600",
+  AHEAD: "fill-sky-600",
+};
+
+export function stageStatusTone(status: string | null | undefined): string {
+  return STAGE_STATUS_TONE[status ?? "NOT_STARTED"] ?? STAGE_STATUS_TONE.NOT_STARTED!;
+}
+
+export function stageStatusFill(status: string | null | undefined): string {
+  return STAGE_STATUS_FILL[status ?? "NOT_STARTED"] ?? STAGE_STATUS_FILL.NOT_STARTED!;
+}
+
 export function deviationStatusTone(status: string): string {
   return DEVIATION_STATUS_TONE[status] ?? DEVIATION_STATUS_TONE.RESOLVED!;
 }
