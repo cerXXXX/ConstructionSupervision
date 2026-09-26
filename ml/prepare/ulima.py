@@ -27,7 +27,7 @@ ALIAS_PREFIX = "ulima:"
 IMAGE_NAME = re.compile(r"^IMG(\d+)(?:jpg)?$")  # в архиве есть «IMG54jpg.jpg»
 
 
-def class_map(classes: list[dict], labels: list[str]) -> dict[int, int]:
+def class_map(classes: list[dict], labels: list[str], prefix: str = ALIAS_PREFIX) -> dict[int, int]:
     """Номер метки датасета → номер класса, то есть его место в equipment_classes.yaml.
 
     В датасет попадают все классы системы, даже без единой рамки. Номера тогда не зависят от
@@ -35,14 +35,14 @@ def class_map(classes: list[dict], labels: list[str]) -> dict[int, int]:
     мини-погрузчики бульдозером — промпт «bulldozer» в обучении не участвовал.
     """
     by_alias = {
-        alias.removeprefix(ALIAS_PREFIX): c
+        alias.removeprefix(prefix): c
         for c in classes
         for alias in c["aliases"]
-        if alias.startswith(ALIAS_PREFIX)
+        if alias.startswith(prefix)
     }
     missing = [label for label in labels if label not in by_alias]
     if missing:
-        raise SystemExit(f"Нет aliases «{ALIAS_PREFIX}…» для меток: {', '.join(missing)}")
+        raise SystemExit(f"Нет aliases «{prefix}…» для меток: {', '.join(missing)}")
     index = {c["code"]: i for i, c in enumerate(classes)}
     return {i: index[by_alias[label]["code"]] for i, label in enumerate(labels)}
 
