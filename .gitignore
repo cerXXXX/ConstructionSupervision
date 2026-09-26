@@ -37,7 +37,7 @@ ml/runs/
 backup/
 *.sql.gz
 data/seed/images/
-reports/
+/reports/
 
 # --- ОС и редакторы ---
 .DS_Store
