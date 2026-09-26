@@ -8,6 +8,7 @@ import { DashboardScreen } from "@/features/dashboard/DashboardScreen";
 import { DeviationsScreen } from "@/features/deviations/DeviationsScreen";
 import { GanttScreen } from "@/features/gantt/GanttScreen";
 import { ObjectsScreen } from "@/features/objects/ObjectsScreen";
+import { ReportsScreen } from "@/features/reports/ReportsScreen";
 import { RulesEditorScreen } from "@/features/rules-editor/RulesEditorScreen";
 import { ZonesEditorScreen } from "@/features/zones-editor/ZonesEditorScreen";
 
@@ -24,6 +25,7 @@ export function App() {
             <Route path="objects/:objectId/deviations" element={<DeviationsScreen />} />
             <Route path="objects/:objectId/gantt" element={<GanttScreen />} />
             <Route path="objects/:objectId/cameras"element={<CamerasScreen />} />
+            <Route path="objects/:objectId/reports" element={<ReportsScreen />} />
             <Route path="objects/:objectId/settings/zones" element={<ZonesEditorScreen />} />
             <Route path="objects/:objectId/settings/rules" element={<RulesEditorScreen />} />
             <Route path="*" element={<NotFoundScreen />} />

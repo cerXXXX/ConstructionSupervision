@@ -132,6 +132,11 @@ export const ru = {
     CONFIRMED: "Подтверждено оператором",
     REJECTED: "Ложное срабатывание",
   } as Record<string, string>,
+  // Источник резюме отчёта (ADR-0008): показывается всегда, рядом с самим текстом.
+  summarySource: {
+    TEMPLATE: "шаблон по фактам, без нейросети",
+    LLM: "нейросеть, все числа сверены с фактами",
+  } as Record<string, string>,
   visibility: {
     OK: "виден",
     PARTIAL: "виден частично",
