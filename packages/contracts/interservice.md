@@ -63,10 +63,10 @@ analysis решает сам, чистой функцией. Поэтому от
     "work_hours": {"start": "07:00", "end": "23:00"}
   },
   "equipment_classes": [
-    {"code": "excavator", "name_ru": "Экскаватор", "group": "EARTHWORKS", "transient": false},
-    {"code": "dump_truck", "name_ru": "Самосвал", "group": "TRANSPORT", "transient": true},
-    {"code": "concrete_mixer", "name_ru": "Автобетоносмеситель", "group": "CONCRETE", "transient": true},
-    {"code": "concrete_pump", "name_ru": "Автобетононасос", "group": "CONCRETE", "transient": false}
+    {"code": "excavator", "name_ru": "Экскаватор", "group": "EARTHWORKS", "transient": false, "works_in_place": false},
+    {"code": "dump_truck", "name_ru": "Самосвал", "group": "TRANSPORT", "transient": true, "works_in_place": false},
+    {"code": "concrete_mixer", "name_ru": "Автобетоносмеситель", "group": "CONCRETE", "transient": true, "works_in_place": false},
+    {"code": "concrete_pump", "name_ru": "Автобетононасос", "group": "CONCRETE", "transient": false, "works_in_place": true}
   ],
   "stages": [
     {
@@ -163,7 +163,7 @@ analysis решает сам, чистой функцией. Поэтому от
 | `plan_version` | int | Растёт при любой правке вех, правил или календаря объекта. Попадает в прогон |
 | `calendar.timezone` | IANA | Рабочее время `work_hours` задано в местном времени, сессии — в UTC |
 | `calendar.weekend_days` | int[] | Выходные по ISO: понедельник = 1, воскресенье = 7 |
-| `equipment_classes` | object[] | Выдержка из `equipment_classes.yaml`: код, название, группа, транзитность |
+| `equipment_classes` | object[] | Выдержка из `equipment_classes.yaml`: код, название, группа, транзитность, `works_in_place` — работает стоя, неподвижность на рабочем участке не простой |
 | `stages` | object[] | Все вехи объекта, упорядочены по `seq` |
 | `stages[].zone_type` | `zone_type` | Тип участка, где идут работы вехи. Всегда рабочая роль (см. `zone_type_role`) |
 | `stages[].visual_stage` | `stage_label` или `null` | Как объект выглядит на фото во время вехи. Нужен для D7 и ограничения прогресса |
@@ -180,7 +180,8 @@ analysis решает сам, чистой функцией. Поэтому от
 
 Коды классов в правилах берутся только из `equipment_classes`. plan-service проверяет их
 при сохранении правила. Как именно analysis применяет группы, транзитные классы и
-сигнатуру, описано в [docs/methodology.md](../../docs/methodology.md), разделы 5 и 8.
+сигнатуру, описано в [docs/methodology.md](../../docs/methodology.md), разделы 5 и 8; технику,
+работающую стоя, — там же, раздел 6.
 
 ---
 
@@ -402,7 +403,7 @@ vision только измеряет качество кадра. Годен л�
 
 | Файл | Что в нём | Кто читает |
 | :--- | :--- | :--- |
-| [`equipment_classes.yaml`](equipment_classes.yaml) | Классы техники: код, название, группа, транзитность, промпты детектора, метки внешних датасетов | plan (отдаёт в API и проверяет правила), vision (промпты), `ml/` (метки датасетов). analysis получает классы в контракте 1 |
+| [`equipment_classes.yaml`](equipment_classes.yaml) | Классы техники: код, название, группа, транзитность, работа стоя, промпты детектора, метки внешних датасетов | plan (отдаёт в API и проверяет правила), vision (промпты), `ml/` (метки датасетов). analysis получает классы в контракте 1 |
 | [`enums.yaml`](enums.yaml) | Канонические перечисления: роли типов зон, порядок стадий по фото и остальные | все сервисы |
 
 Добавить класс техники — значит добавить запись в `equipment_classes.yaml` и перезапустить
