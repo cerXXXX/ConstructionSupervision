@@ -7,7 +7,9 @@
 - эпизод закончился до `as_of` — открытая строка получает `RESOLVED`;
 - `REJECTED` не открывается заново, пока условие держится непрерывно; новый эпизод
   после перерыва — новое отклонение;
-- открытая строка, которой не нашлось эпизода, — условие пропало: `RESOLVED`.
+- открытая строка, которой не нашлось эпизода, — условие пропало: `RESOLVED`;
+- строка без вердикта целиком в пересчитанном периоде, не пересекающая ни одного эпизода, —
+  эпизод пересмотрен пересчётом фактов или правкой правила, его не было: строка удаляется.
 """
 
 from collections.abc import Iterable, Sequence
@@ -30,16 +32,20 @@ class LedgerRow:
     status: str
     first_seen_at: datetime
     last_seen_at: datetime
+    # Оператор поставил вердикт: такая строка не удаляется, даже если эпизод пересмотрен.
+    has_verdict: bool = False
 
 
 @dataclass(frozen=True)
 class LedgerPlan:
-    """Что сделать с лентой: закрыть, обновить, добавить — именно в этом порядке.
+    """Что сделать с лентой: удалить, закрыть, обновить, добавить — именно в этом порядке.
 
     Порядок важен: открытая строка по ключу единственна (уникальный индекс), поэтому
-    устаревшая открытая строка закрывается раньше, чем по тому же ключу откроется новая.
+    устаревшая открытая строка удаляется или закрывается раньше, чем по тому же ключу
+    откроется новая.
     """
 
+    delete: tuple[UUID, ...]
     resolve: tuple[UUID, ...]
     update: tuple[tuple[UUID, Finding, str], ...]
     insert: tuple[tuple[Finding, str], ...]
@@ -53,8 +59,16 @@ def _overlaps(row: LedgerRow, finding: Finding) -> bool:
     return row.first_seen_at <= finding.last_seen_at and finding.first_seen_at <= row.last_seen_at
 
 
-def reconcile(existing: Sequence[LedgerRow], findings: Iterable[Finding]) -> LedgerPlan:
-    """План изменений ленты объекта по эпизодам прогона."""
+def reconcile(
+    existing: Sequence[LedgerRow],
+    findings: Iterable[Finding],
+    period: tuple[datetime, datetime],
+) -> LedgerPlan:
+    """План изменений ленты объекта по эпизодам прогона.
+
+    `period` — пересчитанный отрезок: от начала запрошенных фактов до `as_of`. Строка вне
+    него не удаляется, даже без эпизода: прогон её время просто не видел.
+    """
     by_key: dict[tuple, list[LedgerRow]] = {}
     for row in existing:
         by_key.setdefault(row.key, []).append(row)
@@ -79,7 +93,16 @@ def reconcile(existing: Sequence[LedgerRow], findings: Iterable[Finding]) -> Led
             # Эпизод снова держится на as_of (например, дозагрузили снимки): открываем.
             status = NEW
         updates.append((row.id, finding, status))
+    unmatched = [r for r in existing if r.id not in used]
+    start, end = period
+    # Пересчёт прошёл по всему времени строки и не нашёл там эпизода: по нынешним фактам и
+    # правилам условия не было (прогон шёл по неполному окну, зоны или правило поправили).
+    delete = tuple(
+        r.id
+        for r in unmatched
+        if not r.has_verdict and start <= r.first_seen_at and r.last_seen_at <= end
+    )
     # Открытая строка без эпизода — условие пропало. Сюда же попадает старая открытая
     # строка, по ключу которой начался новый эпизод: открытая строка по ключу одна.
-    resolve = tuple(r.id for r in existing if r.status in OPEN and r.id not in used)
-    return LedgerPlan(resolve=resolve, update=tuple(updates), insert=tuple(inserts))
+    resolve = tuple(r.id for r in unmatched if r.status in OPEN and r.id not in delete)
+    return LedgerPlan(delete=delete, resolve=resolve, update=tuple(updates), insert=tuple(inserts))

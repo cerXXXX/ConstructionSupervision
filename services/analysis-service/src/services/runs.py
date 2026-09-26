@@ -221,7 +221,8 @@ class RunService:
         # живёт в датах графика. Граница «сейчас» отрезала бы такие факты, и прогон по
         # сигналу от site или plan закрыл бы все отклонения объекта.
         period_to = run.as_of or OPEN_END
-        facts = await self._site.get_facts(run.object_id, period_start(plan), period_to)
+        period_from = period_start(plan)
+        facts = await self._site.get_facts(run.object_id, period_from, period_to)
 
         async with self._factory() as session, session.begin():
             rules_repo = RuleRepository(session)
@@ -255,13 +256,16 @@ class RunService:
                         status=r.status,
                         first_seen_at=r.first_seen_at,
                         last_seen_at=r.last_seen_at,
+                        has_verdict=r.verdict_at is not None,
                     )
                     for r in rows
                 ],
                 [d.finding for d in result.deviations],
+                (period_from, result.as_of),
             )
             texts = {id(d.finding): d for d in result.deviations}
             resolved = set(plan_of_changes.resolve)
+            await results.delete(plan_of_changes.delete)
             await results.resolve(plan_of_changes.resolve)
             for row_id, finding, status in plan_of_changes.update:
                 if by_id[row_id].status in OPEN and status not in OPEN:
@@ -280,6 +284,7 @@ class RunService:
                 "deviations_open": await results.count_open(run.object_id),
                 "deviations_opened": plan_of_changes.opened,
                 "deviations_resolved": len(resolved),
+                "deviations_withdrawn": len(plan_of_changes.delete),
             }
 
     async def _fail(self, run_id: UUID, error: DomainError) -> None:

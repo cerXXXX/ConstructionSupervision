@@ -6,7 +6,8 @@
 data/seed/schedule.xlsx (если у объекта его ещё нет; --force-plan заменяет) → правила вех без
 шаблона из data/seed/rules.json (если у вехи правила нет) → снимки из
 data/seed/images через POST /images/import → камеры и зоны из data/seed/cameras.json →
-ожидание распознавания → POST /analysis/runs?wait=true → сводка отклонений.
+ожидание распознавания → если разметка изменилась, ожидание пересчёта фактов окон по ней →
+POST /analysis/runs?wait=true → сводка отклонений.
 
 Снимки грузятся раньше зон: эталонным кадром камеры становится её первый снимок
 (services/site-service/README.md, раздел 9). Всё повторяемо: объект находится по имени, дубли
@@ -19,6 +20,8 @@ import json
 import sys
 import time
 from collections import Counter
+from datetime import datetime, timedelta
+from email.utils import parsedate_to_datetime
 
 import httpx
 from _common import ROOT, load_env, use_utf8_output
@@ -27,6 +30,7 @@ SEED = ROOT / "data" / "seed"
 # Сколько снимков ещё не распознано: пока не ноль, прогон увидел бы неполные окна.
 WAITING_STATUSES = ("PENDING", "PROCESSING")
 POLL_S = 3.0
+PAGE = 200
 
 
 class SeedError(Exception):
@@ -109,12 +113,15 @@ def import_images(client: httpx.Client, object_id: str) -> None:
         raise SeedError(f"снимки без времени (имя файла не ГГГГММДД_ЧЧММСС): {no_time[:5]}")
 
 
-def import_zones(client: httpx.Client, object_id: str) -> None:
-    """Камеры и зоны из cameras.json; камеры сверяются по коду, зоны — по участку."""
+def import_zones(client: httpx.Client, object_id: str) -> datetime | None:
+    """Камеры и зоны из cameras.json; камеры сверяются по коду, зоны — по участку.
+
+    Возвращает время сервера на момент импорта, если разметка изменилась: site пересчитает
+    факты окон в фоне (`reapply_zones`), и прогон нужно запускать после этого.
+    """
     spec = json.loads((SEED / "cameras.json").read_text(encoding="utf-8"))
-    body = check(
-        client.post("/site/zones/import", json={"object_id": object_id, **spec}), "импорт зон"
-    )
+    resp = client.post("/site/zones/import", json={"object_id": object_id, **spec})
+    body = check(resp, "импорт зон")
     print(
         f"зоны       камер новых {body['cameras_created']}, обновлено {body['cameras_updated']};"
         f" зон новых {body['zones_created']}, обновлено {body['zones_updated']};"
@@ -122,6 +129,47 @@ def import_zones(client: httpx.Client, object_id: str) -> None:
     )
     if not body["areas"]:
         print("           зон нет: вся техника окажется вне участков, а вехи — без участков (D10)")
+    changed = body["zones_created"] + body["zones_updated"] + body["cameras_updated"]
+    return parsedate_to_datetime(resp.headers["date"]) if changed else None
+
+
+def wait_zones_applied(
+    client: httpx.Client, object_id: str, since: datetime, timeout_s: float
+) -> None:
+    """Ждать, пока факты всех окон объекта пересчитаны по новой разметке.
+
+    `reapply_zones` пишет окна одной транзакцией и ставит им `updated_at` — время её
+    начала, а оно позже импорта зон. Заголовок Date округлён до секунды, отсюда запас.
+    """
+    threshold = since - timedelta(seconds=1)
+    deadline = time.monotonic() + timeout_s
+    while True:
+        stale = sum(u < threshold for u in session_updates(client, object_id))
+        if stale == 0:
+            print(f"разметка   факты окон пересчитаны{' ' * 20}")
+            return
+        if time.monotonic() > deadline:
+            raise SeedError(f"за {timeout_s:.0f} с не пересчитано {stale} окон: site-worker жив?")
+        print(f"пересчёт по зонам: осталось окон {stale}", end="\r", flush=True)
+        time.sleep(POLL_S)
+
+
+def session_updates(client: httpx.Client, object_id: str) -> list[datetime]:
+    """Когда факт каждого окна объекта пересчитан последний раз."""
+    updates: list[datetime] = []
+    offset = 0
+    while True:
+        page = check(
+            client.get(
+                "/site/sessions",
+                params={"object_id": object_id, "limit": PAGE, "offset": offset},
+            ),
+            "окна наблюдения",
+        )
+        updates += [datetime.fromisoformat(s["updated_at"]) for s in page["items"]]
+        offset += PAGE
+        if offset >= page["total"]:
+            return updates
 
 
 def wait_recognition(client: httpx.Client, object_id: str, timeout_s: float) -> None:
@@ -187,8 +235,10 @@ def main() -> int:
             import_plan(client, obj, args.force_plan)
             ensure_rules(client, obj["id"])
             import_images(client, obj["id"])
-            import_zones(client, obj["id"])
+            zones_changed_at = import_zones(client, obj["id"])
             wait_recognition(client, obj["id"], args.timeout)
+            if zones_changed_at is not None:
+                wait_zones_applied(client, obj["id"], zones_changed_at, args.timeout)
             run_analysis(client, obj["id"])
         except SeedError as exc:
             print(f"\nОшибка: {exc}")

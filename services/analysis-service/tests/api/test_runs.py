@@ -8,7 +8,7 @@ from src.clients.site_client import SiteServiceUnavailable
 from src.dal.models import AnalysisRun, Deviation, DeviationRule, ObjectStatus, StageFact
 from src.services.runs import OPEN_END
 
-from tests.factories import load_facts, make_facts
+from tests.factories import load_facts, make_equipment, make_facts
 
 BASE = "/api/v1/analysis/runs"
 OBJECT_ID = "0f3a6c1e-8d4b-4c2a-9e71-5b0d2f6a8c31"
@@ -90,6 +90,62 @@ async def test_лента_по_дням_закрывает_прошедшее_и
     assert body["stats"]["deviations_open"] == 2
 
 
+def _trucks_recognized(facts):
+    """Те же окна дня 1, но в котловане распознались самосвалы, которых раньше не было."""
+    sessions = [
+        s.model_copy(
+            update={
+                "areas": tuple(
+                    a.model_copy(
+                        update={
+                            "equipment": (
+                                *a.equipment,
+                                make_equipment("dump_truck", 2, at=s.window_start),
+                            )
+                        }
+                    )
+                    if a.zone_type == "PIT"
+                    else a
+                    for a in s.areas
+                )
+            }
+        )
+        for s in facts.sessions
+    ]
+    return make_facts(*sessions)
+
+
+async def test_пересмотренный_эпизод_удаляется_из_ленты(client, upstream, session_factory):
+    day1 = load_facts("facts_day1.json")
+    upstream.site.facts = day1
+    await _run(client)
+
+    upstream.site.facts = _trucks_recognized(day1)
+    body = (await _run(client)).json()
+
+    # Комплект был полным: D2 по неполным фактам — не история, а ошибка промежуточного вывода.
+    assert all(code != "D2" for code, _ in await _deviations(session_factory))
+    assert body["stats"]["deviations_withdrawn"] == 1
+
+
+async def test_пересмотренный_эпизод_с_вердиктом_остаётся_закрытым(
+    client, upstream, session_factory
+):
+    day1 = load_facts("facts_day1.json")
+    upstream.site.facts = day1
+    await _run(client)
+    async with session_factory() as session, session.begin():
+        await session.execute(
+            update(Deviation).values(status="CONFIRMED", verdict_at=datetime.now(UTC))
+        )
+
+    upstream.site.facts = _trucks_recognized(day1)
+    body = (await _run(client)).json()
+
+    assert await _deviations(session_factory) == [("D2", "RESOLVED")]
+    assert body["stats"]["deviations_withdrawn"] == 0
+
+
 async def test_отклонённое_оператором_не_открывается_заново(client, upstream, session_factory):
     upstream.site.facts = load_facts("facts_day1.json")
     await _run(client)
@@ -114,8 +170,9 @@ async def test_правила_заполняются_из_yaml_и_правки_�
     await _run(client)
 
     assert await _count(session_factory, DeviationRule) == 10
-    # D2 выключен оператором — открытая строка закрылась, а не открылась снова.
-    assert await _deviations(session_factory) == [("D2", "RESOLVED")]
+    # D2 выключен оператором — по нынешним правилам его не было: строка без вердикта
+    # удалилась, а не открылась снова (methodology.md, раздел 9, правило 2).
+    assert await _deviations(session_factory) == []
 
 
 async def test_факты_запрашиваются_с_местной_полуночи_начала_смр(client, upstream):

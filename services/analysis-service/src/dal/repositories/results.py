@@ -58,6 +58,13 @@ class ResultsRepository:
         )
         return int(total or 0)
 
+    async def delete(self, ids: Iterable[UUID]) -> None:
+        """Строки пересмотренных эпизодов: их по нынешним фактам не было."""
+        ids = list(ids)
+        if ids:
+            await self._session.execute(delete(Deviation).where(Deviation.id.in_(ids)))
+            await self._session.flush()
+
     async def resolve(self, ids: Iterable[UUID]) -> None:
         ids = list(ids)
         if ids:

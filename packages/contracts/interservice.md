@@ -375,7 +375,7 @@ vision только измеряет качество кадра. Годен л�
   "status": "DONE",
   "started_at": "2026-10-20T06:41:13Z",
   "finished_at": "2026-10-20T06:41:14Z",
-  "stats": {"sessions": 1, "deviations_open": 1, "deviations_opened": 1, "deviations_resolved": 0},
+  "stats": {"sessions": 1, "deviations_open": 1, "deviations_opened": 1, "deviations_resolved": 0, "deviations_withdrawn": 0},
   "error": null
 }
 ```
