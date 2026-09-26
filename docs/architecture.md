@@ -256,7 +256,8 @@ sequenceDiagram
 2. **Граф вызовов:**
    - `web → gateway → {plan, site, analysis}` — всё, что делает пользователь;
    - `site-worker → vision` — распознавание снимка;
-   - `analysis → plan` (весь план) и `analysis → site` (факты за период, ссылки на снимки);
+   - `analysis → plan` (весь план) и `analysis → site` (факты за период, снимки для отчёта —
+     interservice.md, контракт 6);
    - `analysis → LLM` — только текст резюме;
    - **сигналы** `site-worker → analysis` и `plan → analysis` — `POST /analysis/runs`.
      Сигнал не несёт данных, схлопывается и может потеряться без вреда.
