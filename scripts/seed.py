@@ -49,9 +49,21 @@ def check(resp: httpx.Response, step: str) -> dict:
     raise SeedError(f"{step}: HTTP {resp.status_code} — {detail}")
 
 
-def ensure_object(client: httpx.Client) -> dict:
-    """Объект с именем из object.json: найденный или только что созданный."""
-    spec = json.loads((SEED / "object.json").read_text(encoding="utf-8"))
+def connect(env: dict[str, str], actor: str) -> httpx.Client:
+    """Клиент gateway: адрес и ключ из .env, `actor` — кто правит, для журналов сервисов."""
+    base = f"http://localhost:{env.get('GATEWAY_PORT', '8080')}/api/v1"
+    headers = {"X-API-Key": env.get("API_KEY", ""), "X-Actor": actor}
+    # Прогон с ожиданием держит соединение, пока analysis не закончит (RUN_WAIT_TIMEOUT_S).
+    return httpx.Client(base_url=base, headers=headers, timeout=180)
+
+
+def object_spec() -> dict:
+    """Карточка демо-объекта из object.json."""
+    return json.loads((SEED / "object.json").read_text(encoding="utf-8"))
+
+
+def ensure_object(client: httpx.Client, spec: dict) -> dict:
+    """Объект с именем из `spec`: найденный или только что созданный."""
     page = check(client.get("/plan/objects", params={"limit": 200}), "список объектов")
     for item in page["items"]:
         if item["name"] == spec["name"] and item["status"] != "ARCHIVED":
@@ -198,7 +210,7 @@ def wait_recognition(client: httpx.Client, object_id: str, timeout_s: float) -> 
     print(f"распознавание готово{' ' * 20}" + (f"; с ошибкой {failed}" if failed else ""))
 
 
-def run_analysis(client: httpx.Client, object_id: str) -> None:
+def run_analysis(client: httpx.Client, object_id: str) -> dict:
     """Прогон анализа с ожиданием и сводка отклонений по кодам."""
     run = check(
         client.post(
@@ -209,13 +221,42 @@ def run_analysis(client: httpx.Client, object_id: str) -> None:
         "прогон анализа",
     )
     print(f"прогон     {run.get('status')}, as_of {run.get('as_of')}")
-    page = check(
-        client.get("/analysis/deviations", params={"object_id": object_id, "limit": 200}),
-        "отклонения",
-    )
-    codes = Counter(item["code"] for item in page["items"])
+    items = deviations(client, object_id)
+    codes = Counter(item["code"] for item in items)
     summary = ", ".join(f"{code} {n}" for code, n in sorted(codes.items())) or "нет"
-    print(f"отклонения {page['total']}: {summary}")
+    print(f"отклонения {len(items)}: {summary}")
+    return run
+
+
+def deviations(client: httpx.Client, object_id: str) -> list[dict]:
+    """Вся лента объекта: открытые и закрытые строки."""
+    items: list[dict] = []
+    offset = 0
+    while True:
+        page = check(
+            client.get(
+                "/analysis/deviations",
+                params={"object_id": object_id, "limit": PAGE, "offset": offset},
+            ),
+            "отклонения",
+        )
+        items += page["items"]
+        offset += PAGE
+        if offset >= page["total"]:
+            return items
+
+
+def prepare(client: httpx.Client, spec: dict, *, force_plan: bool, timeout_s: float) -> dict:
+    """Объект со всеми данными из data/seed, распознанный и с фактами по текущей разметке."""
+    obj = ensure_object(client, spec)
+    import_plan(client, obj, force_plan)
+    ensure_rules(client, obj["id"])
+    import_images(client, obj["id"])
+    zones_changed_at = import_zones(client, obj["id"])
+    wait_recognition(client, obj["id"], timeout_s)
+    if zones_changed_at is not None:
+        wait_zones_applied(client, obj["id"], zones_changed_at, timeout_s)
+    return obj
 
 
 def main() -> int:
@@ -225,26 +266,15 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=900, help="ожидание распознавания, с")
     args = parser.parse_args()
 
-    env = load_env()
-    base = f"http://localhost:{env.get('GATEWAY_PORT', '8080')}/api/v1"
-    headers = {"X-API-Key": env.get("API_KEY", ""), "X-Actor": "seed.py"}
-    # Прогон с ожиданием держит соединение, пока analysis не закончит (RUN_WAIT_TIMEOUT_S).
-    with httpx.Client(base_url=base, headers=headers, timeout=180) as client:
+    with connect(load_env(), "seed.py") as client:
         try:
-            obj = ensure_object(client)
-            import_plan(client, obj, args.force_plan)
-            ensure_rules(client, obj["id"])
-            import_images(client, obj["id"])
-            zones_changed_at = import_zones(client, obj["id"])
-            wait_recognition(client, obj["id"], args.timeout)
-            if zones_changed_at is not None:
-                wait_zones_applied(client, obj["id"], zones_changed_at, args.timeout)
+            obj = prepare(client, object_spec(), force_plan=args.force_plan, timeout_s=args.timeout)
             run_analysis(client, obj["id"])
         except SeedError as exc:
             print(f"\nОшибка: {exc}")
             return 1
         except httpx.TransportError as exc:
-            print(f"\nСтек недоступен по {base}: {exc}. Поднят ли docker compose?")
+            print(f"\nСтек недоступен по {client.base_url}: {exc}. Поднят ли docker compose?")
             return 1
     return 0
 

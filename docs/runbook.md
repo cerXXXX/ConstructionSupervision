@@ -68,7 +68,7 @@ python scripts/seed.py             # демо-объект, график, кам
 | `make ps` | `docker compose ps` | Состояние контейнеров |
 | `make health` | `python scripts/health.py` | Опросить `/health/ready` всех сервисов |
 | `make seed` | `python scripts/seed.py` | Загрузить демо-данные и прогнать анализ |
-| `make demo` | `python scripts/demo.py` | Сценарий показа: три «дня» объекта с заложенными отклонениями |
+| `make demo` | `python scripts/demo.py` | Сценарий показа: четыре дня объекта с заложенными отклонениями, ссылки на снимки |
 | `make reset` | `docker compose down -v` | Полная очистка: тома БД, бакеты MinIO, очередь |
 | `make test s=plan` | `cd services/plan-service; $env:PYTHONPATH='.'; pytest -q; cd ../..` | Тесты одного сервиса |
 | `make lint` | `ruff check --config tools/ruff.toml packages services scripts; ruff format --check --config tools/ruff.toml packages services scripts` | Линт и проверка формата |
@@ -196,7 +196,10 @@ LLM внешняя: видеопамять полностью отдана ра�
 
 ## 6. Демо-сценарий (5 минут)
 
-`python scripts/demo.py` готовит данные, дальше — по шагам интерфейса:
+`python scripts/demo.py` готовит данные и ведёт по шагам ниже: по каждому дню печатает, что
+рассказать, найденные отклонения и ссылки на снимки-доказательства в интерфейсе. Ожидаемые
+отклонения — `data/seed/expected.json`; `python scripts/e2e.py` проверяет, что лента с ними
+совпадает.
 
 Объект — монолитный каркас на кадрах датасета Лимы ([data/README.md](../data/README.md)): две
 камеры, обзорная `cam-torre-h` и наземная `cam-d3`, демо-дни 19–22.10.2026. По графику идёт
