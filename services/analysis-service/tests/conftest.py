@@ -130,6 +130,9 @@ class StubSiteClient:
         self.facts = None
         self.error: Exception | None = None
         self.calls: list[tuple] = []
+        # Контракт 6: снимки без времени и карточки снимков; удалённые — 404, как у site.
+        self.images_without_time = 2
+        self.deleted_images: set[str] = set()
 
     async def get_facts(self, object_id, period_from, period_to):
         self.calls.append((object_id, period_from, period_to))
@@ -141,6 +144,71 @@ class StubSiteClient:
             s for s in self.facts.sessions if period_from <= s.window_start < period_to
         )
         return self.facts.model_copy(update={"sessions": sessions})
+
+    async def count_images_without_time(self, object_id):
+        if self.error is not None:
+            raise self.error
+        return self.images_without_time
+
+    async def get_image(self, image_id):
+        from lct_common import UpstreamError
+
+        if self.error is not None:
+            raise self.error
+        if str(image_id) in self.deleted_images:
+            error = UpstreamError("Снимок не найден", upstream_code="IMAGE_NOT_FOUND")
+            error.http_status = 404
+            raise error
+        return {
+            "id": str(image_id),
+            "url": f"http://minio:9000/images/{image_id}.jpg",
+            "captured_at": "2026-10-20T09:00:00Z",
+            "width": 64,
+            "height": 48,
+            "detections": [
+                {"id": "d-1", "equipment_class": "excavator", "bbox": [0.1, 0.2, 0.5, 0.7]}
+            ],
+        }
+
+    async def download(self, url):
+        import io
+
+        from PIL import Image
+
+        buffer = io.BytesIO()
+        Image.new("RGB", (64, 48), (120, 110, 90)).save(buffer, format="JPEG")
+        return buffer.getvalue()
+
+
+class StubStorage:
+    """Бакет `reports` в памяти: ключ → (байты, время записи)."""
+
+    def __init__(self) -> None:
+        self.files: dict[str, tuple[bytes, object]] = {}
+
+    async def ensure_bucket(self) -> None:
+        return None
+
+    async def put(self, key, content, content_type):
+        from datetime import UTC, datetime
+
+        self.files[key] = (content, datetime.now(UTC))
+
+    async def list_files(self, prefix):
+        from src.clients.storage import StoredFile
+
+        return [
+            StoredFile(key=k, size=len(c), modified_at=t)
+            for k, (c, t) in self.files.items()
+            if k.startswith(prefix)
+        ]
+
+    async def stat(self, key):
+        found = [f for f in await self.list_files(key) if f.key == key]
+        return found[0] if found else None
+
+    async def presigned_url(self, key):
+        return f"http://localhost:9000/reports/{key}?X-Amz-Signature=stub"
 
 
 @pytest.fixture
@@ -158,7 +226,7 @@ def upstream():
     """Заглушки plan и site: внешние сервисы в тестах не вызываются (AGENTS.md, раздел 10)."""
     from types import SimpleNamespace
 
-    return SimpleNamespace(plan=StubPlanClient(), site=StubSiteClient())
+    return SimpleNamespace(plan=StubPlanClient(), site=StubSiteClient(), storage=StubStorage())
 
 
 @pytest.fixture
@@ -166,23 +234,35 @@ async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
     """HTTP-клиент поверх приложения с тестовой базой, заглушками и рабочим ключом."""
     from httpx import ASGITransport, AsyncClient
     from lct_common.db import session_dependency
-    from src.api.deps import get_run_service, get_session, get_site_client
+    from src.api.deps import (
+        SessionDep,
+        get_report_service,
+        get_run_service,
+        get_session,
+        get_site_client,
+    )
     from src.config import settings
     from src.main import app
-    from src.services import runs
+    from src.services import reports, runs
+    from src.services.reports import ReportService
     from src.services.runs import RunService
 
     async def _session_override() -> AsyncIterator:
         async for session in session_dependency(session_factory):
             yield session
 
+    def _report_service(session: SessionDep) -> ReportService:
+        return ReportService(session, upstream.plan, upstream.site, upstream.storage)
+
     monkeypatch.setattr(settings, "contracts_dir", str(CONTRACTS_DIR))
     runs.enums.cache_clear()
+    reports.labels.cache_clear()
     app.dependency_overrides[get_session] = _session_override
     app.dependency_overrides[get_site_client] = lambda: upstream.site
     app.dependency_overrides[get_run_service] = lambda: RunService(
         session_factory, upstream.plan, upstream.site
     )
+    app.dependency_overrides[get_report_service] = _report_service
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",

@@ -52,9 +52,9 @@ flowchart LR
 | `PATCH` | `/deviations/{id}` | Вердикт оператора: `{status: CONFIRMED / REJECTED, comment}`, кто — из `X-Actor` |
 | `GET` | `/deviation-rules` | Настройки D1–D10 (страница, по номеру кода) |
 | `GET` `PATCH` | `/deviation-rules/{code}` | Пороги, серьёзность и тексты правила без правки кода; `params` сливаются по ключам, `null` удаляет ключ; `X-Actor` — в журнал |
-| `POST` | `/reports` | Сформировать PDF-отчёт: `{object_id, period_from, period_to}` |
-| `GET` | `/reports` | Список отчётов объекта |
-| `GET` | `/reports/{key}` | Presigned-ссылка на готовый файл |
+| `POST` | `/reports` | Сформировать PDF-отчёт: `{object_id, period_from?, period_to?}` — местные дни включительно; по умолчанию `REPORT_DEFAULT_DAYS` дней по день момента анализа. `201` с ключом, ссылкой, источником резюме и числом вставленных и пропущенных снимков |
+| `GET` | `/reports?object_id=` | Отчёты объекта, новые сверху, со ссылками (страница) |
+| `GET` | `/reports/{key}` | Presigned-ссылка на готовый файл; `key` — `{object_id}/{дата}-{начало}_{конец}.pdf` |
 | `POST` | `/summary` | Текстовое резюме по объекту (LLM или шаблон) без формирования файла |
 
 ### Пример: статус объекта
@@ -92,6 +92,13 @@ flowchart LR
 серьёзность, `min_sessions < 1`, доля вне 0…1, шаблон не разбирается или с неизвестным форматом).
 Поля шаблона с `facts` заранее не сверяются: их знает только предикат, и промах всплывёт ошибкой
 прогона `ANALYSIS_INPUT_INVALID`.
+
+Отчёты: `OBJECT_NOT_ANALYZED` (404 — выводов ещё нет, оформлять нечего), `OBJECT_NOT_FOUND` и
+`PLAN_SERVICE_UNAVAILABLE` (без плана нет названий и дат вех), `VALIDATION_FAILED` (400 — начало
+периода позже конца), `NO_DATA_FOR_PERIOD` (422 — site-service ответил, и за период нет ни одной
+сессии наблюдения), `RENDER_FAILED` (500 — вёрстка PDF упала, подробности в логе),
+`REPORT_NOT_FOUND` (404), `STORAGE_UNAVAILABLE` (503 — MinIO недоступен). Недоступный
+site-service и пропавшие снимки ошибкой не считаются: отчёт выходит, «Ограничения» называют пробел.
 
 Лента: `DEVIATION_NOT_FOUND` (404), `VALIDATION_FAILED` (400 — значение фильтра не из
 `enums.yaml`, `verdict` не `CONFIRMED` / `REJECTED` или сортировка по неподдерживаемому полю), `INVALID_VERDICT` (400 — вердикт не
@@ -202,6 +209,21 @@ POST /runs {object_id, triggered_by, as_of?}
 Шаблонное резюме ссылается на отклонения первыми восемью знаками ID и не содержит чисел,
 которых нет в остальном отчёте (unit-тест).
 
+**Формирование** (`services/reports.py`, синхронно, на демо-объекте ~2 с и ~1 МБ):
+1. срезы последнего прогона и отклонения, пересекающиеся с периодом, — из своей базы;
+2. план — у plan-service; факты периода и число снимков без времени — у site-service;
+3. снимки-доказательства по контракту 6 (interservice.md): карточка снимка с рамками и файл по
+   внутренней ссылке; `report/images.py` поворачивает кадр по EXIF, как vision, ужимает до
+   `REPORT_IMAGE_MAX_PX` и встраивает data URI — отдельные «кадры с рамками» не хранятся;
+4. контекст, резюме и HTML → PDF (`report/pdf.py`, WeasyPrint) в пуле потоков;
+5. файл — в бакет `reports` по ключу `{object_id}/{местная дата формирования}-{начало}_{конец}.pdf`.
+   Повтор того же периода в тот же день заменяет файл. Списка в базе нет: список отчётов —
+   содержимое бакета, чужие файлы в нём пропускаются.
+
+WeasyPrint в образе требует Pango и HarfBuzz, кириллицу даёт шрифт DejaVu (`Dockerfile`). Без
+MinIO сервис стартует и считает анализ; `/health/ready` показывает `minio: fail` как
+деградацию, а не отказ.
+
 **Правила LLM** ([ADR-0008](../../docs/decisions/0008-llm-narrative-only.md)):
 1. В промпт попадает **только** JSON-контекст: статус, вехи с SPI и прогнозом, отклонения с ID и
    `facts`. Никаких свободных данных и изображений.
@@ -248,13 +270,18 @@ POST /runs {object_id, triggered_by, as_of?}
 | `CONFIDENCE_HIGH_DAYS` | `5` | Дней наблюдений для уверенности `HIGH` |
 | `CONFIDENCE_HIGH_VISIBLE` / `CONFIDENCE_MEDIUM_VISIBLE` | `0.8` / `0.5` | Доля видимых сессий для `HIGH` / `MEDIUM` |
 | `UNKNOWN_BLIND_SHARE` | `0.5` | Больше этой доли слепых сессий — статус объекта `UNKNOWN` |
-| `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_BUCKET_REPORTS` | см. runbook | Хранилище отчётов |
+| `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_BUCKET_REPORTS` | `http://minio:9000`, `http://localhost:9000`, `reports` | Хранилище отчётов; ссылка для браузера подписывается на публичный адрес |
+| `S3_ACCESS_KEY`, `S3_SECRET_KEY` | `minioadmin` / — | Ключи MinIO (в стенде — из `.env`) |
+| `S3_PRESIGN_TTL_S` | `3600` | Срок жизни ссылки на отчёт |
+| `REPORT_LABELS_FILE` | `data/report_labels.yaml` | Русские названия значений перечислений в отчёте |
+| `REPORT_DEFAULT_DAYS` | `7` | Период отчёта по умолчанию, местных дней по день момента анализа |
+| `REPORT_IMAGE_MAX_PX` | `1280` | Длинная сторона снимка в PDF: оригиналы по 1–2 МБ раздули бы файл |
 | `LLM_ENABLED` | `true` | `false` → только шаблонные резюме |
 | `LLM_PROVIDER` | `openai_compatible` | По умолчанию внешний API; `ollama` — закрытый контур |
 | `LLM_BASE_URL`, `LLM_MODEL` | — | Адрес и модель провайдера |
 | `LLM_API_KEY` | — | **Настоящий секрет.** Только в `.env`, никогда в git и в скриншотах |
 | `LLM_TIMEOUT_S` | `30` | По истечении — шаблон |
-| `REPORT_MAX_EVIDENCE_IMAGES` | `12` | Ограничение размера PDF |
+| `REPORT_MAX_EVIDENCE_IMAGES` | `12` | Снимков-доказательств в отчёте не больше этого — ограничение размера PDF |
 
 Пороги D1–D10 живут в таблице `deviation_rule` и правятся через API и интерфейс.
 

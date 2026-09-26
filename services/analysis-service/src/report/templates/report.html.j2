@@ -7,8 +7,8 @@
 <title>Отчёт план-факт — {{ title.object }}</title>
 <style>
   @page { size: A4; margin: 14mm 12mm 16mm 12mm;
-    @bottom-right { content: "стр. " counter(page) " из " counter(pages); font-size: 8pt; color: #5e6763; }
-    @bottom-left { content: "СтройКонтроль · {{ title.object | replace('"', '') }}"; font-size: 8pt; color: #5e6763; } }
+    @bottom-right { content: "стр. " counter(page) " из " counter(pages); font-family: "DejaVu Sans", sans-serif; font-size: 8pt; color: #5e6763; }
+    @bottom-left { content: "СтройКонтроль · {{ title.object | replace('"', '') }}"; font-family: "DejaVu Sans", sans-serif; font-size: 8pt; color: #5e6763; } }
   body { font-family: "DejaVu Sans", sans-serif; font-size: 9pt; color: #15181a; line-height: 1.35; }
   h1 { font-size: 16pt; margin: 0 0 4pt; }
   h2 { font-size: 12pt; margin: 14pt 0 6pt; border-bottom: 1px solid #d6d3d1; padding-bottom: 2pt; }
@@ -126,8 +126,14 @@
             fill="none" stroke="{{ '#dc2626' if b.highlighted else '#fbbf24' }}"
             stroke-width="{{ stroke * (2 if b.highlighted else 1) }}"{% if not b.highlighted %} stroke-dasharray="{{ stroke * 4 }} {{ stroke * 3 }}"{% endif %}/>
       {% if b.highlighted %}
-      <text x="{{ b.bbox[0] * e.image.width }}" y="{{ b.bbox[1] * e.image.height - stroke * 3 }}"
-            font-size="{{ stroke * 12 }}" font-family="DejaVu Sans" fill="#dc2626">{{ b.label }}</text>
+      {#- Подпись у правой рамки прижата к её правому краю, у верхней — уходит под рамку:
+          иначе название машины у края кадра обрезается. -#}
+      {% set right = b.bbox[0] > 0.5 %}
+      {% set below = b.bbox[1] < 0.08 %}
+      <text x="{{ (b.bbox[2] if right else b.bbox[0]) * e.image.width }}"
+            y="{{ b.bbox[3] * e.image.height + stroke * 8 if below else b.bbox[1] * e.image.height - stroke * 2 }}"
+            text-anchor="{{ 'end' if right else 'start' }}"
+            font-size="{{ stroke * 6 }}" font-family="DejaVu Sans" font-weight="bold" fill="#dc2626">{{ b.label }}</text>
       {% endif %}
       {% endfor %}
     </svg>
@@ -135,8 +141,10 @@
     <div class="missing">Снимок {{ e.image.image_id | string | truncate(8, True, '') }} не вставлен: {{ e.image.problem }}.</div>
     {% endif %}
     <figcaption><b>[{{ e.deviation.id }}] {{ e.deviation.code }} · {{ e.deviation.title }}</b><br>
-    Снимок {{ e.captured_at }} · {{ e.deviation.area }} · красная рамка — техника, на которой стоит вывод;
-    жёлтый пунктир — остальные рамки кадра.</figcaption>
+    Снимок {{ e.captured_at }} · {{ e.deviation.area }} ·
+    {% if e.image.boxes | selectattr('highlighted') | list %}красная рамка — техника, на которой стоит вывод;
+    жёлтый пунктир — остальные рамки кадра.{% else %}вывод о том, чего на участке нет: выделять нечего;
+    жёлтый пунктир — распознанная техника кадра.{% endif %}</figcaption>
   </figure>
   {% else %}
   <p>Снимков-доказательств нет: за период нет отклонений со снимками.</p>

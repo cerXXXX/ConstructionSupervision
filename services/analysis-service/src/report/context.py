@@ -224,8 +224,8 @@ def limitations(inp: ReportInput, deviations: Sequence[DeviationSnapshot]) -> li
     by_plan = [f for f in inp.stages if f.basis == "PLAN"]
     if by_plan:
         out.append(
-            f"Вех, прогресс которых взят по плану, а не по наблюдениям: {len(by_plan)} — их "
-            "участки не были видны; прогноз по ним не проверен снимками."
+            f"Вех, прогресс которых взят по плану, а не по наблюдениям: {len(by_plan)} — они "
+            "прошли до начала наблюдений или их участки не были видны; снимками они не проверены."
         )
 
     if inp.images_without_time is None:

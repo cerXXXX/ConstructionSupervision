@@ -48,5 +48,20 @@ class Settings(BaseServiceSettings):
     confidence_medium_visible: float = 0.5
     unknown_blind_share: float = 0.5
 
+    # Отчёты (README, раздел 5): бакет в MinIO; ссылка для браузера — на публичный адрес.
+    s3_endpoint: str = "http://minio:9000"
+    s3_public_endpoint: str = "http://localhost:9000"
+    s3_access_key: str = "minioadmin"
+    s3_secret_key: str = "minioadmin"
+    s3_bucket_reports: str = "reports"
+    s3_presign_ttl_s: int = 3600
+    report_labels_file: str = "data/report_labels.yaml"
+    # Снимков-доказательств в отчёте не больше этого, а длинная сторона снимка ужимается
+    # до REPORT_IMAGE_MAX_PX: оригиналы камер по 1–2 МБ раздули бы PDF до десятков мегабайт.
+    report_max_evidence_images: int = 12
+    report_image_max_px: int = 1280
+    # Период по умолчанию: столько местных дней, заканчивая днём момента анализа.
+    report_default_days: int = 7
+
 
 settings = Settings()

@@ -163,6 +163,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      # Бакет `reports` для PDF-отчётов (README analysis-service, раздел 5).
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health/ready')"]
       interval: 10s

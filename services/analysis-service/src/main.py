@@ -22,6 +22,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.api.routes import api_router
 from src.clients.plan_client import PlanClient
 from src.clients.site_client import SiteClient
+from src.clients.storage import ReportStorage, StorageUnavailable
 from src.config import settings
 from src.dal.repositories.rules import RuleRepository
 from src.services.runs import default_rules
@@ -55,13 +56,26 @@ async def _seed_rules(factory) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ресурсы, живущие столько же, сколько процесс: пул БД и клиенты plan и site."""
+    """Ресурсы, живущие столько же, сколько процесс: пул БД, клиенты plan и site, хранилище."""
     engine = create_engine(settings.analysis_db_dsn, echo=settings.db_echo)
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
     app.state.plan_client = _client(PlanClient, settings.plan_url, "plan-service")
     app.state.site_client = _client(SiteClient, settings.site_url, "site-service")
+    app.state.report_storage = ReportStorage(
+        endpoint=settings.s3_endpoint,
+        public_endpoint=settings.s3_public_endpoint,
+        access_key=settings.s3_access_key,
+        secret_key=settings.s3_secret_key,
+        bucket=settings.s3_bucket_reports,
+        presign_ttl_s=settings.s3_presign_ttl_s,
+    )
     await _seed_rules(app.state.session_factory)
+    try:
+        await app.state.report_storage.ensure_bucket()
+    except StorageUnavailable:
+        # Без MinIO не работают только отчёты: сверка идёт, а /health/ready покажет minio: fail.
+        log.warning("storage.unavailable_at_start", endpoint=settings.s3_endpoint)
 
     log.info("service.started", version=settings.version, env=settings.env)
     yield
@@ -93,7 +107,12 @@ app.include_router(
     make_health_router(
         settings.service_name,
         settings.version,
-        checks=[HealthCheck("db", lambda: make_db_check(app.state.engine)())],
+        checks=[
+            HealthCheck("db", lambda: make_db_check(app.state.engine)()),
+            # Хранилище нужно только отчётам: без него сервис деградирует, а не отказывает.
+            # Проверка заодно заводит бакет, если MinIO поднялся позже сервиса.
+            HealthCheck("minio", lambda: app.state.report_storage.ensure_bucket(), required=False),
+        ],
     )
 )
 app.include_router(api_router)

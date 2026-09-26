@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.clients.site_client import SiteClient
 from src.config import settings
 from src.services.deviations import DeviationService
+from src.services.reports import ReportService
 from src.services.runs import RunService
 
 require_api_key = make_api_key_dependency(settings.api_key)
@@ -57,3 +58,11 @@ def get_run_service(request: Request) -> RunService:
 
 
 RunServiceDep = Annotated[RunService, Depends(get_run_service)]
+
+
+def get_report_service(request: Request, session: SessionDep) -> ReportService:
+    state = request.app.state
+    return ReportService(session, state.plan_client, state.site_client, state.report_storage)
+
+
+ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]

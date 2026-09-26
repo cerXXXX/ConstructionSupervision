@@ -35,6 +35,21 @@ class DeviationRepository:
     async def get(self, deviation_id: UUID) -> Deviation | None:
         return await self._session.get(Deviation, deviation_id)
 
+    async def overlapping(
+        self, object_id: UUID, since: datetime, until: datetime
+    ) -> list[Deviation]:
+        """Все эпизоды объекта, пересекающиеся с [since, until), — для отчёта, без страниц."""
+        rows = await self._session.scalars(
+            select(Deviation)
+            .where(
+                Deviation.object_id == object_id,
+                Deviation.last_seen_at > since,
+                Deviation.first_seen_at < until,
+            )
+            .order_by(Deviation.first_seen_at, Deviation.id)
+        )
+        return list(rows)
+
     async def page(
         self,
         flt: DeviationFilter,
