@@ -3,7 +3,8 @@
     python scripts/seed.py [--force-plan] [--timeout 900]
 
 Шаги: объект из data/seed/object.json (ищется по имени, иначе создаётся) → график из
-data/seed/schedule.xlsx (если у объекта его ещё нет; --force-plan заменяет) → снимки из
+data/seed/schedule.xlsx (если у объекта его ещё нет; --force-plan заменяет) → правила вех без
+шаблона из data/seed/rules.json (если у вехи правила нет) → снимки из
 data/seed/images через POST /images/import → камеры и зоны из data/seed/cameras.json →
 ожидание распознавания → POST /analysis/runs?wait=true → сводка отклонений.
 
@@ -71,6 +72,27 @@ def import_plan(client: httpx.Client, obj: dict, force: bool) -> None:
             "импорт графика",
         )
     print(f"график     {body['stages']} вех, plan_version {body['plan_version']}")
+
+
+def ensure_rules(client: httpx.Client, object_id: str) -> None:
+    """Правила из rules.json вехам без правила: у них нет шаблона, импорт правило не ставит.
+
+    Существующее правило не трогается: его могли поправить в интерфейсе.
+    """
+    rules = json.loads((SEED / "rules.json").read_text(encoding="utf-8"))["rules"]
+    stages = check(
+        client.get(f"/plan/objects/{object_id}/stages", params={"limit": 200}), "вехи объекта"
+    )["items"]
+    by_code = {stage["code"]: stage for stage in stages}
+    for code, rule in rules.items():
+        stage = by_code.get(code)
+        if stage is None:
+            raise SeedError(f"правило для вехи {code}, а её нет в schedule.xlsx")
+        if stage["rule"] is not None:
+            print(f"правило    {code} уже есть (версия {stage['rule']['version']})")
+            continue
+        check(client.post("/plan/rules", json={"stage_id": stage["id"], **rule}), f"правило {code}")
+        print(f"правило    {code} поставлено")
 
 
 def import_images(client: httpx.Client, object_id: str) -> None:
@@ -163,6 +185,7 @@ def main() -> int:
         try:
             obj = ensure_object(client)
             import_plan(client, obj, args.force_plan)
+            ensure_rules(client, obj["id"])
             import_images(client, obj["id"])
             import_zones(client, obj["id"])
             wait_recognition(client, obj["id"], args.timeout)
