@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type RefObject } from "react";
 
 import { formatDelay, formatPlanDate } from "@/entities/format";
 import { stageStatusFill } from "@/entities/status";
@@ -19,6 +19,7 @@ import {
   type Scale,
 } from "@/features/gantt/layout";
 import { rowDays, type GanttRow } from "@/features/gantt/useGantt";
+import { dragDates, type Dates, type DragMode, type WorkCalendar } from "@/features/gantt/workdays";
 import { label, ru } from "@/shared/locale/ru";
 
 /** Масштаб: «весь график» подгоняется под ширину экрана, остальные — пикселей на день. */
@@ -26,27 +27,55 @@ export type Zoom = "fit" | number;
 
 const MIN_FIT_PX = 0.5;
 
+/** Несохранённые даты вехи: их задают перетаскивание и форма карточки. */
+export type Draft = { stageId: string; dates: Dates };
+
 type Props = {
   rows: GanttRow[];
   asOfDay: number | null;
   zoom: Zoom;
   selectedId: string | null;
   onSelect: (stageId: string) => void;
+  draft: Draft | null;
+  calendar: WorkCalendar;
+  onDraft: (draft: Draft) => void;
 };
+
+type Drag = { stageId: string; mode: DragMode; originX: number; from: Dates };
 
 /**
  * Диаграмма: слева вехи, справа SVG-сетка по дням. Полоса — плановое окно вехи, заливка —
  * фактический прогресс, треугольник — фактический старт, пунктирный хвост — прогноз позже плана.
+ * Полосу можно тянуть целиком или за край: даты уходят в черновик, сохраняет карточка вехи.
  */
-export function GanttChart({ rows, asOfDay, zoom, selectedId, onSelect }: Props) {
+export function GanttChart(props: Props) {
+  const { rows, asOfDay, zoom, selectedId, onSelect, draft, calendar, onDraft } = props;
   const scroller = useRef<HTMLDivElement>(null);
+  const drag = useRef<Drag | null>(null);
   const available = useWidth(scroller);
   const span = makeScale(rowDays(rows, asOfDay), 1);
   const pxPerDay =
     zoom === "fit" ? Math.max(available / (span.end - span.start), MIN_FIT_PX) : zoom;
   const scale: Scale = { ...span, pxPerDay };
-  const bars = new Map(rows.map((r, i) => [r.stage.id, bar(scale, i, r.start, r.end)]));
+  const datesOf = (r: GanttRow): Dates =>
+    draft?.stageId === r.stage.id ? draft.dates : { start: r.start, end: r.end };
+  const bars = new Map(
+    rows.map((r, i) => [r.stage.id, bar(scale, i, datesOf(r).start, datesOf(r).end)]),
+  );
   const height = HEADER_HEIGHT + rows.length * ROW_HEIGHT;
+
+  const grab = (row: GanttRow, mode: DragMode, event: PointerEvent<SVGElement>) => {
+    event.stopPropagation();
+    event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
+    drag.current = { stageId: row.stage.id, mode, originX: event.clientX, from: datesOf(row) };
+    onSelect(row.stage.id);
+  };
+  const move = (event: PointerEvent<SVGSVGElement>) => {
+    const current = drag.current;
+    if (!current) return;
+    const delta = Math.round((event.clientX - current.originX) / pxPerDay);
+    onDraft({ stageId: current.stageId, dates: dragDates(current.from, current.mode, delta, calendar) });
+  };
 
   // При смене масштаба — к линии момента анализа: смотреть нужно туда, где «сейчас». Только по
   // масштабу: прокрутку, которую человек сделал сам, пересчёт данных сбрасывать не должен.
@@ -80,7 +109,14 @@ export function GanttChart({ rows, asOfDay, zoom, selectedId, onSelect }: Props)
         ))}
       </ul>
       <div ref={scroller} className="min-w-0 flex-1 overflow-x-auto">
-        <svg width={width(scale)} height={height + FOOTER_HEIGHT} className="block text-xs">
+        <svg
+          width={width(scale)}
+          height={height + FOOTER_HEIGHT}
+          className="block touch-none select-none text-xs"
+          onPointerMove={move}
+          onPointerUp={() => (drag.current = null)}
+          onPointerCancel={() => (drag.current = null)}
+        >
           <defs>
             <marker id="gantt-arrow" viewBox="0 0 6 6" refX="6" refY="3" markerWidth="6" markerHeight="6" orient="auto">
               <path d="M0,0 L6,3 L0,6 z" className="fill-stone-500" />
@@ -109,7 +145,16 @@ export function GanttChart({ rows, asOfDay, zoom, selectedId, onSelect }: Props)
             }),
           )}
           {rows.map((r, i) => (
-            <StageBar key={r.stage.id} row={r} geometry={bars.get(r.stage.id)!} scale={scale} onSelect={onSelect} index={i} />
+            <StageBar
+              key={r.stage.id}
+              row={r}
+              index={i}
+              geometry={bars.get(r.stage.id)!}
+              original={draft?.stageId === r.stage.id ? bar(scale, i, r.start, r.end) : null}
+              scale={scale}
+              onSelect={onSelect}
+              onGrab={(mode, event) => grab(r, mode, event)}
+            />
           ))}
           {asOfDay != null && (
             <AsOfLine x={x(scale, asOfDay + 1)} height={height} day={asOfDay} total={width(scale)} />
@@ -144,36 +189,60 @@ function Grid({ scale, rows, height }: { scale: Scale; rows: number; height: num
   );
 }
 
+// Ширина «ручки» края полосы, px: за неё тянется начало или конец.
+const HANDLE = 6;
+
 function StageBar({
   row,
   geometry,
+  original,
   scale,
   index,
   onSelect,
+  onGrab,
 }: {
   row: GanttRow;
   geometry: Bar;
+  /** Плановое окно до правки — пунктиром, пока даты в черновике. */
+  original: Bar | null;
   scale: Scale;
   index: number;
   onSelect: (stageId: string) => void;
+  onGrab: (mode: DragMode, event: PointerEvent<SVGElement>) => void;
 }) {
   const { stage, progress } = row;
   const done = Math.min(Math.max(progress?.progress ?? 0, 0), 1);
-  const late = row.forecastEnd != null && row.forecastEnd > row.end;
-  const early = row.forecastEnd != null && row.forecastEnd < row.end;
+  // Прогноз посчитан по сохранённым датам: пока полосу правят, хвост и «±N» не показываем.
+  const fact = original == null;
+  const late = fact && row.forecastEnd != null && row.forecastEnd > row.end;
+  const early = fact && row.forecastEnd != null && row.forecastEnd < row.end;
   const tailEnd = row.forecastEnd != null ? x(scale, row.forecastEnd + 1) : 0;
   const planEnd = geometry.x + geometry.width;
   return (
     <g onClick={() => onSelect(stage.id)} className="cursor-pointer">
       <title>{tooltip(row)}</title>
       <rect x={0} y={rowTop(index)} width={width(scale)} height={ROW_HEIGHT} className="fill-transparent" />
+      {original && (
+        <rect
+          x={original.x}
+          y={original.y}
+          width={original.width}
+          height={BAR_HEIGHT}
+          rx={3}
+          className="fill-none stroke-ink/40"
+          strokeDasharray="4 3"
+        />
+      )}
       <rect
         x={geometry.x}
         y={geometry.y}
         width={geometry.width}
         height={BAR_HEIGHT}
         rx={3}
-        className={stage.is_critical ? "fill-accent/20 stroke-accent" : "fill-stone-200 stroke-stone-400"}
+        onPointerDown={(e) => onGrab("move", e)}
+        className={`cursor-grab ${stage.is_critical ? "fill-accent/20 stroke-accent" : "fill-stone-200 stroke-stone-400"} ${
+          original ? "stroke-2" : ""
+        }`}
       />
       {done > 0 && (
         <rect
@@ -182,9 +251,26 @@ function StageBar({
           width={geometry.width * done}
           height={BAR_HEIGHT - 8}
           rx={2}
-          className={stageStatusFill(progress?.status)}
+          onPointerDown={(e) => onGrab("move", e)}
+          className={`cursor-grab ${stageStatusFill(progress?.status)}`}
         />
       )}
+      <rect
+        x={geometry.x - HANDLE / 2}
+        y={geometry.y}
+        width={HANDLE}
+        height={BAR_HEIGHT}
+        onPointerDown={(e) => onGrab("start", e)}
+        className="cursor-ew-resize fill-transparent"
+      />
+      <rect
+        x={planEnd - HANDLE / 2}
+        y={geometry.y}
+        width={HANDLE}
+        height={BAR_HEIGHT}
+        onPointerDown={(e) => onGrab("end", e)}
+        className="cursor-ew-resize fill-transparent"
+      />
       {late && (
         <rect
           x={planEnd}
@@ -202,7 +288,7 @@ function StageBar({
           className="fill-ink"
         />
       )}
-      {progress?.delay_days != null && progress.delay_days !== 0 && (
+      {fact && progress?.delay_days != null && progress.delay_days !== 0 && (
         <text
           x={Math.max(planEnd, late ? tailEnd : planEnd) + 4}
           y={geometry.y + BAR_HEIGHT - 5}

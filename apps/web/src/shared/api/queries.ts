@@ -144,13 +144,15 @@ function nextDay(day: string): string {
 export function statusQuery(objectId: string) {
   return queryOptions({
     queryKey: ["analysis", "status", objectId],
-    queryFn: async ({ signal }) => {
-      try {
-        return await apiGet<ObjectStatus>(`/analysis/objects/${objectId}/status`, signal);
-      } catch (error) {
-        if (error instanceof ApiError && error.code === "OBJECT_NOT_ANALYZED") return null;
-        throw error;
-      }
-    },
+    queryFn: ({ signal }) => fetchStatus(objectId, signal),
   });
+}
+
+export async function fetchStatus(objectId: string, signal?: AbortSignal): Promise<ObjectStatus | null> {
+  try {
+    return await apiGet<ObjectStatus>(`/analysis/objects/${objectId}/status`, signal);
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "OBJECT_NOT_ANALYZED") return null;
+    throw error;
+  }
 }

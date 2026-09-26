@@ -3,8 +3,18 @@ import { Link, useParams } from "react-router-dom";
 
 import { formatDelay, formatMoment, formatPlanDate, formatSpi } from "@/entities/format";
 import { stageStatusTone } from "@/entities/status";
-import { GanttChart, type Zoom } from "@/features/gantt/GanttChart";
-import { useGantt, useSelectedRow, type GanttRow, type PlanStage } from "@/features/gantt/useGantt";
+import { GanttChart, type Draft, type Zoom } from "@/features/gantt/GanttChart";
+import { dayNumber, isoDate } from "@/features/gantt/layout";
+import {
+  useGantt,
+  useSaveDates,
+  useSelectedRow,
+  type DatesSaveResult,
+  type GanttRow,
+  type Plan,
+  type PlanStage,
+} from "@/features/gantt/useGantt";
+import { isWorkday, workdaysIn, type Dates } from "@/features/gantt/workdays";
 import { label, ru } from "@/shared/locale/ru";
 import { Badge } from "@/shared/ui/Badge";
 import { Empty, ErrorBox, Loading } from "@/shared/ui/QueryState";
@@ -24,6 +34,13 @@ export function GanttScreen() {
   const { plan, progress, rows, asOfDay } = useGantt(objectId);
   const { selected, select } = useSelectedRow(rows);
   const [zoom, setZoom] = useState<Zoom>("fit");
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const activeDraft = draft && draft.stageId === selected?.stage.id ? draft : null;
+  // Черновик — только у выбранной вехи: переход к другой вехе его сбрасывает.
+  const choose = (stageId: string) => {
+    if (stageId !== selected?.stage.id) setDraft(null);
+    select(stageId);
+  };
 
   return (
     <section className="space-y-4">
@@ -67,20 +84,34 @@ export function GanttScreen() {
         </Empty>
       )}
 
-      {rows.length > 0 && (
+      {plan.data && rows.length > 0 && (
         <>
           <GanttChart
             rows={rows}
             asOfDay={asOfDay}
             zoom={zoom}
             selectedId={selected?.stage.id ?? null}
-            onSelect={select}
+            onSelect={choose}
+            draft={activeDraft}
+            calendar={plan.data.calendar}
+            onDraft={setDraft}
           />
           <Legend />
           {selected ? (
-            <StagePanel row={selected} stages={rows.map((r) => r.stage)} />
+            <StagePanel row={selected} stages={rows.map((r) => r.stage)}>
+              <DatesEditor
+                key={selected.stage.id}
+                objectId={objectId}
+                row={selected}
+                calendar={plan.data.calendar}
+                draft={activeDraft}
+                onDraft={setDraft}
+              />
+            </StagePanel>
           ) : (
-            <p className="text-sm text-muted">Щёлкните по вехе — откроется её карточка.</p>
+            <p className="text-sm text-muted">
+              Щёлкните по вехе — откроется её карточка. Полосу можно тянуть: целиком или за край.
+            </p>
           )}
         </>
       )}
@@ -110,7 +141,7 @@ function Legend() {
   );
 }
 
-function StagePanel({ row, stages }: { row: GanttRow; stages: PlanStage[] }) {
+function StagePanel({ row, stages, children }: { row: GanttRow; stages: PlanStage[]; children: ReactNode }) {
   const { stage, progress } = row;
   const names = new Map(stages.map((s) => [s.id, `${s.code} ${s.name}`]));
   const facts = (progress?.facts ?? {}) as Record<string, unknown>;
@@ -175,7 +206,113 @@ function StagePanel({ row, stages }: { row: GanttRow; stages: PlanStage[] }) {
           </>
         )}
       </div>
+      <div className="lg:col-span-2">{children}</div>
     </article>
+  );
+}
+
+/**
+ * Правка плановых дат вехи (F11): черновик общий с перетаскиванием на диаграмме, сохранение —
+ * PATCH вехи и прогон анализа, затем «было → стало» по прогнозу вехи и отставанию объекта.
+ */
+function DatesEditor({
+  objectId,
+  row,
+  calendar,
+  draft,
+  onDraft,
+}: {
+  objectId: string;
+  row: GanttRow;
+  calendar: Plan["calendar"];
+  draft: Draft | null;
+  onDraft: (draft: Draft | null) => void;
+}) {
+  const save = useSaveDates(objectId);
+  const dates = draft?.dates ?? { start: row.start, end: row.end };
+  const set = (edge: keyof Dates, value: string) => {
+    if (value) onDraft({ stageId: row.stage.id, dates: { ...dates, [edge]: dayNumber(value) } });
+  };
+  const issues = [
+    dates.end < dates.start && "окончание раньше начала",
+    !isWorkday(dates.start, calendar) && "начало — нерабочий день",
+    !isWorkday(dates.end, calendar) && "окончание — нерабочий день",
+  ].filter((issue): issue is string => typeof issue === "string");
+
+  return (
+    <div className="space-y-3 border-t border-ink/10 pt-4 text-sm">
+      <p className="font-medium">Плановые даты</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-muted">Начало</span>
+          <input
+            type="date"
+            value={isoDate(dates.start)}
+            onChange={(e) => set("start", e.target.value)}
+            className="rounded border border-ink/20 px-2 py-1"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-muted">Окончание, включительно</span>
+          <input
+            type="date"
+            value={isoDate(dates.end)}
+            onChange={(e) => set("end", e.target.value)}
+            className="rounded border border-ink/20 px-2 py-1"
+          />
+        </label>
+        <p className="pb-1.5 text-muted">
+          {dates.end >= dates.start ? `${workdaysIn(dates, calendar)} ${ru.units.workDays}` : "—"} по
+          календарю {calendar.code}
+        </p>
+        <button
+          type="button"
+          disabled={!draft || issues.length > 0 || save.isPending}
+          onClick={() => save.mutate({ stageId: row.stage.id, dates }, { onSuccess: () => onDraft(null) })}
+          className="rounded bg-accent px-3 py-1.5 text-white hover:bg-accent/85 disabled:opacity-40"
+        >
+          {save.isPending ? "Сохраняем и пересчитываем…" : "Сохранить и пересчитать"}
+        </button>
+        {draft && !save.isPending && (
+          <button type="button" onClick={() => onDraft(null)} className="rounded border border-ink/20 px-3 py-1.5 hover:border-accent">
+            Отменить
+          </button>
+        )}
+      </div>
+      {issues.length > 0 && <p className="text-red-800">Не сохранить: {issues.join("; ")}.</p>}
+      <p className="text-muted">
+        Полосу можно тянуть на диаграмме: целиком — длительность в рабочих днях сохраняется, за
+        край — меняется начало или конец. Соседние вехи не сдвигаются: нарушенную связь покажет
+        отрицательный резерв.
+      </p>
+      {save.isError && <ErrorBox error={save.error} />}
+      {save.data && <SaveSummary result={save.data} />}
+    </div>
+  );
+}
+
+function SaveSummary({ result }: { result: DatesSaveResult }) {
+  const { before, after } = result;
+  const change = (was: string, now: string) => (was === now ? `${now} (без изменений)` : `${was} → ${now}`);
+  const objectDelay = (s: DatesSaveResult["after"]) =>
+    s.status ? `${label(ru.objectStatus, s.status.status)}, ${formatDelay(s.status.delay_days)} ${ru.units.workDays}` : "—";
+  const critical = (value: boolean | null) => (value == null ? "—" : value ? "да" : "нет");
+  return (
+    <div className="rounded bg-emerald-50 p-3 text-emerald-950">
+      <p className="font-medium">Сохранено, анализ пересчитан ({formatMoment(result.run.as_of)}):</p>
+      <ul className="list-disc pl-5">
+        <li>
+          прогноз окончания вехи:{" "}
+          {change(formatPlanDate(before.stage?.forecast_end), formatPlanDate(after.stage?.forecast_end))}
+        </li>
+        <li>
+          отставание вехи:{" "}
+          {change(formatDelay(before.stage?.delay_days), formatDelay(after.stage?.delay_days))} {ru.units.workDays}
+        </li>
+        <li>на критическом пути: {change(critical(before.critical), critical(after.critical))}</li>
+        <li>объект: {change(objectDelay(before), objectDelay(after))}</li>
+      </ul>
+    </div>
   );
 }
 

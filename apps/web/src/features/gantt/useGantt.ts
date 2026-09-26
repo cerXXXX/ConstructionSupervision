@@ -1,8 +1,10 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 
-import { dayNumber, moscowDay } from "@/features/gantt/layout";
-import { ApiError, apiGet } from "@/shared/api/client";
+import { dayNumber, isoDate, moscowDay } from "@/features/gantt/layout";
+import type { Dates } from "@/features/gantt/workdays";
+import { ApiError, apiGet, apiPatch, apiPost } from "@/shared/api/client";
+import { fetchStatus, type ObjectStatus } from "@/shared/api/queries";
 import type { AnalysisSchema, PlanSchema } from "@/shared/api/schemas";
 
 export type Plan = PlanSchema<"Plan">;
@@ -32,15 +34,17 @@ export function planQuery(objectId: string) {
 export function progressQuery(objectId: string) {
   return queryOptions({
     queryKey: ["analysis", "progress", objectId],
-    queryFn: async ({ signal }) => {
-      try {
-        return await apiGet<Progress>(`/analysis/objects/${objectId}/progress`, signal);
-      } catch (error) {
-        if (error instanceof ApiError && error.code === "OBJECT_NOT_ANALYZED") return null;
-        throw error;
-      }
-    },
+    queryFn: ({ signal }) => fetchProgress(objectId, signal),
   });
+}
+
+async function fetchProgress(objectId: string, signal?: AbortSignal): Promise<Progress | null> {
+  try {
+    return await apiGet<Progress>(`/analysis/objects/${objectId}/progress`, signal);
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "OBJECT_NOT_ANALYZED") return null;
+    throw error;
+  }
 }
 
 export function useGantt(objectId: string) {
@@ -66,6 +70,61 @@ export function useGantt(objectId: string) {
 export function rowDays(rows: GanttRow[], asOfDay: number | null): number[] {
   const days = rows.flatMap((r) => [r.start, r.end, r.actualStart, r.forecastEnd]);
   return [...days, asOfDay].filter((d): d is number => d != null);
+}
+
+/** Что показать после сохранения дат: прогноз вехи и отставание объекта до и после. */
+export type DatesSaveResult = {
+  before: Snapshot;
+  after: Snapshot;
+  run: AnalysisSchema<"RunRead">;
+};
+
+type Snapshot = {
+  stage: StageProgress | null;
+  status: ObjectStatus | null;
+  critical: boolean | null;
+};
+
+/**
+ * Сохранение дат вехи и пересчёт (T32b). plan-service пересчитывает критический путь и сам
+ * шлёт анализу сигнал; прогон с ожиданием схлопывается с ним и возвращается, когда прогноз
+ * посчитан уже по новым датам, — как на экране правил (T31).
+ */
+export function useSaveDates(objectId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ stageId, dates }: { stageId: string; dates: Dates }): Promise<DatesSaveResult> => {
+      const before = await snapshot(objectId, stageId);
+      await apiPatch<PlanSchema<"StageRead">>(`/plan/stages/${stageId}`, {
+        plan_start: isoDate(dates.start),
+        plan_end: isoDate(dates.end),
+      });
+      const run = await apiPost<AnalysisSchema<"RunRead">>("/analysis/runs?wait=true", {
+        object_id: objectId,
+        triggered_by: "MANUAL",
+      });
+      return { before, after: await snapshot(objectId, stageId), run };
+    },
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: ["plan"] }),
+        client.invalidateQueries({ queryKey: ["analysis"] }),
+      ]),
+  });
+}
+
+/** Свежие данные мимо кэша: кэш экрана мог устареть от чужой правки. */
+async function snapshot(objectId: string, stageId: string): Promise<Snapshot> {
+  const [plan, progress, status] = await Promise.all([
+    apiGet<Plan>(`/plan/objects/${objectId}/plan`),
+    fetchProgress(objectId),
+    fetchStatus(objectId),
+  ]);
+  return {
+    stage: progress?.stages.find((s) => s.stage_id === stageId) ?? null,
+    status,
+    critical: plan.stages.find((s) => s.id === stageId)?.is_critical ?? null,
+  };
 }
 
 /** Выбранная веха — в адресе (`?stage=`), как на экране правил. */
