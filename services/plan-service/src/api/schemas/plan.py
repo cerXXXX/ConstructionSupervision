@@ -41,6 +41,7 @@ class PlanEquipmentClass(BaseModel):
     name_ru: str
     group: EquipmentGroup
     transient: bool
+    works_in_place: bool
 
 
 class PlanRule(BaseModel):

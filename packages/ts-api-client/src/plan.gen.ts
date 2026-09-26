@@ -440,6 +440,11 @@ export interface components {
              * @description Приезжает рейсами: присутствие считается за окно нескольких сессий
              */
             transient: boolean;
+            /**
+             * Works In Place
+             * @description Работает, не сдвигаясь с места: неподвижность на рабочем участке не простой
+             */
+            works_in_place: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -660,6 +665,8 @@ export interface components {
             name_ru: string;
             /** Transient */
             transient: boolean;
+            /** Works In Place */
+            works_in_place: boolean;
         };
         /**
          * PlanGenerateRequest

@@ -39,6 +39,8 @@ class EquipmentClass:
     transient: bool
     prompts: tuple[str, ...]
     aliases: tuple[str, ...]
+    # Работает, не сдвигаясь с места: неподвижность на рабочем участке не простой (раздел 6).
+    works_in_place: bool = False
 
 
 def parse_enums(raw: Any) -> dict[str, tuple[str, ...]]:
@@ -84,6 +86,7 @@ def parse_equipment_classes(raw: Any, groups: Iterable[str]) -> tuple[EquipmentC
                 transient=item["transient"],
                 prompts=tuple(str(p) for p in item.get("prompts") or ()),
                 aliases=tuple(str(a) for a in item.get("aliases") or ()),
+                works_in_place=item.get("works_in_place", False),
             )
         except (KeyError, TypeError, AttributeError) as exc:
             raise ReferenceDataError(f"{where}: нет обязательного поля {exc}") from exc
@@ -97,6 +100,8 @@ def parse_equipment_classes(raw: Any, groups: Iterable[str]) -> tuple[EquipmentC
             raise ReferenceDataError(f"{where}: группы {cls.group!r} нет в equipment_group")
         if not isinstance(cls.transient, bool):
             raise ReferenceDataError(f"{where}: transient — true или false")
+        if not isinstance(cls.works_in_place, bool):
+            raise ReferenceDataError(f"{where}: works_in_place — true или false")
         seen.add(cls.code)
         classes.append(cls)
     if not classes:

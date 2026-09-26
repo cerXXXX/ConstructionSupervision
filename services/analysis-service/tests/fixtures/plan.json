@@ -14,16 +14,16 @@
     "work_hours": {"start": "07:00", "end": "23:00"}
   },
   "equipment_classes": [
-    {"code": "excavator", "name_ru": "Экскаватор", "group": "EARTHWORKS", "transient": false},
-    {"code": "dump_truck", "name_ru": "Самосвал", "group": "TRANSPORT", "transient": true},
-    {"code": "bulldozer", "name_ru": "Бульдозер", "group": "EARTHWORKS", "transient": false},
-    {"code": "loader", "name_ru": "Погрузчик", "group": "EARTHWORKS", "transient": false},
-    {"code": "tower_crane", "name_ru": "Башенный кран", "group": "LIFTING", "transient": false},
-    {"code": "truck_crane", "name_ru": "Автокран", "group": "LIFTING", "transient": false},
-    {"code": "concrete_mixer", "name_ru": "Автобетоносмеситель", "group": "CONCRETE", "transient": true},
-    {"code": "concrete_pump", "name_ru": "Автобетононасос", "group": "CONCRETE", "transient": false},
-    {"code": "truck", "name_ru": "Грузовик", "group": "TRANSPORT", "transient": true},
-    {"code": "person", "name_ru": "Человек", "group": "OTHER", "transient": false}
+    {"code": "excavator", "name_ru": "Экскаватор", "group": "EARTHWORKS", "transient": false, "works_in_place": false},
+    {"code": "dump_truck", "name_ru": "Самосвал", "group": "TRANSPORT", "transient": true, "works_in_place": false},
+    {"code": "bulldozer", "name_ru": "Бульдозер", "group": "EARTHWORKS", "transient": false, "works_in_place": false},
+    {"code": "loader", "name_ru": "Погрузчик", "group": "EARTHWORKS", "transient": false, "works_in_place": false},
+    {"code": "tower_crane", "name_ru": "Башенный кран", "group": "LIFTING", "transient": false, "works_in_place": true},
+    {"code": "truck_crane", "name_ru": "Автокран", "group": "LIFTING", "transient": false, "works_in_place": true},
+    {"code": "concrete_mixer", "name_ru": "Автобетоносмеситель", "group": "CONCRETE", "transient": true, "works_in_place": false},
+    {"code": "concrete_pump", "name_ru": "Автобетононасос", "group": "CONCRETE", "transient": false, "works_in_place": true},
+    {"code": "truck", "name_ru": "Грузовик", "group": "TRANSPORT", "transient": true, "works_in_place": false},
+    {"code": "person", "name_ru": "Человек", "group": "OTHER", "transient": false, "works_in_place": false}
   ],
   "stages": [
     {

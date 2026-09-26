@@ -32,6 +32,8 @@ def test_настоящие_файлы_разбираются():
     excavator, dump_truck = classes[0], classes[1]
     assert (excavator.name_ru, excavator.transient) == ("Экскаватор", False)
     assert dump_truck.transient is True and "dump truck" in dump_truck.prompts
+    in_place = {c.code for c in classes if c.works_in_place}
+    assert in_place == {"tower_crane", "truck_crane", "concrete_pump"}
 
 
 def test_списки_enums_без_словарей():
@@ -48,6 +50,7 @@ def test_списки_enums_без_словарей():
         {"code": "dump_truck"},  # повтор кода второй записи
         {"group": "SPACESHIPS"},
         {"transient": "yes"},
+        {"works_in_place": "yes"},
         {"name_ru": "  "},
     ],
 )

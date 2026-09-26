@@ -111,7 +111,12 @@ def _working(ctx: Context, stage: Stage, session: SessionFact, check: RuleCheck)
     if stage not in active:
         active = (*active, stage)
     statuses = equipment_states(
-        session, active, transient=ctx.transient, enums=ctx.enums, class_names=ctx.class_names
+        session,
+        active,
+        transient=ctx.transient,
+        enums=ctx.enums,
+        class_names=ctx.class_names,
+        works_in_place=ctx.works_in_place,
     )
     return any(
         st.state == WORKING and st.area in check.areas and st.equipment_class in required

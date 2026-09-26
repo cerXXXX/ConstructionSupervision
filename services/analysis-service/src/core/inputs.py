@@ -47,6 +47,8 @@ class EquipmentClass(_Input):
     group: str
     # Приезжает и уезжает рейсами: присутствие считается за окно сессий.
     transient: bool
+    # Работает, не сдвигаясь с места: неподвижность на рабочем участке не простой.
+    works_in_place: bool = False
 
 
 class Predecessor(_Input):

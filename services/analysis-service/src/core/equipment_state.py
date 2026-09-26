@@ -2,7 +2,9 @@
 
 Базовое правило заказчика: на статичном снимке техника работает, если она в рабочей
 зоне, где по плану сейчас идут работы. Неподвижность между сессиями только уточняет
-его. Транзитная техника по месту не простаивает: движение для неё норма. Класс
+его. Транзитная техника по месту не простаивает: движение для неё норма. Техника,
+работающая стоя (`works_in_place`), на рабочем участке с активной вехой не простаивает
+из-за неподвижности. Класс
 `person` статуса не получает, опасная зона проверяется отдельно (D6).
 """
 
@@ -37,7 +39,7 @@ class EquipmentStatus:
 
 
 def _state(
-    role: str | None, stage_here: bool, transient: bool, item: EquipmentFact
+    role: str | None, stage_here: bool, transient: bool, in_place: bool, item: EquipmentFact
 ) -> tuple[str, str]:
     """Строка таблицы раздела 6: (статус, почему). role=None — вне всех зон."""
     if transient:
@@ -48,6 +50,8 @@ def _state(
         return OUT_OF_ZONE, "за пределами участков работ вехи не ведутся"
     if not stage_here:
         return OUT_OF_ZONE, "на рабочем участке, где по плану нет активной вехи этого типа"
+    if in_place:
+        return WORKING, "на участке идёт веха; работает стоя, неподвижность — норма"
     if item.static is not None and item.static == item.count:
         return IDLE, f"на участке идёт веха, но {item.static} из {item.count} не сдвинулись"
     if item.static is None:
@@ -62,6 +66,7 @@ def equipment_states(
     transient: frozenset[str],
     enums: Enums,
     class_names: dict[str, str],
+    works_in_place: frozenset[str] = frozenset(),
 ) -> tuple[EquipmentStatus, ...]:
     """Статусы всей техники сессии; `active` — вехи, активные на местную дату сессии.
 
@@ -86,7 +91,9 @@ def equipment_states(
         if not active_types:
             state, why = UNKNOWN, "на дату нет ни одной активной вехи"
         else:
-            state, why = _state(role, zone_type in active_types, cls in transient, item)
+            state, why = _state(
+                role, zone_type in active_types, cls in transient, cls in works_in_place, item
+            )
         statuses.append(
             EquipmentStatus(
                 area=area,

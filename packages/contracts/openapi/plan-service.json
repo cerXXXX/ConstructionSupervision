@@ -255,6 +255,11 @@
             "description": "Приезжает рейсами: присутствие считается за окно нескольких сессий",
             "title": "Transient",
             "type": "boolean"
+          },
+          "works_in_place": {
+            "description": "Работает, не сдвигаясь с места: неподвижность на рабочем участке не простой",
+            "title": "Works In Place",
+            "type": "boolean"
           }
         },
         "required": [
@@ -262,6 +267,7 @@
           "name_ru",
           "group",
           "transient",
+          "works_in_place",
           "prompts",
           "aliases"
         ],
@@ -831,13 +837,18 @@
           "transient": {
             "title": "Transient",
             "type": "boolean"
+          },
+          "works_in_place": {
+            "title": "Works In Place",
+            "type": "boolean"
           }
         },
         "required": [
           "code",
           "name_ru",
           "group",
-          "transient"
+          "transient",
+          "works_in_place"
         ],
         "title": "PlanEquipmentClass",
         "type": "object"

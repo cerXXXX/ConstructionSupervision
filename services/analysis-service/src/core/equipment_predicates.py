@@ -186,6 +186,7 @@ def _by_state(pick: Callable[[str, str], bool]) -> Observe:
             transient=ctx.transient,
             enums=ctx.enums,
             class_names=ctx.class_names,
+            works_in_place=ctx.works_in_place,
         )
         return {
             (None, st.area, st.equipment_class): Hit(

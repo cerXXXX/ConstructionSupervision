@@ -14,7 +14,15 @@ async def test_список_классов_совпадает_с_файлом(cl
     assert body["total"] == len(FILE["equipment_classes"])
     assert [c["code"] for c in body["items"]] == [c["code"] for c in FILE["equipment_classes"]]
     first = body["items"][0]
-    assert set(first) == {"code", "name_ru", "group", "transient", "prompts", "aliases"}
+    assert set(first) == {
+        "code",
+        "name_ru",
+        "group",
+        "transient",
+        "works_in_place",
+        "prompts",
+        "aliases",
+    }
 
 
 async def test_фильтр_по_группе_и_транзиту(client):

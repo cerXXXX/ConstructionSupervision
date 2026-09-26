@@ -11,7 +11,7 @@ OBJECTS = "/api/v1/plan/objects"
 PLAN_KEYS = {"object", "plan_version", "calendar", "equipment_classes", "stages"}
 OBJECT_KEYS = {"id", "name", "object_type", "plan_start"}
 CALENDAR_KEYS = {"code", "timezone", "weekend_days", "holidays", "work_hours"}
-CLASS_KEYS = {"code", "name_ru", "group", "transient"}
+CLASS_KEYS = {"code", "name_ru", "group", "transient", "works_in_place"}
 STAGE_KEYS = {
     "id", "code", "name", "phase", "seq", "work_codes", "zone_type", "visual_stage",
     "plan_start", "plan_end", "norm_duration_days", "predecessors", "is_critical",

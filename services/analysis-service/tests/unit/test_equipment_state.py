@@ -10,6 +10,7 @@ from tests.factories import load_facts, load_plan, make_area, make_equipment, ma
 
 PLAN = load_plan()
 TRANSIENT = frozenset(c.code for c in PLAN.equipment_classes if c.transient)
+IN_PLACE = frozenset(c.code for c in PLAN.equipment_classes if c.works_in_place)
 NAMES = {c.code: c.name_ru for c in PLAN.equipment_classes}
 AT = datetime(2026, 10, 20, 6, 0, tzinfo=UTC)
 ACTIVE = active_stages(PLAN, date(2026, 10, 20))  # котлован: веха типа PIT
@@ -22,7 +23,14 @@ AREAS = {
 
 
 def _states(session, enums, active=ACTIVE):
-    return equipment_states(session, active, transient=TRANSIENT, enums=enums, class_names=NAMES)
+    return equipment_states(
+        session,
+        active,
+        transient=TRANSIENT,
+        enums=enums,
+        class_names=NAMES,
+        works_in_place=IN_PLACE,
+    )
 
 
 def _one(where, cls, enums, *, count=1, static=None, active=ACTIVE):
@@ -44,15 +52,19 @@ def _one(where, cls, enums, *, count=1, static=None, active=ACTIVE):
         ("PIT", "excavator", 2, 1, "WORKING"),
         ("PIT", "excavator", 1, 1, "IDLE"),
         ("PIT", "dump_truck", 2, 2, "WORKING"),
+        ("PIT", "concrete_pump", 1, 1, "WORKING"),  # работает стоя
         # Рабочий участок без активной вехи его типа.
         ("FOOTPRINT", "excavator", 1, 0, "OUT_OF_ZONE"),
         ("FOOTPRINT", "dump_truck", 1, 1, "WORKING"),
+        ("FOOTPRINT", "concrete_pump", 1, 1, "OUT_OF_ZONE"),
         # Служебный участок.
         ("GATE", "excavator", 1, 0, "IDLE"),
         ("GATE", "dump_truck", 1, 1, "WORKING"),
+        ("GATE", "concrete_pump", 1, 1, "IDLE"),
         # Вне всех зон.
         ("OUTSIDE", "excavator", 1, None, "OUT_OF_ZONE"),
         ("OUTSIDE", "dump_truck", 1, None, "WORKING"),
+        ("OUTSIDE", "concrete_pump", 1, None, "OUT_OF_ZONE"),
     ],
 )
 def test_строка_таблицы_статусов(enums, where, cls, count, static, state):
@@ -88,6 +100,13 @@ def test_обоснование_называет_технику_участок_�
     assert status.reason.startswith("Экскаватор на участке «Котлован»")
     assert "2 из 2 не сдвинулись" in status.reason
     assert status.evidence and status.count == 2
+
+
+def test_работающий_стоя_объясняет_почему_неподвижность_не_простой(enums):
+    status = _one("PIT", "tower_crane", enums, count=1, static=1)
+
+    assert status.state == "WORKING"
+    assert "работает стоя" in status.reason
 
 
 def test_день_3_экскаватор_у_въезда_простаивает_а_в_котловане_работает(enums):

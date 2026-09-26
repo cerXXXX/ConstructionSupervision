@@ -26,6 +26,7 @@ class Context:
     enums: Enums
     params: RuleParams
     transient: frozenset[str]
+    works_in_place: frozenset[str]
     class_names: dict[str, str]
     # «Сегодня» методики: местная дата as_of, а не часы сервера.
     as_of: datetime
@@ -63,6 +64,7 @@ def build_context(
         enums=enums,
         params=params,
         transient=frozenset(c.code for c in plan.equipment_classes if c.transient),
+        works_in_place=frozenset(c.code for c in plan.equipment_classes if c.works_in_place),
         class_names={c.code: c.name_ru for c in plan.equipment_classes},
         as_of=as_of,
     )
