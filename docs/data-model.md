@@ -316,6 +316,7 @@ erDiagram
 | `rule_ref` | jsonb | `{"deviation_rule": "D2", "stage_rule_id": "...", "stage_rule_version": 2}` |
 | `evidence` | jsonb | `[{"image_id": "...", "detection_ids": ["..."]}]` |
 | `status` | text | `NEW` / `CONFIRMED` / `REJECTED` / `RESOLVED` |
+| `verdict` | text null | `CONFIRMED` / `REJECTED`: вердикт оператора. У открытого отклонения совпадает со статусом, у закрытого — хранится при `status = RESOLVED` ([methodology.md](methodology.md), раздел 9, правило 3) |
 | `verdict_comment`, `verdict_by`, `verdict_at` | text, text, timestamptz | Вердикт оператора: кто, когда и почему подтвердил или отклонил |
 | `first_seen_at`, `last_seen_at` | timestamptz | |
 | `occurrences` | int | Сколько рабочих сессий подряд условие выполнялось |

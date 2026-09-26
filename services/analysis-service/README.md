@@ -95,8 +95,11 @@ flowchart LR
 
 Лента: `DEVIATION_NOT_FOUND` (404), `VALIDATION_FAILED` (400 — значение фильтра не из
 `enums.yaml` или сортировка по неподдерживаемому полю), `INVALID_VERDICT` (400 — вердикт не
-`CONFIRMED` / `REJECTED`), `VERDICT_CONFLICT` (409 — отклонение уже `RESOLVED` или по его ключу
-открыто более новое).
+`CONFIRMED` / `REJECTED`), `VERDICT_CONFLICT` (409 — отклонённое переводится в
+подтверждённое, а по его ключу уже открыто более новое).
+
+Вердикт принимает и закрытое отклонение: статус остаётся `RESOLVED`, вердикт пишется в поле
+`verdict` (methodology.md, раздел 9, правило 3). У открытого вердикт становится и статусом.
 
 `X-Actor` с именем по-русски передаётся в URL-кодировке: заголовки HTTP — только ASCII
 ([api-guidelines.md](../../docs/api-guidelines.md), раздел 6).
