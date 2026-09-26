@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.services.reports import CreatedReport, ReportFile
+from src.services.reports import CreatedReport, ReportFile, ReportSummary
 
 
 class ReportCreate(BaseModel):
@@ -16,6 +16,32 @@ class ReportCreate(BaseModel):
     period_to: dt.date | None = Field(
         default=None, description="Последний местный день включительно; по умолчанию — день as_of"
     )
+
+
+class SummaryRead(BaseModel):
+    object_id: UUID
+    period_from: dt.date
+    period_to: dt.date
+    as_of: dt.datetime = Field(description="Момент анализа, чьи выводы пересказаны")
+    text: str
+    generated_by: str = Field(description="`LLM` или `TEMPLATE` — показывать всегда (ADR-0008)")
+    source: str = Field(description="Откуда текст и почему шаблон, если нейросеть не подошла")
+    llm_rejected: list[str] = Field(
+        description="Почему текст нейросети отброшен: числа не из фактов, чужие ID, недоступность"
+    )
+
+    @classmethod
+    def of(cls, object_id: UUID, result: ReportSummary) -> "SummaryRead":
+        return cls(
+            object_id=object_id,
+            period_from=result.period_from,
+            period_to=result.period_to,
+            as_of=result.as_of,
+            text=result.summary.text,
+            generated_by=result.summary.generated_by,
+            source=result.summary.source,
+            llm_rejected=result.rejected,
+        )
 
 
 class ReportRead(BaseModel):

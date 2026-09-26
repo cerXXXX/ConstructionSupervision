@@ -4,9 +4,15 @@ from datetime import UTC, datetime
 
 from lct_common import UpstreamError
 
-from tests.conftest import DEMO_OBJECT_ID
+from tests.conftest import DEMO_OBJECT_ID, StubLlm
 
 BASE = "/api/v1/analysis/reports"
+SUMMARY = "/api/v1/analysis/summary"
+
+
+async def _deviation_ref(client) -> str:
+    page = await client.get("/api/v1/analysis/deviations", params={"object_id": DEMO_OBJECT_ID})
+    return page.json()["items"][0]["id"][:8]
 
 
 async def test_отчёт_по_умолчанию_за_неделю_до_дня_анализа(client, analyzed, upstream):
@@ -71,6 +77,41 @@ async def test_период_без_наблюдений(client, analyzed):
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "NO_DATA_FOR_PERIOD"
+
+
+async def test_резюме_без_нейросети_шаблонное(client, analyzed):
+    response = await client.post(SUMMARY, json={"object_id": DEMO_OBJECT_ID})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["period_from"], body["period_to"]) == ("2026-10-16", "2026-10-22")
+    assert body["generated_by"] == "TEMPLATE" and body["llm_rejected"] == []
+    assert body["text"].startswith("На 22.10.2026")
+
+
+async def test_резюме_нейросети_с_проверкой(client, analyzed, upstream):
+    upstream.llm = StubLlm()
+    ref = await _deviation_ref(client)
+
+    honest_text = f"Главное отклонение периода — [{ref}]."
+    upstream.llm.reply = honest_text
+    honest = (await client.post(SUMMARY, json={"object_id": DEMO_OBJECT_ID})).json()
+    upstream.llm.reply = f"Главное отклонение — [{ref}], потери 987 дней."
+    invented = (await client.post(SUMMARY, json={"object_id": DEMO_OBJECT_ID})).json()
+
+    assert (honest["generated_by"], honest["text"]) == ("LLM", honest_text)
+    assert invented["generated_by"] == "TEMPLATE"
+    assert invented["llm_rejected"] == ["числа не из фактов: 987"]
+
+
+async def test_pdf_с_резюме_нейросети(client, analyzed, upstream):
+    upstream.llm = StubLlm()
+    upstream.llm.reply = f"Главное отклонение периода — [{await _deviation_ref(client)}]."
+
+    response = await client.post(BASE, json={"object_id": DEMO_OBJECT_ID})
+
+    assert response.status_code == 201, response.text
+    assert response.json()["summary_generated_by"] == "LLM"
 
 
 async def test_перевёрнутый_период_и_объект_без_анализа(client, analyzed):

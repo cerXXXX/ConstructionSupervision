@@ -20,6 +20,7 @@ from lct_common.db import create_engine, create_session_factory, make_db_check
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.api.routes import api_router
+from src.clients.llm_client import LlmClient
 from src.clients.plan_client import PlanClient
 from src.clients.site_client import SiteClient
 from src.clients.storage import ReportStorage, StorageUnavailable
@@ -54,9 +55,21 @@ async def _seed_rules(factory) -> None:
         log.warning("rules.seed_skipped", error=type(exc).__name__)
 
 
+def _llm_client() -> LlmClient | None:
+    """Клиент нейросети для резюме; None — резюме по шаблону (выключено или нет адреса)."""
+    if not settings.llm_enabled or not settings.llm_base_url:
+        return None
+    return LlmClient(
+        settings.llm_base_url,
+        settings.llm_model,
+        settings.llm_api_key,
+        settings.llm_timeout_s,
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ресурсы, живущие столько же, сколько процесс: пул БД, клиенты plan и site, хранилище."""
+    """Ресурсы, живущие столько же, сколько процесс: пул БД, клиенты plan, site и LLM, хранилище."""
     engine = create_engine(settings.analysis_db_dsn, echo=settings.db_echo)
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
@@ -76,12 +89,20 @@ async def lifespan(app: FastAPI):
     except StorageUnavailable:
         # Без MinIO не работают только отчёты: сверка идёт, а /health/ready покажет minio: fail.
         log.warning("storage.unavailable_at_start", endpoint=settings.s3_endpoint)
+    app.state.llm_client = _llm_client()
 
-    log.info("service.started", version=settings.version, env=settings.env)
+    log.info(
+        "service.started",
+        version=settings.version,
+        env=settings.env,
+        llm=settings.llm_model if app.state.llm_client else "off",
+    )
     yield
 
     await app.state.plan_client.aclose()
     await app.state.site_client.aclose()
+    if app.state.llm_client is not None:
+        await app.state.llm_client.aclose()
     await engine.dispose()
     log.info("service.stopped")
 

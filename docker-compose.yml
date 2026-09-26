@@ -166,6 +166,9 @@ services:
       # Бакет `reports` для PDF-отчётов (README analysis-service, раздел 5).
       minio:
         condition: service_healthy
+    # Локальная LLM на хосте (llama-server, runbook §4): Docker Desktop знает это имя сам,
+    # на Linux его даёт host-gateway.
+    extra_hosts: ["host.docker.internal:host-gateway"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health/ready')"]
       interval: 10s

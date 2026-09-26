@@ -63,5 +63,14 @@ class Settings(BaseServiceSettings):
     # Период по умолчанию: столько местных дней, заканчивая днём момента анализа.
     report_default_days: int = 7
 
+    # Резюме нейросетью (ADR-0008): любой OpenAI-совместимый API — облачный провайдер,
+    # llama.cpp или Ollama. Выключено или без адреса — резюме по шаблону.
+    llm_enabled: bool = True
+    llm_base_url: str = ""
+    llm_model: str = ""
+    llm_api_key: str = ""
+    llm_timeout_s: float = 30.0
+    llm_prompt_file: str = "prompts/summary.ru.md"
+
 
 settings = Settings()

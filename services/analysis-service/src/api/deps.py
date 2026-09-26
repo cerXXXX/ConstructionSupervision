@@ -14,6 +14,7 @@ from src.config import settings
 from src.services.deviations import DeviationService
 from src.services.reports import ReportService
 from src.services.runs import RunService
+from src.services.summary import Summarizer
 
 require_api_key = make_api_key_dependency(settings.api_key)
 
@@ -62,7 +63,13 @@ RunServiceDep = Annotated[RunService, Depends(get_run_service)]
 
 def get_report_service(request: Request, session: SessionDep) -> ReportService:
     state = request.app.state
-    return ReportService(session, state.plan_client, state.site_client, state.report_storage)
+    return ReportService(
+        session,
+        state.plan_client,
+        state.site_client,
+        state.report_storage,
+        Summarizer(state.llm_client),
+    )
 
 
 ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]

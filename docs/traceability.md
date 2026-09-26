@@ -19,10 +19,14 @@
 | F9 | Прогноз задержки и даты окончания | `analysis-service` | `core/activity.py`, `core/forecast.py` | Must | ~ |
 | F10 | Отчёт план-факт: Гант, загрузка техники, лента, PDF | `analysis-service`, `web` | `report/`, web `features/gantt`, `features/deviations` | Must | частично |
 | F11 | Редактирование графика, правил и зон с пересчётом | `plan-service`, `site-service`, `web` | `api/routes/stages.py`, `api/routes/rules.py`, site `api/routes/zones.py`, web `features/zones-editor`, `features/rules-editor` | Should | ~ |
-| F12 | LLM-резюме строго по фактам | `analysis-service` | `report/summary.py` | Should | — |
+| F12 | LLM-резюме строго по фактам | `analysis-service` | `report/summary.py`, `services/summary.py`, `clients/llm_client.py` | Should | ✓ |
 | F13 | % готовности объекта по снимку | `analysis-service` | `core/forecast.py` (только по стадии, без этажей) | Could | — |
 | F14 | Опасные зоны | `analysis-service` | `core/equipment_predicates.py` (D6) | Could | ~ |
 | F15 | REST API + Swagger для интеграции | все | `api/`, `gateway` | Must | — |
+
+F12 (T35): резюме в PDF и `POST /analysis/summary` пишет локальная Gemma 4 E4B (llama.cpp на
+хосте) по JSON из контекста отчёта; каждое число текста и каждая ссылка на отклонение
+сверяются с фактами, иначе резюме шаблонное. На демо-объекте 5 из 5 текстов прошли проверку.
 
 Статус `~` у F1: пакетная загрузка и импорт папки с временем из EXIF и имени файла, камерой
 из подпапки и частичным успехом, просмотр снимков и ручной ввод времени через API готовы

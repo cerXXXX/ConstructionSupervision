@@ -3,15 +3,18 @@
 Отчёт оформляет выводы последнего прогона и ничего не пересчитывает (README, раздел 5).
 Без плана отчёт не собрать — в нём названия и даты вех, поэтому недоступный plan-service —
 ошибка. Недоступность site-service и снимков ошибкой не считается: отчёт выходит, а раздел
-«Ограничения» прямо говорит, чего в нём нет (interservice.md, контракт 6).
+«Ограничения» прямо говорит, чего в нём нет (interservice.md, контракт 6). Резюме — от
+нейросети после проверки чисел или по шаблону (`services/summary.py`); `POST /summary` отдаёт
+его без PDF по тому же контексту.
 """
 
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 from lct_common import DomainError, NotFoundError, UpstreamError, ValidationError, get_logger
@@ -34,7 +37,7 @@ from src.report.context import (
     period_bounds,
     pick_evidence,
 )
-from src.report.html import render_html, template_summary
+from src.report.html import Summary, render_html
 from src.report.images import ImageUnreadable, evidence_image, missing_image
 from src.report.labels import load_labels
 from src.report.model import (
@@ -49,6 +52,7 @@ from src.report.model import (
 from src.report.pdf import ReportKey, parse_report_key, render_pdf
 from src.services.results import ObjectNotAnalyzed
 from src.services.runs import SERVICE_ROOT, enums
+from src.services.summary import Summarizer
 
 log = get_logger(__name__)
 PDF = "application/pdf"
@@ -88,6 +92,16 @@ class CreatedReport:
     evidence_missing: int
 
 
+@dataclass(frozen=True)
+class ReportSummary:
+    period_from: date
+    period_to: date
+    as_of: datetime
+    summary: Summary
+    # Почему текст нейросети отброшен; пусто — не отбрасывали или нейросеть выключена.
+    rejected: list[str]
+
+
 @lru_cache
 def labels() -> Labels:
     path = Path(settings.report_labels_file)
@@ -101,6 +115,7 @@ class ReportService:
         plan_client: PlanClient,
         site_client: SiteClient,
         storage: ReportStorage,
+        summarizer: Summarizer,
         *,
         now: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
@@ -108,12 +123,46 @@ class ReportService:
         self._plan = plan_client
         self._site = site_client
         self._storage = storage
+        self._summarizer = summarizer
         self._now = now
 
     async def create(
         self, object_id: UUID, period_from: date | None, period_to: date | None
     ) -> CreatedReport:
-        """Собирает PDF за местные дни [period_from, period_to] и кладёт его в бакет.
+        """Собирает PDF за местные дни [period_from, period_to] и кладёт его в бакет."""
+        inp, as_of, tz = await self._prepare(object_id, period_from, period_to)
+        inp = replace(inp, evidence=await self._evidence(inp))
+
+        context = await run_in_threadpool(build_context, inp)
+        summary, _ = await self._summarizer.summarize(context)
+        pdf = await self._render(context, summary)
+        key = ReportKey(object_id, inp.generated_at.astimezone(tz).date(), *_period(inp))
+        await self._storage.put(str(key), pdf, PDF)
+        log.info("report.created", key=str(key), size=len(pdf), evidence=len(inp.evidence))
+        return CreatedReport(
+            file=ReportFile(
+                key, len(pdf), inp.generated_at, await self._storage.presigned_url(str(key))
+            ),
+            as_of=as_of,
+            summary_generated_by=summary.generated_by,
+            evidence_shown=sum(e.problem is None for e in inp.evidence),
+            evidence_missing=sum(e.problem is not None for e in inp.evidence),
+        )
+
+    async def summary(
+        self, object_id: UUID, period_from: date | None, period_to: date | None
+    ) -> ReportSummary:
+        """Резюме за период без PDF и без снимков: тот же контекст, что у отчёта."""
+        inp, as_of, _ = await self._prepare(object_id, period_from, period_to)
+        context = await run_in_threadpool(build_context, inp)
+        summary, rejected = await self._summarizer.summarize(context)
+        period_from, period_to = _period(inp)
+        return ReportSummary(period_from, period_to, as_of, summary, rejected)
+
+    async def _prepare(
+        self, object_id: UUID, period_from: date | None, period_to: date | None
+    ) -> tuple[ReportInput, datetime, tzinfo]:
+        """Вход отчёта без снимков, момент анализа и пояс объекта.
 
         По умолчанию период — `REPORT_DEFAULT_DAYS` дней, заканчивая днём момента анализа:
         отчёт о том, что уже посчитано, а не о сегодняшнем дне без выводов.
@@ -145,21 +194,7 @@ class ReportService:
         inp = replace(
             inp, facts=facts, images_without_time=await self._images_without_time(object_id)
         )
-        inp = replace(inp, evidence=await self._evidence(inp))
-
-        pdf, generated_by = await self._render(inp)
-        key = ReportKey(object_id, generated_at.astimezone(cal.tz).date(), period_from, period_to)
-        await self._storage.put(str(key), pdf, PDF)
-        log.info("report.created", key=str(key), size=len(pdf), evidence=len(inp.evidence))
-        return CreatedReport(
-            file=ReportFile(
-                key, len(pdf), generated_at, await self._storage.presigned_url(str(key))
-            ),
-            as_of=status.as_of,
-            summary_generated_by=generated_by,
-            evidence_shown=sum(e.problem is None for e in inp.evidence),
-            evidence_missing=sum(e.problem is not None for e in inp.evidence),
-        )
+        return inp, status.as_of, cal.tz
 
     async def list_reports(self, object_id: UUID) -> list[ReportFile]:
         """Отчёты объекта, новые сверху: список — это содержимое бакета, базы у отчётов нет."""
@@ -255,20 +290,18 @@ class ReportService:
         except ImageUnreadable:
             return missing_image(pick, "файл снимка не читается")
 
-    async def _render(self, inp: ReportInput) -> tuple[bytes, str]:
+    async def _render(self, context: dict[str, Any], summary: Summary) -> bytes:
+        """HTML → PDF в пуле потоков: WeasyPrint блокирующий и небыстрый."""
         try:
-            return await run_in_threadpool(_render, inp)
+            return await run_in_threadpool(lambda: render_pdf(render_html(context, summary)))
         # Jinja2 и WeasyPrint бросают разнородные ошибки: любая из них — отказ вёрстки.
         except Exception as exc:
             log.exception("report.render_failed", error=type(exc).__name__)
             raise RenderFailed("PDF-отчёт не сформирован", cause=type(exc).__name__) from exc
 
 
-def _render(inp: ReportInput) -> tuple[bytes, str]:
-    """Контекст → резюме → HTML → PDF; всё блокирующее, поэтому одним вызовом в пуле потоков."""
-    context = build_context(inp)
-    summary = template_summary(context)
-    return render_pdf(render_html(context, summary)), summary.generated_by
+def _period(inp: ReportInput) -> tuple[date, date]:
+    return inp.period_from, inp.period_to
 
 
 def _status(row: ObjectStatus) -> StatusSnapshot:

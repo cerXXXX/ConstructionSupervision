@@ -180,6 +180,25 @@ class StubSiteClient:
         return buffer.getvalue()
 
 
+class StubLlm:
+    """Нейросеть-заглушка: отдаёт заданный текст или бросает LlmUnavailable, помнит запросы."""
+
+    model = "stub-llm"
+
+    def __init__(self) -> None:
+        self.reply = ""
+        self.unavailable = False
+        self.prompts: list[tuple[str, str]] = []
+
+    async def complete(self, system, user):
+        from src.clients.llm_client import LlmUnavailable
+
+        self.prompts.append((system, user))
+        if self.unavailable:
+            raise LlmUnavailable("ReadTimeout")
+        return self.reply
+
+
 class StubStorage:
     """Бакет `reports` в памяти: ключ → (байты, время записи)."""
 
@@ -226,7 +245,10 @@ def upstream():
     """Заглушки plan и site: внешние сервисы в тестах не вызываются (AGENTS.md, раздел 10)."""
     from types import SimpleNamespace
 
-    return SimpleNamespace(plan=StubPlanClient(), site=StubSiteClient(), storage=StubStorage())
+    # llm = None — нейросеть выключена, резюме по шаблону; тест резюме подставляет StubLlm.
+    return SimpleNamespace(
+        plan=StubPlanClient(), site=StubSiteClient(), storage=StubStorage(), llm=None
+    )
 
 
 @pytest.fixture
@@ -246,13 +268,16 @@ async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
     from src.services import reports, runs
     from src.services.reports import ReportService
     from src.services.runs import RunService
+    from src.services.summary import Summarizer
 
     async def _session_override() -> AsyncIterator:
         async for session in session_dependency(session_factory):
             yield session
 
     def _report_service(session: SessionDep) -> ReportService:
-        return ReportService(session, upstream.plan, upstream.site, upstream.storage)
+        return ReportService(
+            session, upstream.plan, upstream.site, upstream.storage, Summarizer(upstream.llm)
+        )
 
     monkeypatch.setattr(settings, "contracts_dir", str(CONTRACTS_DIR))
     runs.enums.cache_clear()

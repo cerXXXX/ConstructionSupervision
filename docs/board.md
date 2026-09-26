@@ -663,7 +663,12 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       853 КБ); объект без наблюдений — сообщение `NO_DATA_FOR_PERIOD` с `request_id`
       что: `/objects/:id/reports` — период, «сформировать», список с ссылками
       готово, когда: из интерфейса формируется и открывается PDF демо-объекта
-- [ ] `T35` analysis: резюме по фактам
+- [x] `T35` analysis: резюме по фактам — сделано 26.09: `report/summary.py` (JSON для модели,
+      проверка чисел и ссылок на ID), `clients/llm_client.py` (OpenAI-совместимый API),
+      `services/summary.py` (шаблон всегда, текст модели — только после проверки),
+      `prompts/summary.ru.md`, `POST /summary`, резюме в PDF; 13 тестов. Модель — локальная
+      Gemma 4 E4B в llama-server (runbook §4, вместо H4): на демо-объекте 3–5 с, 5 из 5 текстов
+      прошли проверку, PDF подписан «нейросеть gemma-4-e4b»
       спец: [ADR-0008](decisions/0008-llm-narrative-only.md), [analysis-service README](../services/analysis-service/README.md) §5 · ждёт: T34
       что: `POST /summary`; сборка контекста; `prompts/summary.ru.md`; клиент
       OpenAI-совместимого API; валидатор чисел; шаблонное резюме (его чистая часть — в T34b:
