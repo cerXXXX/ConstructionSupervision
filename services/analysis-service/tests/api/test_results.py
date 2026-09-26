@@ -11,7 +11,7 @@ async def test_статус_объекта_для_дашборда(client, analy
 
     assert response.status_code == 200
     body = response.json()
-    assert (body["status"], body["delay_days"], body["confidence"]) == ("DELAY", 14, "MEDIUM")
+    assert (body["status"], body["delay_days"], body["confidence"]) == ("DELAY", 10, "MEDIUM")
     assert body["as_of"] == "2026-10-22T12:00:00Z"
     # Все серьёзности — с нулями: дашборду не нужно гадать, какие ключи бывают.
     assert body["deviations"] == {"INFO": 1, "LOW": 1, "MEDIUM": 0, "HIGH": 0}
@@ -37,8 +37,12 @@ async def test_прогресс_вех_с_активностью_по_дням(c
     assert body["as_of"] == "2026-10-22T12:00:00Z"
     assert len(body["stages"]) == 3
     pit = next(s for s in body["stages"] if s["stage_id"] == PIT_STAGE_ID)
-    assert pit["actual_start"] == "2026-10-19" and pit["status"] == "LATE"
-    assert pit["forecast_end"] == "2026-12-07" and pit["delay_days"] == 14
+    # Котлован по плану с 15.10, наблюдения — с 19.10: старт снимки не застали, три рабочих
+    # дня до наблюдений засчитаны по плану (methodology.md, 10.3a). Эффективных дней
+    # 3 + 3 из 31, темп 0.75: (1 − 6/31) × 31 / 0.75 → 34 рабочих дня от 22.10.
+    assert pit["actual_start"] is None and pit["status"] == "LATE"
+    assert pit["facts"]["credited_days"] == 3 and pit["effective_days"] == 6
+    assert pit["forecast_end"] == "2026-12-02" and pit["delay_days"] == 10
     # День 1 (20.10) без самосвалов: комплект неполный, активность ноль.
     assert [(a["date"], a["activity_index"]) for a in pit["activity"]] == [
         ("2026-10-19", 1.0),

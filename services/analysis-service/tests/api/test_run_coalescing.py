@@ -118,6 +118,28 @@ async def test_ожидание_чужого_прогона_ограничено
     assert response.json()["coalesced"] is True and response.json()["run_id"] == str(current.id)
 
 
+async def test_ожидание_не_кончается_в_зазоре_перед_повтором(
+    upstream, session_factory, monkeypatch
+):
+    """Прогон уже DONE, повтор по схлопнутому сигналу ещё не заведён: результат не готов."""
+    monkeypatch.setattr(settings, "run_wait_timeout_s", 0.2)
+    monkeypatch.setattr(settings, "run_wait_poll_s", 0.05)
+    upstream.site.facts = load_facts("facts_day1.json")
+    async with session_factory() as session, session.begin():
+        finished = AnalysisRun(
+            object_id=OBJECT_ID, triggered_by="MANUAL", status="DONE", rerun_requested=True
+        )
+        session.add(finished)
+    service = _service(session_factory, upstream)
+
+    assert await service.wait_idle(OBJECT_ID) is None
+
+    await service._follow_up(finished)
+    latest = await service.wait_idle(OBJECT_ID)
+
+    assert latest.status == "DONE" and latest.id != finished.id
+
+
 async def test_ожидание_чужого_прогона_отдаёт_последний_с_учётом_сигнала(
     client, upstream, session_factory, monkeypatch
 ):

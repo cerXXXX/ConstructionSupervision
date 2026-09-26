@@ -4,7 +4,7 @@ from dataclasses import replace
 from datetime import UTC, date, datetime, time
 
 import pytest
-from src.core.calendar import add_working_days, calendar_from_plan
+from src.core.calendar import add_working_days, calendar_from_plan, count_working_days
 from src.core.context import build_context
 from src.core.forecast import (
     ForecastError,
@@ -236,6 +236,46 @@ def test_невидимая_веха_идёт_по_плану(enums):
 
     assert prep.facts["basis"] == "PLAN"
     assert (prep.status, prep.delay_days, prep.confidence) == ("DONE", 0, "LOW")
+
+
+def test_веха_до_начала_наблюдений_выполнена_по_плану(enums):
+    """Раздел 10.3a: наблюдения с 15.10, окно вехи 01–10.10, её сигнатуры после не видно."""
+    early = make_stage("Ранняя", date(2026, 10, 1), date(2026, 10, 10), rule=PIT_STAGE.rule)
+
+    (stage,) = _run(enums, _days(FIRST_WEEK, trucks=False), plan=make_plan(early)).stages
+
+    assert stage.facts["basis"] == "PLAN"
+    assert "до начала наблюдений" in stage.facts["basis_reason"]
+    assert (stage.status, stage.delay_days) == ("DONE", 0)
+
+
+def test_веха_начатая_до_наблюдений_получает_плановый_прогресс(enums):
+    """Раздел 10.3a: веха идёт с 01.10, участок видим с 15.10, дальше работа в полную силу."""
+    start, end = date(2026, 10, 1), date(2026, 11, 20)
+    norm = count_working_days(CALENDAR, start, end)
+    running = make_stage("Идущая", start, end, norm_duration_days=norm, rule=PIT_STAGE.rule)
+
+    (stage,) = _run(enums, _days(FIRST_WEEK), plan=make_plan(running)).stages
+
+    credited = count_working_days(CALENDAR, start, date(2026, 10, 14))
+    assert stage.facts["started_before_observation"] is True
+    assert stage.facts["observation_start"] == "2026-10-15"
+    assert stage.facts["credited_days"] == credited
+    # Фактический старт снимки не застали: он неизвестен, а не «15.10 с опозданием».
+    assert stage.actual_start is None and stage.facts["start_deviation_days"] is None
+    assert stage.effective_days == credited + 5
+    assert stage.spi == 1.0 and stage.delay_days == 0
+    assert stage.expected_start == start
+
+
+def test_веха_начатая_до_наблюдений_без_сигнатуры_опаздывает(enums):
+    start, end = date(2026, 10, 1), date(2026, 11, 20)
+    running = make_stage("Идущая", start, end, rule=PIT_STAGE.rule)
+
+    (stage,) = _run(enums, _days(FIRST_WEEK, trucks=False), plan=make_plan(running)).stages
+
+    assert stage.facts["basis"] == "OBSERVED" and stage.status == "LATE"
+    assert stage.facts["credited_days"] == 0
 
 
 def _linked(pred_type, lag):

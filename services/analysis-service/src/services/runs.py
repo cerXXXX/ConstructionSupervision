@@ -130,19 +130,27 @@ class RunService:
         async with self._factory() as session, session.begin():
             runs = RunRepository(session)
             await runs.lock_object(object_id)
-            for current in await runs.running(object_id):
-                if runs.is_stale(current, self._now(), settings.run_stale_after_s):
-                    # Процесс упал посреди прогона: строка RUNNING не должна держать объект.
-                    current.status = "FAILED"
-                    current.error = {
-                        "code": "RUN_ABANDONED",
-                        "message": "Прогон не завершился вовремя и считается брошенным",
-                    }
-                    continue
-                current.rerun_requested = True
-                return current, True
-            run = AnalysisRun(object_id=object_id, triggered_by=triggered_by, as_of=as_of)
-            return await runs.add(run), False
+            return await self._start_locked(runs, object_id, triggered_by, as_of)
+
+    async def _start_locked(
+        self, runs: RunRepository, object_id: UUID, triggered_by: str, as_of: datetime | None
+    ) -> tuple[AnalysisRun, bool]:
+        """Тело `start` под уже взятой блокировкой объекта."""
+        for current in await runs.running(object_id):
+            if runs.is_stale(current, self._now(), settings.run_stale_after_s):
+                # Процесс упал посреди прогона: строка RUNNING не должна держать объект.
+                # Его отметку «нужен ещё» закрывает прогон, который заводится сейчас.
+                current.status = "FAILED"
+                current.rerun_requested = False
+                current.error = {
+                    "code": "RUN_ABANDONED",
+                    "message": "Прогон не завершился вовремя и считается брошенным",
+                }
+                continue
+            current.rerun_requested = True
+            return current, True
+        run = AnalysisRun(object_id=object_id, triggered_by=triggered_by, as_of=as_of)
+        return await runs.add(run), False
 
     async def get(self, run_id: UUID) -> AnalysisRun:
         async with self._factory() as session:
@@ -190,7 +198,10 @@ class RunService:
         while True:
             async with self._factory() as session:
                 runs = RunRepository(session)
-                if await runs.count_running(object_id) == 0:
+                # Закончившийся прогон с отметкой «нужен ещё» — ещё не конец: повтор, который
+                # учтёт сигнал вызывающего, вот-вот заведётся.
+                idle = await runs.count_running(object_id) == 0
+                if idle and not await runs.rerun_pending(object_id):
                     return await runs.latest(object_id)
             if self._now().timestamp() >= deadline:
                 return None
@@ -198,13 +209,18 @@ class RunService:
 
     async def _follow_up(self, run: AnalysisRun) -> None:
         """Ровно один повторный прогон, если во время `run` пришёл сигнал."""
+        # Снятие отметки и заведение повтора — одна транзакция под блокировкой объекта:
+        # иначе между ними `wait_idle` увидел бы «прогонов нет» и отдал устаревший результат.
         async with self._factory() as session, session.begin():
-            requested = await RunRepository(session).consume_rerun(run.id)
-        if not requested:
-            return
-        # as_of схлопнутого сигнала не хранится; сигналы site и plan приходят без него,
-        # поэтому повтор считает на момент по умолчанию — конец последней сессии.
-        follow, coalesced = await self.start(run.object_id, run.triggered_by, None)
+            runs = RunRepository(session)
+            await runs.lock_object(run.object_id)
+            if not await runs.consume_rerun(run.id):
+                return
+            # as_of схлопнутого сигнала не хранится; сигналы site и plan приходят без него,
+            # поэтому повтор считает на момент по умолчанию — конец последней сессии.
+            follow, coalesced = await self._start_locked(
+                runs, run.object_id, run.triggered_by, None
+            )
         if coalesced:
             # Кто-то уже начал новый прогон — повтор сделает он.
             return

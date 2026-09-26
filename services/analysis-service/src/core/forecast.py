@@ -8,7 +8,7 @@
 
 import math
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from graphlib import CycleError, TopologicalSorter
 from typing import Any
 from uuid import UUID
@@ -174,6 +174,15 @@ def planned_progress(calendar: Calendar, stage: Stage, today: date) -> float | N
     return passed / total
 
 
+def observation_start(ctx: Context, zone_type: str) -> date | None:
+    """Начало наблюдений участка: дата первой рабочей сессии, где он виден (раздел 10.3a)."""
+    for session in ctx.sessions:
+        for area in session.areas:
+            if area.zone_type == zone_type and area.visibility.status != BLIND:
+                return local_date(ctx.calendar, session.window_start)
+    return None
+
+
 @dataclass(frozen=True)
 class _Observed:
     """Что видно по вехе к `as_of`: старт, эффективные дни, темп."""
@@ -186,10 +195,17 @@ class _Observed:
     done_day: date | None
     observed_days: int
     avg_activity: float | None
+    # Плановый прогресс за дни до начала наблюдений, в эффективных днях; 0 — не было таких.
+    credited_days: float
 
 
 def _observe(
-    ctx: Context, fp: ForecastParams, stage: Stage, today: date, last_label: str | None
+    ctx: Context,
+    fp: ForecastParams,
+    stage: Stage,
+    today: date,
+    last_label: str | None,
+    observed_from: date | None,
 ) -> _Observed:
     start = actual_start(ctx, stage)
     rows = daily_activity(ctx, stage, since=start.day) if start else ()
@@ -199,7 +215,12 @@ def _observe(
         and last_label is not None
         and ctx.enums.stage_index(last_label) < ctx.enums.stage_index(stage.visual_stage)
     )
-    effective, done_day = 0.0, None
+    credited = 0.0
+    if start is not None and observed_from is not None and stage.plan_start < observed_from:
+        # Веха шла по плану, пока её участок не начали наблюдать (раздел 10.3a).
+        before = planned_progress(ctx.calendar, stage, observed_from - timedelta(days=1))
+        credited = (before or 0.0) * stage.norm_duration_days
+    effective, done_day = credited, None
     for row in rows:
         effective += row.activity_index or 0.0
         if done_day is None and not restricted and effective >= stage.norm_duration_days:
@@ -216,6 +237,7 @@ def _observe(
         done_day=done_day,
         observed_days=len(known),
         avg_activity=sum(recent) / len(recent) if recent else None,
+        credited_days=credited,
     )
 
 
@@ -322,18 +344,26 @@ def _stage_forecast(
         reason = "у вехи нет правила: по снимкам её не проверить, прогресс — по плану"
         return _unobservable(ctx, stage, today, by_plan_start, by_plan_end, reason)
 
-    obs = _observe(ctx, fp, stage, today, last_label)
+    observed_from = observation_start(ctx, stage.zone_type)
+    obs = _observe(ctx, fp, stage, today, last_label, observed_from)
     # «Не видно» — не «не начато» (раздел 7): участок вехи с её начала ни разу не был виден,
     # и считать её опоздавшей не на чем.
     if obs.start is None and visibility(ctx, stage.zone_type, since=stage.plan_start).visible == 0:
         reason = "участок вехи с плановой даты начала ни разу не был виден — прогресс по плану"
         return _unobservable(ctx, stage, today, by_plan_start, by_plan_end, reason)
+    # Всё окно вехи — до начала наблюдений, и после него работ вехи не видно (раздел 10.3a).
+    if obs.start is None and observed_from is not None and stage.plan_end < observed_from:
+        reason = "плановое окно вехи закончилось до начала наблюдений — выполнена по плану"
+        return _unobservable(ctx, stage, today, by_plan_start, by_plan_end, reason)
+    # Веха шла до начала наблюдений: её настоящий старт снимки не застали.
+    before_observation = obs.credited_days > 0
     floored = False
     remaining = None
     if obs.done_day is not None:
-        start, end, forecast_end, status = obs.start.day, obs.done_day, obs.done_day, DONE
+        start = by_plan_start if before_observation else obs.start.day
+        end, forecast_end, status = obs.done_day, obs.done_day, DONE
     elif obs.start is not None:
-        start = obs.start.day
+        start = by_plan_start if before_observation else obs.start.day
         forecast_end = None
         if obs.observed_days >= fp.min_days_for_forecast and obs.avg_activity is not None:
             rate = max(obs.avg_activity, fp.min_activity)
@@ -366,7 +396,7 @@ def _stage_forecast(
     last_activity = [r.last_working_at for r in obs.rows if r.last_working_at is not None]
     return StageForecast(
         stage_id=stage.id,
-        actual_start=obs.start.day if obs.start else None,
+        actual_start=obs.start.day if obs.start and not before_observation else None,
         last_activity_at=last_activity[-1] if last_activity else None,
         effective_days=round(obs.effective_days, 3),
         progress=round(obs.progress, 4),
@@ -383,7 +413,12 @@ def _stage_forecast(
         facts={
             "basis": "OBSERVED",
             "norm_duration_days": stage.norm_duration_days,
-            "start_deviation_days": obs.start.start_deviation_days if obs.start else None,
+            "start_deviation_days": (
+                obs.start.start_deviation_days if obs.start and not before_observation else None
+            ),
+            "started_before_observation": before_observation,
+            "observation_start": observed_from.isoformat() if observed_from else None,
+            "credited_days": round(obs.credited_days, 3),
             "observed_days": obs.observed_days,
             "avg_activity": round(obs.avg_activity, 3) if obs.avg_activity is not None else None,
             "forecast_window_days": fp.forecast_window_days,

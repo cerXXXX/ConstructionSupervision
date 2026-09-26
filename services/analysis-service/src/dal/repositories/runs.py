@@ -62,6 +62,15 @@ class RunRepository:
             .limit(1)
         )
 
+    async def rerun_pending(self, object_id: UUID) -> bool:
+        """Есть прогон с отметкой «нужен ещё»: закончился, а его повтор ещё не заведён."""
+        found = await self._session.scalar(
+            select(AnalysisRun.id)
+            .where(AnalysisRun.object_id == object_id, AnalysisRun.rerun_requested.is_(True))
+            .limit(1)
+        )
+        return found is not None
+
     async def count_running(self, object_id: UUID) -> int:
         total = await self._session.scalar(
             select(func.count())

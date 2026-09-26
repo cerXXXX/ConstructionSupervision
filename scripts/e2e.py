@@ -10,7 +10,8 @@
 1. лента совпадает со сценарием data/seed/expected.json по дням: каждое ожидаемое отклонение
    найдено ровно в свой день, ничего лишнего (в том числе ни одного D2 в нормальный день);
 2. у каждого отклонения, кроме D10, есть факты и доказательства — снимки;
-3. правка правила (runbook §6, шаг «Правка правила»): после неё отклонения `gone` исчезают,
+3. итог объекта на дашборде — `object_status` сценария;
+4. правка правила (runbook §6, шаг «Правка правила»): после неё отклонения `gone` исчезают,
    `kept` остаются; после отката правила лента снова совпадает со сценарием.
 
 Код выхода 0 — всё сошлось, 1 — нет (что именно — в выводе).
@@ -22,7 +23,7 @@ import sys
 import httpx
 from _common import load_env, use_utf8_output
 from _scenario import compare, day_of, describe, load_expected, set_required, stage_rule
-from seed import SeedError, connect, deviations, object_spec, prepare, run_analysis
+from seed import SeedError, check, connect, deviations, object_spec, prepare, run_analysis
 
 PREFIX = "E2E: "
 
@@ -48,6 +49,18 @@ def check_evidence(items: list[dict]) -> bool:
         print(f"  без доказательств: {day_of(item)} {describe(item)}")
     print(f"\nдоказательства: {'у всех есть' if not bare else f'нет у {len(bare)}'}")
     return not bare
+
+
+def check_status(client: httpx.Client, object_id: str, expected: dict) -> bool:
+    """Итог объекта на дашборде совпадает со сценарием."""
+    status = check(client.get(f"/analysis/objects/{object_id}/status"), "статус объекта")
+    ok = status["status"] == expected["object_status"]
+    print(
+        f"\nстатус объекта: {status['status']}, задержка {status['delay_days']}, "
+        f"SPI {status['spi']}, уверенность {status['confidence']}"
+        + ("" if ok else f" — ожидался {expected['object_status']}")
+    )
+    return ok
 
 
 def check_rule_edit(client: httpx.Client, object_id: str, expected: dict) -> bool:
@@ -91,6 +104,7 @@ def main() -> int:
             checks = [
                 report("лента", expected, items),
                 check_evidence(items),
+                check_status(client, obj["id"], expected),
                 check_rule_edit(client, obj["id"], expected),
             ]
         except (SeedError, LookupError) as exc:
