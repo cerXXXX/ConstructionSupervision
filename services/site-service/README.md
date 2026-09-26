@@ -59,7 +59,7 @@ flowchart LR
 | `POST` | `/images` | Пакетная загрузка (multipart: `files` до 200 штук, `object_id`, необязательно `camera_code` и `captured_at`). Частичный успех `202`: `{accepted, rejected}` |
 | `POST` | `/images/import` | Импорт из папки `IMPORT_DIR/<path>` (`{object_id, path}`): первая подпапка = код камеры, скрытые файлы пропускаются. Ответ тот же, что у пакета |
 | `GET` | `/images` | Список с фильтрами `object_id`, `camera_id`, `from`, `to` (полуинтервал по времени съёмки), `status`; по времени съёмки, снимки без времени — в конце |
-| `GET` | `/images/{id}` | Метаданные, EXIF, качество кадра, presigned-ссылка для браузера (`S3_PUBLIC_ENDPOINT`), детекции с рамками, точкой контакта и зоной, стадия по снимку |
+| `GET` | `/images/{id}` | Метаданные, EXIF, качество кадра, presigned-ссылка для браузера (`S3_PUBLIC_ENDPOINT`), детекции с рамками, точкой контакта и зоной, стадия по снимку. `?link=internal` — ссылка на `S3_ENDPOINT` для других сервисов: так снимки берёт PDF-отчёт analysis (interservice.md, контракт 6) |
 | `PATCH` | `/images/{id}` | `{captured_at}` — время съёмки вручную, только для статуса `NEEDS_TIME`: снимок получает окно, статус `PENDING` и источник `MANUAL` |
 | `POST` | `/images/reanalyze` | `{object_id, camera_id?}` → `202 {object_id, images}`: повторное распознавание после смены модели или порога. Снимки `ANALYZED` и `FAILED` снова получают `PENDING` и идут в очередь |
 

@@ -123,7 +123,7 @@ export interface paths {
         };
         /**
          * Снимок
-         * @description Метаданные, ссылка для браузера (`S3_PUBLIC_ENDPOINT`), рамки техники с точкой контакта и зоной, стадия по снимку.
+         * @description Метаданные, ссылка для браузера (`S3_PUBLIC_ENDPOINT`), рамки техники с точкой контакта и зоной, стадия по снимку. `link=internal` — ссылка на внутренний адрес MinIO (`S3_ENDPOINT`) для других сервисов: так снимки берёт отчёт analysis (interservice.md, контракт 6).
          */
         get: operations["get_image_api_v1_site_images__image_id__get"];
         put?: never;
@@ -711,7 +711,7 @@ export interface components {
             status: string;
             /**
              * Url
-             * @description Ссылка для браузера на S3_PUBLIC_ENDPOINT, живёт S3_PRESIGN_TTL_S
+             * @description Ссылка на S3_PUBLIC_ENDPOINT для браузера или на S3_ENDPOINT при link=internal; живёт S3_PRESIGN_TTL_S
              */
             url: string;
             /**
@@ -1628,7 +1628,9 @@ export interface operations {
     };
     get_image_api_v1_site_images__image_id__get: {
         parameters: {
-            query?: never;
+            query?: {
+                link?: "public" | "internal";
+            };
             header?: {
                 "x-api-key"?: string;
             };

@@ -56,12 +56,17 @@ class ImageCatalog:
             raise InvalidPeriod("Конец периода должен быть позже начала")
         return await self._images.list(start=start, end=end, **filters)
 
-    async def detail(self, image_id: UUID) -> dict[str, Any]:
-        """Карточка: снимок, ссылка для браузера, рамки техники и стадия — доказательства вывода."""
+    async def detail(self, image_id: UUID, *, internal: bool = False) -> dict[str, Any]:
+        """Карточка: снимок, ссылка, рамки техники и стадия — доказательства вывода.
+
+        Ссылка для браузера подписана на публичный адрес MinIO, для сервиса (отчёт analysis,
+        interservice.md, контракт 6) — на внутренний: подпись привязана к адресу.
+        """
         image = await self.get(image_id)
+        sign = self._storage.internal_url if internal else self._storage.presigned_url
         return {
             **{column: getattr(image, column) for column in _COLUMNS},
-            "url": await self._storage.presigned_url(image.storage_key),
+            "url": await sign(image.storage_key),
             "detections": await self._images.detections(image_id),
             "stage": await self._images.stage(image_id),
         }

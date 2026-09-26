@@ -759,7 +759,7 @@
             "type": "string"
           },
           "url": {
-            "description": "Ссылка для браузера на S3_PUBLIC_ENDPOINT, живёт S3_PRESIGN_TTL_S",
+            "description": "Ссылка на S3_PUBLIC_ENDPOINT для браузера или на S3_ENDPOINT при link=internal; живёт S3_PRESIGN_TTL_S",
             "title": "Url",
             "type": "string"
           },
@@ -2719,7 +2719,7 @@
     },
     "/api/v1/site/images/{image_id}": {
       "get": {
-        "description": "Метаданные, ссылка для браузера (`S3_PUBLIC_ENDPOINT`), рамки техники с точкой контакта и зоной, стадия по снимку.",
+        "description": "Метаданные, ссылка для браузера (`S3_PUBLIC_ENDPOINT`), рамки техники с точкой контакта и зоной, стадия по снимку. `link=internal` — ссылка на внутренний адрес MinIO (`S3_ENDPOINT`) для других сервисов: так снимки берёт отчёт analysis (interservice.md, контракт 6).",
         "operationId": "get_image_api_v1_site_images__image_id__get",
         "parameters": [
           {
@@ -2729,6 +2729,20 @@
             "schema": {
               "format": "uuid",
               "title": "Image Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "link",
+            "required": false,
+            "schema": {
+              "default": "public",
+              "enum": [
+                "public",
+                "internal"
+              ],
+              "title": "Link",
               "type": "string"
             }
           },

@@ -1,7 +1,7 @@
 """Снимки (F1): пакет из формы, импорт из папки, список, карточка, ручное время, повтор."""
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile, status
@@ -106,10 +106,17 @@ async def list_images(
     response_model=ImageDetail,
     summary="Снимок",
     description="Метаданные, ссылка для браузера (`S3_PUBLIC_ENDPOINT`), рамки техники с "
-    "точкой контакта и зоной, стадия по снимку.",
+    "точкой контакта и зоной, стадия по снимку. `link=internal` — ссылка на внутренний адрес "
+    "MinIO (`S3_ENDPOINT`) для других сервисов: так снимки берёт отчёт analysis "
+    "(interservice.md, контракт 6).",
 )
-async def get_image(image_id: UUID, session: SessionDep, storage: StorageDep):
-    return await ImageCatalog(session, storage).detail(image_id)
+async def get_image(
+    image_id: UUID,
+    session: SessionDep,
+    storage: StorageDep,
+    link: Literal["public", "internal"] = "public",
+):
+    return await ImageCatalog(session, storage).detail(image_id, internal=link == "internal")
 
 
 @router.patch(

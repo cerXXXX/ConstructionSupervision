@@ -628,7 +628,9 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: `src/report/` (Jinja2 → WeasyPrint, восемь разделов, SVG-графики, снимки с рамками);
       `/reports`; в web — список отчётов и кнопка «сформировать»
       готово, когда: PDF по демо-объекту формируется, раздел «Ограничения» заполнен
-- [~] `T34a` contracts + site: снимки-доказательства для отчёта
+- [x] `T34a` contracts + site: снимки-доказательства для отчёта — сделано 26.09: контракт 6 в
+      interservice.md, `GET /images/{id}?link=internal` (`ImageCatalog.detail`), api-тест;
+      в стеке ссылка открывается из контейнера analysis (200, 1,7 МБ)
       что: interservice.md, контракт 6 — analysis читает карточку снимка с рамками и ссылкой на
       внутренний адрес MinIO (architecture.md §7.2), число снимков без времени; в site —
       `GET /images/{id}?link=internal`

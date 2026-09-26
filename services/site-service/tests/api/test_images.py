@@ -169,6 +169,19 @@ async def test_карточка_со_ссылкой_для_браузера(clie
     assert (missing.status_code, missing.json()["error"]["code"]) == (404, "IMAGE_NOT_FOUND")
 
 
+async def test_карточка_для_сервиса_со_ссылкой_во_внутреннюю_сеть(client):
+    """Контракт 6: отчёт analysis скачивает снимок из сети Docker, localhost:9000 там не открыть."""
+    uploaded = await _upload(client, [("cam-a/20261020_130000.jpg", _jpeg(130))])
+    image_id = uploaded.json()["accepted"][0]["image_id"]
+
+    card = (await client.get(f"{SITE}/images/{image_id}", params={"link": "internal"})).json()
+    wrong = await client.get(f"{SITE}/images/{image_id}", params={"link": "s3"})
+
+    assert card["url"].startswith("http://minio:9000/images/")
+    assert (card["width"], card["height"]) == (32, 24)
+    assert (wrong.status_code, wrong.json()["error"]["code"]) == (422, "SCHEMA_VALIDATION_FAILED")
+
+
 async def test_ручное_время_для_needs_time(client, session, queue):
     uploaded = await _upload(client, [("cam-a/IMG_0001.jpg", _jpeg(140))])
     image_id = uploaded.json()["accepted"][0]["image_id"]
