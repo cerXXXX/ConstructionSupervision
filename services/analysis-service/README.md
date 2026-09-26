@@ -46,7 +46,7 @@ flowchart LR
 | `GET` | `/objects/{id}/status` | Сводный статус объекта для дашборда |
 | `GET` | `/objects/{id}/progress` | Прогресс, SPI и прогноз по каждой вехе — данные для Ганта |
 | `GET` | `/objects/{id}/equipment` | Загрузка техники по дням и классам (F10) |
-| `GET` | `/deviations` | Лента: фильтры `object_id`, `code`, `severity`, `status`, `stage_id`, `area`, `from`, `to`; `code`, `severity`, `status` повторяются для нескольких значений; `sort` — `last_seen_at`, `first_seen_at`, `severity` (минус — по убыванию, по умолчанию `-last_seen_at`) |
+| `GET` | `/deviations` | Лента: фильтры `object_id`, `code`, `severity`, `status`, `verdict`, `stage_id`, `area`, `from`, `to`; `code`, `severity`, `status`, `verdict` повторяются для нескольких значений; `verdict` — `CONFIRMED` / `REJECTED` независимо от статуса (закрытое с вердиктом остаётся `RESOLVED`); `sort` — `last_seen_at`, `first_seen_at`, `severity` (минус — по убыванию, по умолчанию `-last_seen_at`) |
 | `GET` | `/deviations/{id}` | Карточка отклонения |
 | `GET` | `/deviations/{id}/explain` | **Полное объяснение:** действующая настройка правила, сессии эпизода с фактами участка (от site-service), снимки со ссылкой `image_path` |
 | `PATCH` | `/deviations/{id}` | Вердикт оператора: `{status: CONFIRMED / REJECTED, comment}`, кто — из `X-Actor` |
@@ -94,7 +94,7 @@ flowchart LR
 прогона `ANALYSIS_INPUT_INVALID`.
 
 Лента: `DEVIATION_NOT_FOUND` (404), `VALIDATION_FAILED` (400 — значение фильтра не из
-`enums.yaml` или сортировка по неподдерживаемому полю), `INVALID_VERDICT` (400 — вердикт не
+`enums.yaml`, `verdict` не `CONFIRMED` / `REJECTED` или сортировка по неподдерживаемому полю), `INVALID_VERDICT` (400 — вердикт не
 `CONFIRMED` / `REJECTED`), `VERDICT_CONFLICT` (409 — отклонённое переводится в
 подтверждённое, а по его ключу уже открыто более новое).
 

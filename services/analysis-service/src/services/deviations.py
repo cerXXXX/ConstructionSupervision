@@ -76,6 +76,11 @@ class DeviationService:
         _check_values("code", list(flt.codes), "deviation_code")
         _check_values("severity", list(flt.severities), "severity")
         _check_values("status", list(flt.statuses), "deviation_status")
+        unknown = sorted(set(flt.verdicts) - set(VERDICTS))
+        if unknown:
+            raise ValidationError(
+                "Неизвестное значение фильтра verdict", unknown=unknown, allowed=list(VERDICTS)
+            )
         if sort.removeprefix("-") not in SORTABLE:
             raise ValidationError(
                 "Сортировка по этому полю не поддерживается", sort=sort, allowed=list(SORTABLE)

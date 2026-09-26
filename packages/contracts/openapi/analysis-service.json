@@ -1248,7 +1248,7 @@
     },
     "/api/v1/analysis/deviations": {
       "get": {
-        "description": "Повторяющийся параметр — несколько значений: `?severity=HIGH&severity=MEDIUM`. `from`/`to` — эпизоды, пересекающиеся с `[from, to)`. `sort` — `last_seen_at`, `first_seen_at` или `severity`, минус — по убыванию; по умолчанию `-last_seen_at`.",
+        "description": "Повторяющийся параметр — несколько значений: `?severity=HIGH&severity=MEDIUM`. `verdict` — `CONFIRMED` / `REJECTED`, вердикт оператора независимо от статуса: закрытое с вердиктом остаётся `RESOLVED`. `from`/`to` — эпизоды, пересекающиеся с `[from, to)`. `sort` — `last_seen_at`, `first_seen_at` или `severity`, минус — по убыванию; по умолчанию `-last_seen_at`.",
         "operationId": "list_deviations_api_v1_analysis_deviations_get",
         "parameters": [
           {
@@ -1304,6 +1304,19 @@
                 "type": "string"
               },
               "title": "Status",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "verdict",
+            "required": false,
+            "schema": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Verdict",
               "type": "array"
             }
           },

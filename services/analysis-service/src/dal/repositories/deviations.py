@@ -19,6 +19,8 @@ class DeviationFilter:
     codes: Sequence[str] = ()
     severities: Sequence[str] = ()
     statuses: Sequence[str] = ()
+    # Вердикт оператора — отдельно от статуса: закрытое с вердиктом остаётся RESOLVED.
+    verdicts: Sequence[str] = ()
     stage_id: UUID | None = None
     area: str | None = None
     # Эпизод пересекается с [since, until).
@@ -56,6 +58,8 @@ class DeviationRepository:
             query = query.where(Deviation.severity.in_(flt.severities))
         if flt.statuses:
             query = query.where(Deviation.status.in_(flt.statuses))
+        if flt.verdicts:
+            query = query.where(Deviation.verdict.in_(flt.verdicts))
         if flt.stage_id is not None:
             query = query.where(Deviation.stage_id == flt.stage_id)
         if flt.area is not None:

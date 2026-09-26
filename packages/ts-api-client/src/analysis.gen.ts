@@ -51,7 +51,7 @@ export interface paths {
         };
         /**
          * Лента отклонений
-         * @description Повторяющийся параметр — несколько значений: `?severity=HIGH&severity=MEDIUM`. `from`/`to` — эпизоды, пересекающиеся с `[from, to)`. `sort` — `last_seen_at`, `first_seen_at` или `severity`, минус — по убыванию; по умолчанию `-last_seen_at`.
+         * @description Повторяющийся параметр — несколько значений: `?severity=HIGH&severity=MEDIUM`. `verdict` — `CONFIRMED` / `REJECTED`, вердикт оператора независимо от статуса: закрытое с вердиктом остаётся `RESOLVED`. `from`/`to` — эпизоды, пересекающиеся с `[from, to)`. `sort` — `last_seen_at`, `first_seen_at` или `severity`, минус — по убыванию; по умолчанию `-last_seen_at`.
          */
         get: operations["list_deviations_api_v1_analysis_deviations_get"];
         put?: never;
@@ -760,6 +760,7 @@ export interface operations {
                 code?: string[];
                 severity?: string[];
                 status?: string[];
+                verdict?: string[];
                 stage_id?: string | null;
                 area?: string | null;
                 from?: string | null;

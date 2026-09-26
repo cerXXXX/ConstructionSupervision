@@ -177,6 +177,21 @@ async def test_закрытому_отклонению_вердикт_стави
     assert (after["status"], after["verdict"]) == ("RESOLVED", "CONFIRMED")
 
 
+async def test_фильтр_по_вердикту_находит_и_открытые_и_закрытые(client, analyzed):
+    d2, d10 = await _one(client, "D2"), await _one(client, "D10")
+    await client.patch(f"{BASE}/{d2['id']}", json={"status": "REJECTED"})
+    await client.patch(f"{BASE}/{d10['id']}", json={"status": "REJECTED"})
+
+    rejected = (await _list(client, verdict="REJECTED"))["items"]
+    by_status = (await _list(client, status="REJECTED"))["items"]
+    bad = await client.get(BASE, params={"verdict": "RESOLVED"})
+
+    assert {(i["code"], i["status"]) for i in rejected} == {("D2", "RESOLVED"), ("D10", "REJECTED")}
+    assert [i["code"] for i in by_status] == ["D10"]
+    assert (await _list(client, verdict="CONFIRMED"))["total"] == 0
+    assert bad.status_code == 400
+
+
 async def test_вердикт_открытого_пишется_и_в_статус_и_в_поле(client, analyzed):
     d10 = await _one(client, "D10")
 

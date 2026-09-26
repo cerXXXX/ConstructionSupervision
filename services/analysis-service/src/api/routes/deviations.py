@@ -35,6 +35,8 @@ def _moment(value: Moment | None) -> datetime | None:
     response_model=Page[DeviationRead],
     summary="Лента отклонений",
     description="Повторяющийся параметр — несколько значений: `?severity=HIGH&severity=MEDIUM`. "
+    "`verdict` — `CONFIRMED` / `REJECTED`, вердикт оператора независимо от статуса: закрытое "
+    "с вердиктом остаётся `RESOLVED`. "
     "`from`/`to` — эпизоды, пересекающиеся с `[from, to)`. `sort` — `last_seen_at`, "
     "`first_seen_at` или `severity`, минус — по убыванию; по умолчанию `-last_seen_at`.",
 )
@@ -45,6 +47,7 @@ async def list_deviations(
     code: Annotated[list[str], Query()] = [],  # noqa: B006 — FastAPI копирует значение
     severity: Annotated[list[str], Query()] = [],  # noqa: B006
     status: Annotated[list[str], Query()] = [],  # noqa: B006
+    verdict: Annotated[list[str], Query()] = [],  # noqa: B006
     stage_id: UUID | None = None,
     area: str | None = None,
     since: Annotated[Moment | None, Query(alias="from")] = None,
@@ -56,6 +59,7 @@ async def list_deviations(
         codes=code,
         severities=severity,
         statuses=status,
+        verdicts=verdict,
         stage_id=stage_id,
         area=area,
         since=_moment(since),
