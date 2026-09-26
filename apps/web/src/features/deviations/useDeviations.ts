@@ -9,13 +9,16 @@ import {
   type DeviationRead,
 } from "@/shared/api/queries";
 
-/** Пресеты статуса в фильтре: оператору нужны «что открыто» и «что было», а не четыре флажка. */
+/**
+ * Пресеты статуса в фильтре: оператору нужны «что открыто» и «что было», а не четыре флажка.
+ * «Ложные» — по вердикту, а не по статусу: закрытое, помеченное ложным, остаётся `RESOLVED`.
+ */
 export const STATUS_PRESETS = {
-  all: { label: "Все", statuses: [] },
-  open: { label: "Открытые", statuses: ["NEW", "CONFIRMED"] },
-  resolved: { label: "Закрытые", statuses: ["RESOLVED"] },
-  rejected: { label: "Ложные", statuses: ["REJECTED"] },
-} as const satisfies Record<string, { label: string; statuses: string[] }>;
+  all: { label: "Все", statuses: [], verdicts: [] },
+  open: { label: "Открытые", statuses: ["NEW", "CONFIRMED"], verdicts: [] },
+  resolved: { label: "Закрытые", statuses: ["RESOLVED"], verdicts: [] },
+  rejected: { label: "Ложные", statuses: [], verdicts: ["REJECTED"] },
+} as const satisfies Record<string, { label: string; statuses: string[]; verdicts: string[] }>;
 
 export type StatusPreset = keyof typeof STATUS_PRESETS;
 
@@ -33,6 +36,7 @@ export function useDeviationFilter() {
     codes: params.get("code") ? [params.get("code")!] : [],
     severities: params.get("severity") ? [params.get("severity")!] : [],
     statuses: [...STATUS_PRESETS[preset].statuses],
+    verdicts: [...STATUS_PRESETS[preset].verdicts],
     from: params.get("from"),
     to: params.get("to"),
   };

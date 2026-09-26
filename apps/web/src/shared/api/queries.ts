@@ -12,6 +12,8 @@ export type DeviationFilter = {
   codes: string[];
   severities: string[];
   statuses: string[];
+  /** Вердикт оператора: у закрытого он в поле `verdict`, статус остаётся `RESOLVED`. */
+  verdicts: string[];
   /** Сутки по Москве, `YYYY-MM-DD`: эпизоды, пересекающиеся с [from, to]. */
   from: string | null;
   to: string | null;
@@ -110,6 +112,7 @@ export function deviationsQuery(objectId: string, filter: DeviationFilter) {
   filter.codes.forEach((c) => params.append("code", c));
   filter.severities.forEach((s) => params.append("severity", s));
   filter.statuses.forEach((s) => params.append("status", s));
+  filter.verdicts.forEach((v) => params.append("verdict", v));
   if (filter.from) params.set("from", `${filter.from}T00:00:00${MOSCOW_OFFSET}`);
   if (filter.to) params.set("to", `${nextDay(filter.to)}T00:00:00${MOSCOW_OFFSET}`);
   return queryOptions({
