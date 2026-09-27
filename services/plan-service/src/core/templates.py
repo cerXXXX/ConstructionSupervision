@@ -1,7 +1,7 @@
-"""Шаблоны вех по типам объектов (data/wbs_templates.json): разбор и проверка.
+"""Шаблоны этапов по типам объектов (data/wbs_templates.json): разбор и проверка.
 
 Из шаблона импорт и генератор берут фазу, тип участка, визуальную стадию, связи и правило
-«веха → техника» (ТЗ, п. 5.2). Испорченный шаблон — ошибка старта, а не правило, которое
+«этап → техника» (ТЗ, п. 5.2). Испорченный шаблон — ошибка старта, а не правило, которое
 молча не сработает на площадке.
 """
 
@@ -17,7 +17,7 @@ from src.core.stages import WORK_ROLE
 
 
 class TemplateError(ValueError):
-    """Шаблон вех испорчен: сервис с ним не стартует."""
+    """Шаблон этапов испорчен: сервис с ним не стартует."""
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ class TemplateStage:
     phase: str
     zone_type: str
     visual_stage: str | None
-    # Длительность вехи в долях её периода таблицы 1 МРР — для генератора; None — не задана.
+    # Длительность этапа в долях его периода таблицы 1 МРР — для генератора; None — не задана.
     share: float | None
     predecessors: tuple[TemplateLink, ...]
     # Правило в форме API: required, allowed, signature (min_sessions — по умолчанию базы).
@@ -58,7 +58,7 @@ class Vocabulary:
 def parse_templates(raw: Any, vocab: Vocabulary) -> dict[str, tuple[TemplateStage, ...]]:
     """Шаблоны по типу объекта; ключи с `_` — пояснения к файлу."""
     if not isinstance(raw, dict):
-        raise TemplateError("wbs_templates.json: ожидался словарь «тип объекта → вехи»")
+        raise TemplateError("wbs_templates.json: ожидался словарь «тип объекта → этапы»")
     templates = {}
     for object_type, items in raw.items():
         if object_type.startswith("_"):
@@ -72,7 +72,7 @@ def parse_templates(raw: Any, vocab: Vocabulary) -> dict[str, tuple[TemplateStag
 def _parse_stages(object_type: str, items: Any, vocab: Vocabulary) -> tuple[TemplateStage, ...]:
     stages: list[TemplateStage] = []
     for number, item in enumerate(items, start=1):
-        where = f"wbs_templates.json, {object_type}, веха {number}"
+        where = f"wbs_templates.json, {object_type}, этап {number}"
         try:
             stage = _stage(item)
         except (KeyError, TypeError, ValueError) as exc:
@@ -117,9 +117,9 @@ def _check_stage(stage: TemplateStage, vocab: Vocabulary, where: str) -> None:
     if stage.visual_stage is not None and stage.visual_stage not in vocab.stage_labels:
         raise TemplateError(f"{where}: стадии {stage.visual_stage!r} нет в stage_label")
     if stage.share is not None and not 0 < stage.share <= 1:
-        raise TemplateError(f"{where}: доля вехи — число от 0 до 1")
+        raise TemplateError(f"{where}: доля этапа — число от 0 до 1")
     if stage.piles and stage.share is not None:
-        raise TemplateError(f"{where}: у вехи свай длительность из норм на сваи, доля не нужна")
+        raise TemplateError(f"{where}: у этапа свай длительность из норм на сваи, доля не нужна")
     if stage.rule is not None:
         _check_rule(stage.rule, vocab, where)
 
@@ -144,7 +144,7 @@ def _check_rule(rule: Mapping[str, Any], vocab: Vocabulary, where: str) -> None:
 
 
 def _check_links(object_type: str, stages: list[TemplateStage]) -> None:
-    """Связи шаблона — на вехи того же шаблона, без циклов; даты для проверки не нужны."""
+    """Связи шаблона — на этапы того же шаблона, без циклов; даты для проверки не нужны."""
     ids = {s.code: uuid5(NAMESPACE_URL, s.code) for s in stages}
     try:
         cpm = []
@@ -152,7 +152,7 @@ def _check_links(object_type: str, stages: list[TemplateStage]) -> None:
             links = []
             for link in stage.predecessors:
                 if link.code not in ids:
-                    raise CpmError(f"связь на веху {link.code!r}, которой нет в шаблоне")
+                    raise CpmError(f"связь на этап {link.code!r}, которого нет в шаблоне")
                 links.append(Link(ids[link.code], link.type, link.lag_days))
             # Для порядка связей даты не нужны: подставляется любая.
             cpm.append(CpmStage(ids[stage.code], date.min, date.min, tuple(links)))

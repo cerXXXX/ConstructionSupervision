@@ -35,7 +35,7 @@ class RuleRepository:
         stage_id: UUID | None = None,
         object_id: UUID | None = None,
     ) -> tuple[list[StageRule], int]:
-        """Правила в порядке вех графика."""
+        """Правила в порядке этапов графика."""
         query = select(StageRule).join(Stage, Stage.id == StageRule.stage_id)
         if stage_id:
             query = query.where(StageRule.stage_id == stage_id)

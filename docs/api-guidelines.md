@@ -71,7 +71,7 @@
   согласования.
 - Enum-значения — `SCREAMING_SNAKE_CASE`.
   **Исключение: коды классов техники — `lower_snake_case`** (`tower_crane`, `dump_truck`),
-  потому что они совпадают с метками CV-модели и с ключами в правилах вех.
+  потому что они совпадают с метками CV-модели и с ключами в правилах этапов.
   Перечисления — `packages/contracts/enums.yaml`, классы техники —
   `packages/contracts/equipment_classes.yaml`.
 
@@ -104,7 +104,7 @@ GET /api/v1/analysis/deviations?object_id=...&severity=HIGH&status=NEW&from=2026
 {
   "error": {
     "code": "STAGE_RULE_NOT_FOUND",
-    "message": "Правило для вехи не найдено",
+    "message": "Правило для этапа не найдено",
     "details": { "stage_id": "7b1f-..." },
     "request_id": "01JB2K..."
   }

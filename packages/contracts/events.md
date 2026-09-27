@@ -19,7 +19,7 @@
 | `deviation.opened` | analysis-service | `deviation_id, object_id, code, severity, stage_id, area` | Лента; в будущем — уведомления |
 | `deviation.resolved` | analysis-service | `deviation_id, object_id, code, resolved_at` | Лента |
 
-Правка правила «веха → техника» и правка календаря — это тоже `plan.updated`: для
+Правка правила «этап → техника» и правка календаря — это тоже `plan.updated`: для
 analysis они отличаются только номером `plan_version`.
 
 ## Правила

@@ -28,7 +28,7 @@ export type StageAtRisk = {
 };
 
 /**
- * Вехи в риске приходят объектами без схемы (`stages_at_risk: object[]`), поэтому поля
+ * Этапы в риске приходят объектами без схемы (`stages_at_risk: object[]`), поэтому поля
  * разбираются здесь с проверкой типа, а не приведением: неизвестная форма даст прочерк.
  */
 export function stagesAtRisk(items: ReadonlyArray<Record<string, unknown>>): StageAtRisk[] {
@@ -95,7 +95,7 @@ export type ActiveStage = {
   progress: AnalysisSchema<"StageProgress">;
 };
 
-/** Вехи, которые идут сейчас: в работе или с опозданием, — ход работ на обзоре. */
+/** Этапы, которые идут сейчас: в работе или с опозданием, — ход работ на обзоре. */
 export function useActiveStages(objectId: string) {
   const plan = useQuery(planQuery(objectId));
   const progress = useQuery(progressQuery(objectId));

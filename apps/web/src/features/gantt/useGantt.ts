@@ -11,7 +11,7 @@ export type PlanStage = PlanSchema<"PlanStage">;
 export type Progress = AnalysisSchema<"ProgressRead">;
 export type StageProgress = AnalysisSchema<"StageProgress">;
 
-/** Веха на диаграмме: план из plan-service и факт с прогнозом из analysis, если он есть. */
+/** Этап на диаграмме: план из plan-service и факт с прогнозом из analysis, если он есть. */
 export type GanttRow = {
   stage: PlanStage;
   progress: StageProgress | null;
@@ -21,7 +21,7 @@ export type GanttRow = {
   forecastEnd: number | null;
 };
 
-/** «Весь план» объекта: вехи по `seq`, связи, критический путь, календарь. */
+/** «Весь план» объекта: этапы по `seq`, связи, критический путь, календарь. */
 export function planQuery(objectId: string) {
   return queryOptions({
     queryKey: ["plan", "plan", objectId],
@@ -29,7 +29,7 @@ export function planQuery(objectId: string) {
   });
 }
 
-/** Факт и прогноз по вехам; `null` — анализа ещё не было, диаграмма показывает только план. */
+/** Факт и прогноз по этапам; `null` — анализа ещё не было, диаграмма показывает только план. */
 export function progressQuery(objectId: string) {
   return queryOptions({
     queryKey: ["analysis", "progress", objectId],
@@ -71,7 +71,7 @@ export function rowDays(rows: GanttRow[], asOfDay: number | null): number[] {
   return [...days, asOfDay].filter((d): d is number => d != null);
 }
 
-/** Что показать после правки вехи: прогноз вехи и отставание объекта до и после. */
+/** Что показать после правки этапа: прогноз этапа и отставание объекта до и после. */
 export type StageSaveResult = {
   before: Snapshot;
   after: Snapshot;
@@ -87,9 +87,9 @@ type Snapshot = {
 export type StageUpdate = PlanSchema<"StageUpdate">;
 
 /**
- * Правка вехи и пересчёт: плановые даты (T32b) или отметка «веха выполнена» (T46, ADR-0015).
+ * Правка этапа и пересчёт: плановые даты (T32b) или отметка «этап выполнен» (T46, ADR-0015).
  * plan-service пересчитывает критический путь и сам шлёт анализу сигнал; прогон с ожиданием
- * схлопывается с ним и возвращается, когда прогноз посчитан уже по новой вехе, — как на
+ * схлопывается с ним и возвращается, когда прогноз посчитан уже по новому этапу, — как на
  * экране правил (T31).
  */
 export function useSaveStage(objectId: string) {
@@ -126,7 +126,7 @@ async function snapshot(objectId: string, stageId: string): Promise<Snapshot> {
   };
 }
 
-/** Выбранная веха — в адресе (`?stage=`), как на экране правил. */
+/** Выбранный этап — в адресе (`?stage=`), как на экране правил. */
 export function useSelectedRow(rows: GanttRow[]) {
   const [params, setParams] = useSearchParams();
   const selected = rows.find((r) => r.stage.id === params.get("stage")) ?? null;

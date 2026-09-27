@@ -1,4 +1,4 @@
-"""DTO вехи графика. Поля совпадают с вехой в контракте «весь план» (interservice.md, раздел 1)."""
+"""DTO этапа графика. Поля совпадают с этапом в контракте «весь план» (interservice.md, раздел 1)."""
 
 from datetime import date, datetime
 from uuid import UUID
@@ -34,7 +34,7 @@ class StageRead(BaseModel):
     zone_type: ZoneType
     visual_stage: StageLabel | None
     plan_start: date
-    plan_end: date = Field(description="Последний рабочий день вехи, включительно")
+    plan_end: date = Field(description="Последний рабочий день этапа, включительно")
     norm_duration_days: int
     predecessors: list[PredecessorRead]
     is_critical: bool
@@ -42,17 +42,17 @@ class StageRead(BaseModel):
     source: StageSource
     basis: str | None
     completed_on: date | None = Field(
-        default=None, description="Отметка «веха выполнена»: последний день работ (ADR-0015)"
+        default=None, description="Отметка «этап выполнен»: последний день работ (ADR-0015)"
     )
     completed_by: str | None = Field(default=None, description="Кто поставил отметку")
     completion_note: str | None = Field(default=None, description="Комментарий к отметке")
-    rule: RuleRead | None = Field(default=None, description="Правило «веха → техника»")
+    rule: RuleRead | None = Field(default=None, description="Правило «этап → техника»")
     created_at: datetime
     updated_at: datetime
 
     @classmethod
     def of(cls, stage: object, rule: object | None) -> "StageRead":
-        """Веха вместе с её правилом: правило живёт в своей таблице."""
+        """Этап вместе с его правилом: правило живёт в своей таблице."""
         read = cls.model_validate(stage)
         read.rule = RuleRead.model_validate(rule) if rule is not None else None
         return read
@@ -70,7 +70,7 @@ class StageUpdate(BaseModel):
     )
     completed_on: date | None = Field(
         default=None,
-        description="Отметка «веха выполнена» — последний день работ; автор — из `X-Actor`. "
+        description="Отметка «этап выполнен» — последний день работ; автор — из `X-Actor`. "
         "null — снять отметку вместе с автором и комментарием",
     )
     completion_note: str | None = Field(

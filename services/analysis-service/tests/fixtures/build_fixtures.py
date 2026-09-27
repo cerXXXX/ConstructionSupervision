@@ -94,7 +94,7 @@ DAYS = {
     "facts_day1.json": build_day(
         date(2026, 10, 20), trucks=False, pump_from=None, gate_problem=False
     ),
-    # День 2: с 10:00 UTC в котловане бетононасос — техника будущей вехи → D3.
+    # День 2: с 10:00 UTC в котловане бетононасос — техника будущего этапа → D3.
     "facts_day2.json": build_day(date(2026, 10, 21), trucks=True, pump_from=8, gate_problem=False),
     # День 3: второй экскаватор неподвижно на въезде (его видит cam-north) → D4;
     # cam-gate тёмная весь день → склад BLIND → D10, въезд PARTIAL.

@@ -11,7 +11,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
-# Код класса совпадает с меткой детектора и ключами правил вех (api-guidelines.md, раздел 3).
+# Код класса совпадает с меткой детектора и ключами правил этапов (api-guidelines.md, раздел 3).
 CODE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 # Перечисления, без которых plan-service не может проверить свой вход.
 REQUIRED_ENUMS = (

@@ -158,7 +158,7 @@ def evidence_refs(
 
 
 def _planned(stage: Stage, day: date) -> bool:
-    """Веха активна по плану: даты включительно."""
+    """Этап активен по плану: даты включительно."""
     return stage.plan_start <= day <= stage.plan_end
 
 
@@ -169,9 +169,9 @@ def _stage_findings(
     *,
     when: Callable[[Stage, date], bool] = _planned,
 ) -> list[Finding]:
-    """D1, D2, D8: серии сессий в дни `when`, где правило вехи в состоянии `condition`.
+    """D1, D2, D8: серии сессий в дни `when`, где правило этапа в состоянии `condition`.
 
-    Со следующего дня после отметки «выполнена» веха не проверяется (раздел 10.3b).
+    Со следующего дня после отметки «выполнен» этап не проверяется (раздел 10.3b).
     """
     findings = []
     for stage in ctx.plan.stages:
@@ -272,7 +272,7 @@ def _stage_finding(ctx: Context, rule: DeviationRule, stage: Stage, streak: Stre
 
 @register("missing_required")
 def missing_required(ctx: Context, rule: DeviationRule) -> list[Finding]:
-    """D1: веха активна, но ни в одной группе `required` нет ни одной единицы."""
+    """D1: этап активен, но ни в одной группе `required` нет ни одной единицы."""
     return _stage_findings(ctx, rule, lambda check: check.nothing_required)
 
 
@@ -284,7 +284,7 @@ def incomplete_set(ctx: Context, rule: DeviationRule) -> list[Finding]:
 
 @register("stage_overrun")
 def stage_overrun(ctx: Context, rule: DeviationRule) -> list[Finding]:
-    """D8: сигнатура вехи держится после `plan_end` — этап затянулся."""
+    """D8: сигнатура этапа держится после `plan_end` — этап затянулся."""
     findings = _stage_findings(
         ctx, rule, lambda check: check.signature_met, when=lambda s, day: day > s.plan_end
     )

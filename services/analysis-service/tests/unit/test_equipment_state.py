@@ -13,7 +13,7 @@ TRANSIENT = frozenset(c.code for c in PLAN.equipment_classes if c.transient)
 IN_PLACE = frozenset(c.code for c in PLAN.equipment_classes if c.works_in_place)
 NAMES = {c.code: c.name_ru for c in PLAN.equipment_classes}
 AT = datetime(2026, 10, 20, 6, 0, tzinfo=UTC)
-ACTIVE = active_stages(PLAN, date(2026, 10, 20))  # котлован: веха типа PIT
+ACTIVE = active_stages(PLAN, date(2026, 10, 20))  # котлован: этап типа PIT
 AREAS = {
     "PIT": "PIT:Котлован",
     "FOOTPRINT": "BUILDING_FOOTPRINT:Пятно застройки",
@@ -46,14 +46,14 @@ def _one(where, cls, enums, *, count=1, static=None, active=ACTIVE):
 @pytest.mark.parametrize(
     ("where", "cls", "count", "static", "state"),
     [
-        # Рабочий участок, где активна веха его типа.
+        # Рабочий участок, где активен этап его типа.
         ("PIT", "excavator", 1, 0, "WORKING"),
         ("PIT", "excavator", 1, None, "WORKING"),
         ("PIT", "excavator", 2, 1, "WORKING"),
         ("PIT", "excavator", 1, 1, "IDLE"),
         ("PIT", "dump_truck", 2, 2, "WORKING"),
         ("PIT", "concrete_pump", 1, 1, "WORKING"),  # работает стоя
-        # Рабочий участок без активной вехи его типа.
+        # Рабочий участок без активного этапа его типа.
         ("FOOTPRINT", "excavator", 1, 0, "OUT_OF_ZONE"),
         ("FOOTPRINT", "dump_truck", 1, 1, "WORKING"),
         ("FOOTPRINT", "concrete_pump", 1, 1, "OUT_OF_ZONE"),
@@ -72,7 +72,7 @@ def test_строка_таблицы_статусов(enums, where, cls, count, 
 
 
 @pytest.mark.parametrize("cls", ["excavator", "dump_truck"])
-def test_без_активных_вех_статус_неизвестен(enums, cls):
+def test_без_активных_этапов_статус_неизвестен(enums, cls):
     assert _one("PIT", cls, enums, active=()).state == "UNKNOWN"
 
 

@@ -1,4 +1,4 @@
-"""Схемы выводов по объекту: статус для дашборда, прогресс вех для Ганта, загрузка техники."""
+"""Схемы выводов по объекту: статус для дашборда, прогресс этапов для Ганта, загрузка техники."""
 
 import datetime as dt
 from typing import Any
@@ -17,7 +17,7 @@ class ObjectStatusRead(BaseModel):
     delay_days: int | None
     spi: float | None
     confidence: str
-    stages: dict[str, int] = Field(description="Вехи по статусам и `total`")
+    stages: dict[str, int] = Field(description="Этапы по статусам и `total`")
     deviations: dict[str, int] = Field(description="Открытые отклонения по серьёзности")
     blind_areas: int = Field(description="Участки, не видимые в последней рабочей сессии")
     stages_at_risk: list[dict[str, Any]]
@@ -45,7 +45,7 @@ class ActivityDay(BaseModel):
     date: dt.date
     sessions_total: int
     sessions_working: int
-    # null — участок вехи за день ни разу не был виден: «не знаем», а не ноль.
+    # null — участок этапа за день ни разу не был виден: «не знаем», а не ноль.
     activity_index: float | None
     blind_sessions: int
 
@@ -95,7 +95,7 @@ class StageProgress(BaseModel):
 
 
 class ProgressRead(BaseModel):
-    """Названия и плановые даты вех — в plan-service; здесь только факт и прогноз."""
+    """Названия и плановые даты этапов — в plan-service; здесь только факт и прогноз."""
 
     object_id: UUID
     as_of: dt.datetime

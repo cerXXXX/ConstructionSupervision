@@ -1,5 +1,5 @@
-"""Вехи графика: список объекта и ручная правка дат, участка, длительности, стадии по фото
-и отметки «веха выполнена» (ADR-0015)."""
+"""Этапы графика: список объекта и ручная правка дат, участка, длительности, стадии по фото
+и отметки «этап выполнен» (ADR-0015)."""
 
 from uuid import UUID
 
@@ -34,7 +34,7 @@ class StageNotFound(NotFoundError):
     code = "STAGE_NOT_FOUND"
 
     def __init__(self, stage_id: UUID) -> None:
-        super().__init__("Веха не найдена", stage_id=str(stage_id))
+        super().__init__("Этап не найден", stage_id=str(stage_id))
 
 
 class InvalidDateRange(ValidationError):
@@ -68,13 +68,13 @@ class StageService:
     async def list_for_object(
         self, object_id: UUID, *, limit: int, offset: int
     ) -> tuple[list[Stage], int, dict[UUID, StageRule]]:
-        """Страница вех, общее число и правила этих вех по id вехи."""
+        """Страница этапов, общее число и правила этих этапов по id этапа."""
         await ObjectService(self._session).get(object_id)
         stages, total = await self._repo.list_for_object(object_id, limit=limit, offset=offset)
         return stages, total, await self._rules.by_stages([s.id for s in stages])
 
     async def update(self, stage_id: UUID, payload: StageUpdate, actor: str | None) -> Stage:
-        """Правка вехи; после смены дат пересчитывается критический путь всего объекта."""
+        """Правка этапа; после смены дат пересчитывается критический путь всего объекта."""
         stage = await self.get(stage_id)
         requested = payload.model_dump(exclude_unset=True)
         changes = {

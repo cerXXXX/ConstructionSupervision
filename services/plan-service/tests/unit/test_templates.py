@@ -1,4 +1,4 @@
-"""Шаблон вех жилого монолита: разбирается, повторяет таблицу ТЗ п. 5.2, ломается громко."""
+"""Шаблон этапов жилого монолита: разбирается, повторяет таблицу ТЗ п. 5.2, ломается громко."""
 
 import copy
 
@@ -25,12 +25,12 @@ def test_шаблон_монолита_повторяет_таблицу_тз():
     # Группа «любой из»: стены и фасад — башенный кран, автокран или кран-манипулятор.
     envelope = MONOLITH["12.4.8"].rule["required"][0]
     assert envelope["any_of"] == ["tower_crane", "truck_crane", "manipulator_crane"]
-    # У каждой вехи длительность для генератора: доля периода МРР или время на сваи.
+    # У каждого этапа длительность для генератора: доля периода МРР или время на сваи.
     assert all((s.share is None) == s.piles for s in MONOLITH.values())
     assert [s.code for s in MONOLITH.values() if s.piles] == ["12.3.2"]
 
 
-def test_каждая_связь_шаблона_ведёт_на_его_веху():
+def test_каждая_связь_шаблона_ведёт_на_его_этап():
     for stage in MONOLITH.values():
         assert all(link.code in MONOLITH for link in stage.predecessors)
 

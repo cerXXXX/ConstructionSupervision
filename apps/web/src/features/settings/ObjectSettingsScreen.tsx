@@ -112,7 +112,7 @@ function SchedulePanel({ object }: { object: ObjectRead }) {
             </p>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Fact label="Вех" value={String(stages.length)} />
+              <Fact label="Этапов" value={String(stages.length)} />
               <Fact label="На критическом пути" value={String(stages.filter((s) => s.is_critical).length)} />
               <Fact label="Срок" value={`${formatPlanDate(first)} — ${formatPlanDate(last)}`} />
               <Fact label="Календарь · версия" value={`${plan.data.calendar.code} · v${plan.data.plan_version}`} />
@@ -127,7 +127,7 @@ function SchedulePanel({ object }: { object: ObjectRead }) {
             </Button>
             {stages.length > 0 && (
               <Button variant="ghost" icon="rules" onClick={() => navigate(`${base}/settings/rules`)}>
-                Правила «веха → техника»
+                Правила «этап → техника»
               </Button>
             )}
           </div>

@@ -1,7 +1,7 @@
 """Генератор синтетического графика по МРР-3.2.81-12 (ТЗ, п. 8; ADR-0011).
 
 Черновик графика, к которому можно привязывать снимки: сроки периодов — из таблицы норм,
-раскладка на вехи — по долям шаблона, даты — по рабочему календарю объекта и связям шаблона.
+раскладка на этапы — по долям шаблона, даты — по рабочему календарю объекта и связям шаблона.
 Дальше оператор правит даты сам: нормы предельно допустимые (МРР, п. 4.1).
 """
 
@@ -77,7 +77,7 @@ def generate_schedule(
     start: date,
     calendar: WorkCalendar,
 ) -> GeneratedSchedule:
-    """График от даты начала: вехи в порядке шаблона с датами, длительностью и основанием."""
+    """График от даты начала: этапы в порядке шаблона с датами, длительностью и основанием."""
     table = period_months(norms, params.floors, params.area)
     shift = norms.shift_coefficients[params.shifts]
     periods = _periods(norms, table.months, shift, start, calendar)
@@ -114,20 +114,20 @@ def generate_schedule(
 def check_generator_template(
     object_type: str, templates: Sequence[TemplateStage], norms: Norms
 ) -> None:
-    """Проверка при старте: у типа с нормами есть шаблон, и каждой вехе хватает данных.
+    """Проверка при старте: у типа с нормами есть шаблон, и каждому этапу хватает данных.
 
     Иначе ошибка всплыла бы только при первой генерации, на демо.
     """
     where = f"mrr_norms.json и wbs_templates.json, {object_type}"
     if not templates:
-        raise NormsError(f"{where}: нормы есть, а шаблона вех нет")
+        raise NormsError(f"{where}: нормы есть, а шаблона этапов нет")
     for stage in templates:
         if stage.piles:
             continue
         if stage.share is None:
-            raise NormsError(f"{where}: у вехи {stage.code} нет доли share")
+            raise NormsError(f"{where}: у этапа {stage.code} нет доли share")
         if stage.phase not in norms.phase_columns:
-            raise NormsError(f"{where}: фазе {stage.phase} вехи {stage.code} не задан период")
+            raise NormsError(f"{where}: фазе {stage.phase} этапа {stage.code} не задан период")
 
 
 def _periods(
@@ -156,27 +156,27 @@ def _duration(
     periods: dict[str, Period],
     basis: str,
 ) -> tuple[int, str]:
-    """Длительность вехи в рабочих днях и её обоснование."""
+    """Длительность этапа в рабочих днях и её обоснование."""
     if stage.piles:
         days, piles_basis = piles_working_days(norms, params.piles, params.sections)
         return max(days, 1), f"{_cite(norms.piles_source)}: {piles_basis}"
     column = norms.phase_columns.get(stage.phase)
     if column is None or stage.share is None:
         raise NormsNotAvailable(
-            f"Веха {stage.code}: для фазы {stage.phase} нет периода норм или доли в шаблоне"
+            f"Этап {stage.code}: для фазы {stage.phase} нет периода норм или доли в шаблоне"
         )
     period = periods[column]
     days = max(math.floor(stage.share * period.working_days + 0.5), 1)
     return days, (
         f"{basis}. {period.title.capitalize()} {_num(period.months)} мес.: периоды подряд от "
         f"начала, этот — с {period.start:%d.%m.%Y} по {period.end - timedelta(days=1):%d.%m.%Y}, "
-        f"{period.working_days} раб. дн. по календарю объекта; доля вехи "
+        f"{period.working_days} раб. дн. по календарю объекта; доля этапа "
         f"{_num(stage.share)} (шаблон) = {days} раб. дн."
     )
 
 
 def _without_piles(templates: Sequence[TemplateStage]) -> list[TemplateStage]:
-    """Без свай веха свай выпадает, а её последователи наследуют её предшественников."""
+    """Без свай этап свай выпадает, а его последователи наследуют его предшественников."""
     piles = {s.code: s.predecessors for s in templates if s.piles}
     result = []
     for stage in templates:

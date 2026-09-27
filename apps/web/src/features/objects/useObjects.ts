@@ -76,7 +76,7 @@ export function importPlan(objectId: string, file: File, force: boolean): Promis
   return apiPostForm<ImportResult>(`/plan/objects/${objectId}/plan/import?force=${force}`, form);
 }
 
-/** После замены графика устаревает всё: вехи, правила, прогресс и лента. */
+/** После замены графика устаревает всё: этапы, правила, прогресс и лента. */
 export function useScheduleInvalidation() {
   const client = useQueryClient();
   return () =>

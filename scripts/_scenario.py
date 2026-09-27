@@ -23,7 +23,7 @@ def day_of(item: dict) -> str:
 
 
 def describe(item: dict) -> str:
-    """Строка ленты для человека: код, участок, класс или веха."""
+    """Строка ленты для человека: код, участок, класс или этап."""
     what = item.get("equipment_class") or (item.get("facts") or {}).get("stage_code") or ""
     return f"{item['code']} {item.get('area') or '—'} {what}".rstrip()
 
@@ -65,13 +65,13 @@ def compare(expected: dict, items: list[dict]) -> Comparison:
 
 
 def stage_rule(client: httpx.Client, object_id: str, stage_code: str) -> dict:
-    """Действующее правило вехи по её коду."""
+    """Действующее правило этапа по его коду."""
     stages = check(
-        client.get(f"/plan/objects/{object_id}/stages", params={"limit": 200}), "вехи объекта"
+        client.get(f"/plan/objects/{object_id}/stages", params={"limit": 200}), "этапы объекта"
     )["items"]
     stage = next((s for s in stages if s["code"] == stage_code), None)
     if stage is None or stage["rule"] is None:
-        raise LookupError(f"у вехи {stage_code} нет правила")
+        raise LookupError(f"у этапа {stage_code} нет правила")
     return stage["rule"]
 
 

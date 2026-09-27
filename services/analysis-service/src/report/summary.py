@@ -33,7 +33,7 @@ def llm_context(context: Mapping[str, Any]) -> dict[str, Any]:
         "spi": title["spi"],
         "уверенность": title["confidence"],
         "прогресс_по_фазам": summary["phases"],
-        "вехи_в_зоне_риска": summary["at_risk"],
+        "этапы_в_зоне_риска": summary["at_risk"],
         "отклонения": {
             "всего": counts["deviations"],
             "открыто": counts["open"],
@@ -43,7 +43,7 @@ def llm_context(context: Mapping[str, Any]) -> dict[str, Any]:
                     "id": d["id"],
                     "код": d["code"],
                     "серьёзность": d["severity"],
-                    "веха": d["stage"],
+                    "этап": d["stage"],
                     "участок": d["area"],
                     "что": d["title"],
                     "подробно": d["message"],

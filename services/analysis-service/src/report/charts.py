@@ -51,7 +51,7 @@ def _svg(height: float, body: list[str]) -> str:
 
 
 def gantt_svg(stages: Sequence[Stage], facts: Mapping[UUID, StageSnapshot], as_of: date) -> str:
-    """Гант: вехи по `seq`, шкала — от начала месяца первой даты до конца месяца последней."""
+    """Гант: этапы по `seq`, шкала — от начала месяца первой даты до конца месяца последней."""
     days = [d for s in stages for d in (s.plan_start, s.plan_end)] + [as_of]
     days += [f.forecast_end for f in facts.values() if f.forecast_end]
     days += [f.actual_start for f in facts.values() if f.actual_start]

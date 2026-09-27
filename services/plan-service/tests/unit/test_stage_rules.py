@@ -1,4 +1,4 @@
-"""Форма правила «веха → техника»: повторы классов и сбор кодов для проверки."""
+"""Форма правила «этап → техника»: повторы классов и сбор кодов для проверки."""
 
 import pytest
 from src.core.stage_rules import StageRuleError, check_rule_shape, rule_codes

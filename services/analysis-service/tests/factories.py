@@ -53,7 +53,7 @@ def make_rule(
     min_sessions: int = 2,
     version: int = 1,
 ) -> StageRule:
-    """Правило вехи. `{"excavator": 1}` — по группе на класс; список — группы «любой из»."""
+    """Правило этапа. `{"excavator": 1}` — по группе на класс; список — группы «любой из»."""
     groups = (
         [((cls,), n) for cls, n in required.items()] if isinstance(required, dict) else required
     )
@@ -95,7 +95,7 @@ def make_stage(
 
 
 def make_plan(*stages: Stage, base: Plan | None = None) -> Plan:
-    """План фикстуры с подменёнными вехами: календарь и классы техники — как в plan.json."""
+    """План фикстуры с подменёнными этапами: календарь и классы техники — как в plan.json."""
     return (base or load_plan()).model_copy(update={"stages": stages})
 
 

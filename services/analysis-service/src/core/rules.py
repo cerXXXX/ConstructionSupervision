@@ -1,7 +1,7 @@
-"""Проверка правила «веха → техника» в одной рабочей сессии (docs/methodology.md, раздел 5).
+"""Проверка правила «этап → техника» в одной рабочей сессии (docs/methodology.md, раздел 5).
 
-Правило проверяется только на видимых участках типа вехи. Если все такие участки
-слепые или их нет вовсе, веха в сессии не оценивается: «не видно» — не «пусто».
+Правило проверяется только на видимых участках типа этапа. Если все такие участки
+слепые или их нет вовсе, этап в сессии не оценивается: «не видно» — не «пусто».
 Серии сессий (`min_sessions`) и выводы D1–D10 здесь не делаются: это вход для
 предикатов.
 """
@@ -44,11 +44,11 @@ class GroupResult:
 
 @dataclass(frozen=True)
 class RuleCheck:
-    """Результат проверки правила вехи в сессии — все числа для `facts` отклонения."""
+    """Результат проверки правила этапа в сессии — все числа для `facts` отклонения."""
 
     stage_id: UUID
     session_id: UUID
-    # False — участки типа вехи не видны или не размечены; остальные поля пустые.
+    # False — участки типа этапа не видны или не размечены; остальные поля пустые.
     evaluated: bool
     # Почему не оценивалась: NO_AREA — нет размеченного участка типа, BLIND — все слепые.
     skip_reason: str | None
@@ -59,7 +59,7 @@ class RuleCheck:
 
     @property
     def complete(self) -> bool:
-        """Комплект вехи присутствует: выполнены все группы `required`."""
+        """Комплект этапа присутствует: выполнены все группы `required`."""
         return self.evaluated and all(g.satisfied for g in self.groups)
 
     @property
@@ -75,7 +75,7 @@ class RuleCheck:
 
 
 def expected_classes(rule: StageRule) -> frozenset[str]:
-    """Классы, чьё присутствие на участке вехи ожидаемо: обязательные, допустимые, сигнатура."""
+    """Классы, чьё присутствие на участке этапа ожидаемо: обязательные, допустимые, сигнатура."""
     required = {c for group in rule.required for c in group.any_of}
     return frozenset(required | set(rule.allowed) | set(rule.signature.equipment))
 
@@ -162,13 +162,13 @@ def check_rule(
     enums: Enums,
     params: RuleParams,
 ) -> RuleCheck:
-    """Проверяет правило вехи в сессии `sessions[index]`.
+    """Проверяет правило этапа в сессии `sessions[index]`.
 
     `sessions` — рабочие сессии по возрастанию времени; прошлые нужны для окна
     транзитной техники. `transient` — коды классов с `transient: true`.
     """
     if stage.rule is None:
-        raise ValueError(f"У вехи {stage.name!r} нет правила: проверять нечего")
+        raise ValueError(f"У этапа {stage.name!r} нет правила: проверять нечего")
     rule = stage.rule
     session = sessions[index]
     skip = _skip_reason(session, stage.zone_type)

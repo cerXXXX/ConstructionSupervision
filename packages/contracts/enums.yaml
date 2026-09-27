@@ -16,7 +16,7 @@ object_lifecycle:   [DRAFT, ACTIVE, ARCHIVED]
 zone_type:          [PIT, BUILDING_FOOTPRINT, PERIMETER, ENTRY_GATE, STORAGE, DANGER, ROAD]
 # Роль типа зоны определяет, что значит машина на участке этого типа
 # (docs/methodology.md, раздел 6):
-#   WORK    — здесь идут работы вех; машина в активном рабочем участке работает;
+#   WORK    — здесь идут работы этапов; машина в активном рабочем участке работает;
 #   SERVICE — здесь машины ждут; нетранзитная машина здесь простаивает;
 #   SAFETY  — опасная зона, накладывается поверх остальных и даёт D6.
 zone_type_role:

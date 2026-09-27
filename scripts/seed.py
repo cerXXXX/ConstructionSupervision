@@ -3,8 +3,8 @@
     python scripts/seed.py [--force-plan] [--timeout 900]
 
 Шаги: объект из data/seed/object.json (ищется по имени, иначе создаётся) → график из
-data/seed/schedule.xlsx (если у объекта его ещё нет; --force-plan заменяет) → правила вех без
-шаблона из data/seed/rules.json (если у вехи правила нет) → снимки из
+data/seed/schedule.xlsx (если у объекта его ещё нет; --force-plan заменяет) → правила этапов без
+шаблона из data/seed/rules.json (если у этапа правила нет) → снимки из
 data/seed/images через POST /images/import → камеры и зоны из data/seed/cameras.json →
 ожидание распознавания → если разметка изменилась, ожидание пересчёта фактов окон по ней →
 POST /analysis/runs?wait=true → сводка отклонений.
@@ -87,23 +87,23 @@ def import_plan(client: httpx.Client, obj: dict, force: bool) -> None:
             client.post(f"/plan/objects/{obj['id']}/plan/import", files=files, params=params),
             "импорт графика",
         )
-    print(f"график     {body['stages']} вех, plan_version {body['plan_version']}")
+    print(f"график     {body['stages']} этапов, plan_version {body['plan_version']}")
 
 
 def ensure_rules(client: httpx.Client, object_id: str) -> None:
-    """Правила из rules.json вехам без правила: у них нет шаблона, импорт правило не ставит.
+    """Правила из rules.json этапам без правила: у них нет шаблона, импорт правило не ставит.
 
     Существующее правило не трогается: его могли поправить в интерфейсе.
     """
     rules = json.loads((SEED / "rules.json").read_text(encoding="utf-8"))["rules"]
     stages = check(
-        client.get(f"/plan/objects/{object_id}/stages", params={"limit": 200}), "вехи объекта"
+        client.get(f"/plan/objects/{object_id}/stages", params={"limit": 200}), "этапы объекта"
     )["items"]
     by_code = {stage["code"]: stage for stage in stages}
     for code, rule in rules.items():
         stage = by_code.get(code)
         if stage is None:
-            raise SeedError(f"правило для вехи {code}, а её нет в schedule.xlsx")
+            raise SeedError(f"правило для этапа {code}, а его нет в schedule.xlsx")
         if stage["rule"] is not None:
             print(f"правило    {code} уже есть (версия {stage['rule']['version']})")
             continue
@@ -140,7 +140,7 @@ def import_zones(client: httpx.Client, object_id: str) -> datetime | None:
         f" участков {len(body['areas'])}"
     )
     if not body["areas"]:
-        print("           зон нет: вся техника окажется вне участков, а вехи — без участков (D10)")
+        print("           зон нет: вся техника окажется вне участков, а этапы — без участков (D10)")
     changed = body["zones_created"] + body["zones_updated"] + body["cameras_updated"]
     return parsedate_to_datetime(resp.headers["date"]) if changed else None
 

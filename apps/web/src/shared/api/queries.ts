@@ -104,7 +104,7 @@ export const objectsQuery = queryOptions({
   queryFn: ({ signal }) => apiGet<PlanSchema<"Page_ObjectRead_">>("/plan/objects?limit=200", signal),
 });
 
-/** Вехи объекта по `seq` вместе с правилами «веха → техника». */
+/** Этапы объекта по `seq` вместе с правилами «этап → техника». */
 export function stagesQuery(objectId: string) {
   return queryOptions({
     queryKey: ["plan", "stages", objectId],

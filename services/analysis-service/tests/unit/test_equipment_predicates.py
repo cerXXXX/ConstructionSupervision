@@ -67,7 +67,7 @@ def _outside(cls, n):
     ]
 
 
-def test_день_2_даёт_d3_с_ключом_будущей_вехи(enums):
+def test_день_2_даёт_d3_с_ключом_будущего_этапа(enums):
     (finding,) = _findings(load_facts("facts_day2.json"), enums)
 
     assert finding.code == "D3"
@@ -103,7 +103,7 @@ def test_в_нормальный_день_и_день_1_техника_на_св
     assert _findings(load_facts(name), enums) == []
 
 
-def test_d3_без_будущей_вехи_ключ_без_вехи(enums):
+def test_d3_без_будущего_этапа_ключ_без_этапа(enums):
     plan = make_plan(PIT_STAGE)
 
     (finding,) = _findings(make_facts(*_series(PIT, "concrete_pump", 2)), enums, plan)
@@ -113,8 +113,8 @@ def test_d3_без_будущей_вехи_ключ_без_вехи(enums):
     assert describe(finding, RULES["D3"], NAMES).title == "Техника не по этапу: Автобетононасос"
 
 
-def test_закрытая_отметкой_веха_не_бывает_будущей_для_d3(enums):
-    """Раздел 10.3b: веху уже закрыли — насос на котловане не «опережение» по ней."""
+def test_закрытый_отметкой_этап_не_бывает_будущим_для_d3(enums):
+    """Раздел 10.3b: этап уже закрыли — насос на котловане не «опережение» по нему."""
     done = FOUNDATION_STAGE.model_copy(update={"completed_on": date(2026, 10, 19)})
 
     (finding,) = _findings(
@@ -124,10 +124,10 @@ def test_закрытая_отметкой_веха_не_бывает_будущ
     assert (finding.code, finding.stage_id) == ("D3", None)
 
 
-def test_после_отметки_техника_на_участке_вехи_не_по_её_правилу(enums):
-    """Раздел 10.3b: правило закрытой вехи не участвует в D3 и D5 — экскаватор уже не нужен."""
+def test_после_отметки_техника_на_участке_этапа_не_по_его_правилу(enums):
+    """Раздел 10.3b: правило закрытого этапа не участвует в D3 и D5 — экскаватор уже не нужен."""
     done = PIT_STAGE.model_copy(update={"completed_on": date(2026, 10, 19)})
-    # Параллельно идёт веха на другом участке: без единой активной вехи статус — UNKNOWN.
+    # Параллельно идёт этап на другом участке: без единого активного этапа статус — UNKNOWN.
     frame = make_stage(
         "Каркас", date(2026, 10, 1), date(2026, 10, 31), seq=3, zone_type="BUILDING_FOOTPRINT"
     )
@@ -154,7 +154,7 @@ def test_транзитный_класс_даёт_d3(enums):
     assert (finding.code, finding.stage_id) == ("D3", FOUNDATION_STAGE.id)
 
 
-def test_веха_без_правила_d3_не_даёт(enums):
+def test_этап_без_правила_d3_не_даёт(enums):
     plan = make_plan(PIT_STAGE.model_copy(update={"rule": None}))
 
     assert _findings(make_facts(*_series(PIT, "concrete_pump", 3)), enums, plan) == []
@@ -164,12 +164,12 @@ def test_человек_на_рабочем_участке_не_техника_�
     assert _findings(make_facts(*_series(PIT, "person", 3, count=2)), enums) == []
 
 
-def test_рабочий_участок_без_активной_вехи_это_d5_а_не_d3(enums):
+def test_рабочий_участок_без_активного_этапа_это_d5_а_не_d3(enums):
     (finding,) = _findings(make_facts(*_series(FOOTPRINT, "excavator", 2, static=0)), enums)
 
     assert (finding.code, finding.area, finding.equipment_class) == ("D5", FOOTPRINT, "excavator")
     assert finding.facts["active_stages"] == [PIT_STAGE.name]
-    assert "нет активной вехи этого типа" in finding.facts["state_reason"]
+    assert "нет активного этапа этого типа" in finding.facts["state_reason"]
 
 
 def test_одна_сессия_не_в_той_зоне_это_ещё_не_d5(enums):
@@ -267,8 +267,8 @@ def test_вне_рабочего_времени_ничего(enums, area, cls):
     assert _findings(make_facts(*night, *sunday), enums) == []
 
 
-def test_без_активных_вех_статуса_нет_и_d4_d5_нет(enums):
-    # 15.01.2027 — после всех вех плана.
+def test_без_активных_этапов_статуса_нет_и_d4_d5_нет(enums):
+    # 15.01.2027 — после всех этапов плана.
     sessions = _series(GATE, "excavator", 3, day=date(2027, 1, 15))
 
     assert _findings(make_facts(*sessions), enums) == []

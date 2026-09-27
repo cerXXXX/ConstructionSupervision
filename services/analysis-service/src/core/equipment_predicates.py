@@ -1,8 +1,8 @@
 """Предикаты по технике на участках: D3, D4, D5, D6 (docs/methodology.md, разделы 6 и 9).
 
-В отличие от D1 и D2, здесь ключ — не веха, а пара «участок × класс»: вывод касается
+В отличие от D1 и D2, здесь ключ — не этап, а пара «участок × класс»: вывод касается
 конкретной машины на конкретном месте. Порог серии `min_sessions` лежит в `params`
-правила отклонения, а не в правиле вехи.
+правила отклонения, а не в правиле этапа.
 
 Модуль регистрирует предикаты при импорте; импортирует его `core/predicates.py`,
 поэтому реестр всегда полон.
@@ -40,7 +40,7 @@ from src.core.rules import expected_classes
 
 OUTSIDE_NAME = "вне размеченных зон"
 
-# (веха или None, участок, класс) — ключ отклонения без object_id и кода.
+# (этап или None, участок, класс) — ключ отклонения без object_id и кода.
 Key = tuple[UUID | None, str, str]
 
 
@@ -121,9 +121,9 @@ def _equipment_finding(
 
 
 def _future_stage(ctx: Context, day: date, zone_type: str, cls: str) -> Stage | None:
-    """Ближайшая по плану будущая веха того же типа участка, чьё правило ждёт этот класс.
+    """Ближайший по плану будущий этап того же типа участка, чьё правило ждёт этот класс.
 
-    Веха, уже закрытая отметкой «выполнена», будущей не бывает (раздел 10.3b).
+    Этап, уже закрытый отметкой «выполнен», будущим не бывает (раздел 10.3b).
     """
     future = [
         s
@@ -145,8 +145,8 @@ def _unexpected(ctx: Context, session: SessionFact) -> dict[Key, Hit]:
         if area.visibility.status == BLIND or ctx.enums.role(area.zone_type) != ROLE_WORK:
             continue
         here = [s for s in active if s.zone_type == area.zone_type]
-        # Нет активной вехи типа — это D5, а не D3. Веха без правила не говорит, какая
-        # техника ей нужна, и обвинять машину «не по этапу» не на чем.
+        # Нет активного этапа типа — это D5, а не D3. Этап без правила не говорит, какая
+        # техника ему нужна, и обвинять машину «не по этапу» не на чем.
         if not here or any(s.rule is None for s in here):
             continue
         expected = frozenset().union(*(expected_classes(s.rule) for s in here))
@@ -225,7 +225,7 @@ def _in_danger(ctx: Context, session: SessionFact) -> dict[Key, Hit]:
 
 @register("unexpected_equipment")
 def unexpected_equipment(ctx: Context, rule: DeviationRule) -> list[Finding]:
-    """D3: класса нет в правилах активных вех участка; есть у будущей вехи — опережение."""
+    """D3: класса нет в правилах активных этапов участка; есть у будущего этапа — опережение."""
     return _equipment_findings(ctx, rule, _unexpected)
 
 
@@ -241,7 +241,7 @@ def idle_equipment(ctx: Context, rule: DeviationRule) -> list[Finding]:
 
 @register("wrong_zone")
 def wrong_zone(ctx: Context, rule: DeviationRule) -> list[Finding]:
-    """D5: нетранзитная техника на рабочем участке, где нет активной вехи его типа."""
+    """D5: нетранзитная техника на рабочем участке, где нет активного этапа его типа."""
     return _equipment_findings(
         ctx, rule, _by_state(lambda state, area: state == OUT_OF_ZONE and area != OUTSIDE)
     )

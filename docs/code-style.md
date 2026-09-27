@@ -198,7 +198,7 @@ count = max(per_camera_counts)
 
 ```python
 def compute_forecast(stage: StagePlan, activity: Sequence[DailyActivity]) -> Forecast:
-    """Прогноз окончания вехи по среднему темпу последних рабочих дней (F9).
+    """Прогноз окончания этапа по среднему темпу последних рабочих дней (F9).
 
     Темп берётся за 5 последних рабочих дней; при среднем индексе ниже MIN_ACTIVITY
     прогноз считается по MIN_ACTIVITY и помечается confidence=LOW, иначе прогноз
@@ -248,7 +248,7 @@ def compute_forecast(stage: StagePlan, activity: Sequence[DailyActivity]) -> For
 - Коммит — Conventional Commits, область = сервис:
 
 ```
-feat(analysis): предикаты D8 и D9 по фактическому старту вехи
+feat(analysis): предикаты D8 и D9 по фактическому старту этапа
 fix(site): не терять снимки без EXIF, переводить в статус NEEDS_TIME
 docs(adr): 0007 — правила отклонений как данные
 refactor(plan): вынести CPM в core, убрать обращение к БД из расчёта

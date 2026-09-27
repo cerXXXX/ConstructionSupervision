@@ -25,7 +25,7 @@ CLASSES_FILE = "equipment_classes.yaml"
 @dataclass(frozen=True)
 class Reference:
     enums: dict[str, tuple[str, ...]]
-    # Роль типа зоны: на участках с ролью WORK идут работы вех.
+    # Роль типа зоны: на участках с ролью WORK идут работы этапов.
     zone_roles: dict[str, str]
     equipment_classes: tuple[EquipmentClass, ...]
 

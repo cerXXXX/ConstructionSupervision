@@ -1,10 +1,10 @@
-"""API вех: список объекта, правка, рост plan_version и сигнал «пересчитай»."""
+"""API этапов: список объекта, правка, рост plan_version и сигнал «пересчитай»."""
 
 OBJECTS = "/api/v1/plan/objects"
 STAGES = "/api/v1/plan/stages"
 
 
-async def test_вехи_объекта_в_формате_страницы(client, demo_stage):
+async def test_этапы_объекта_в_формате_страницы(client, demo_stage):
     object_id = demo_stage["object"]["id"]
 
     body = (await client.get(f"{OBJECTS}/{object_id}/stages")).json()
@@ -16,7 +16,7 @@ async def test_вехи_объекта_в_формате_страницы(client
     assert stage["predecessors"] == []
 
 
-async def test_вехи_несуществующего_объекта(client):
+async def test_этапы_несуществующего_объекта(client):
     response = await client.get(f"{OBJECTS}/00000000-0000-0000-0000-000000000000/stages")
 
     assert response.status_code == 404
@@ -48,7 +48,7 @@ async def test_конец_раньше_начала_отклоняется(clien
     assert analysis.signals == []
 
 
-async def test_веха_не_переносится_на_въезд(client, demo_stage):
+async def test_этап_не_переносится_на_въезд(client, demo_stage):
     response = await client.patch(
         f"{STAGES}/{demo_stage['stage_id']}", json={"zone_type": "ENTRY_GATE"}
     )
@@ -105,7 +105,7 @@ async def test_комментарий_без_отметки_отклоняетс
     assert analysis.signals == []
 
 
-async def test_несуществующая_веха(client):
+async def test_несуществующий_этап(client):
     response = await client.patch(
         f"{STAGES}/00000000-0000-0000-0000-000000000000", json={"plan_end": "2026-11-27"}
     )

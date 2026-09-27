@@ -97,7 +97,7 @@ def test_полная_работа_в_графике(enums):
     assert result.object.stages_at_risk == ()
 
 
-def test_половинный_темп_сдвигает_веху_и_зависимую(enums):
+def test_половинный_темп_сдвигает_этап_и_зависимый(enums):
     result = _run(enums, _half_days(FIRST_WEEK))
     pit, foundation = _stage(result, PIT_STAGE), _stage(result, FOUNDATION)
 
@@ -179,7 +179,7 @@ def test_плановый_прогресс_без_рабочих_дней_не_�
     assert planned_progress(CALENDAR, sunday, date(2026, 10, 20)) is None
 
 
-def test_стадия_по_фото_раньше_вехи_обнуляет_прогресс(enums):
+def test_стадия_по_фото_раньше_этапа_обнуляет_прогресс(enums):
     plan = make_plan(
         PIT_STAGE.model_copy(update={"visual_stage": "FOUNDATION", "predecessors": ()})
     )
@@ -202,7 +202,7 @@ def test_неуверенная_стадия_прогресс_не_ограни�
     assert not pit.facts["progress_limited_by_stage"] and pit.progress > 0
 
 
-def test_завершённая_веха(enums):
+def test_завершённый_этап(enums):
     short = make_stage(
         "Короткая",
         date(2026, 10, 15),
@@ -220,7 +220,7 @@ def test_завершённая_веха(enums):
     assert result.object.stages_at_risk == ()
 
 
-# --- Отметка оператора «веха выполнена» (раздел 10.3b) --------------------------------------
+# --- Отметка оператора «этап выполнен» (раздел 10.3b) --------------------------------------
 
 
 def _marked(stage, day):
@@ -229,7 +229,7 @@ def _marked(stage, day):
     )
 
 
-def test_отметка_выполнена_закрывает_веху_раньше_плана(enums):
+def test_отметка_выполнен_закрывает_этап_раньше_плана(enums):
     marked_day = date(2026, 10, 19)
     plan = make_plan(PREPARATION, _marked(PIT_STAGE, marked_day), FOUNDATION)
 
@@ -244,7 +244,7 @@ def test_отметка_выполнена_закрывает_веху_рань�
     assert pit.facts["basis"] == "OPERATOR"
     assert pit.facts["completed_on"] == "2026-10-19"
     assert (pit.facts["completed_by"], pit.facts["completion_note"]) == ("Петров П. П.", "акт")
-    # Освоенный объём подтверждён: в SPI веха входит с прогрессом 1.
+    # Освоенный объём подтверждён: в SPI этап входит с прогрессом 1.
     assert pit.spi == result.object.spi == round(31 / 5, 3)
     assert result.object.stages_at_risk == ()
 
@@ -286,7 +286,7 @@ def test_отметка_без_наблюдённого_старта(enums):
     assert pit.expected_start == PIT_STAGE.plan_start
 
 
-def test_отметка_у_вехи_без_правила(enums):
+def test_отметка_у_этапа_без_правила(enums):
     stage = _marked(
         make_stage("Без правила", date(2026, 10, 15), date(2026, 10, 30)), FIRST_WEEK[-1]
     )
@@ -305,7 +305,7 @@ def test_отметка_позже_момента_анализа_не_дейст
     assert pit.facts["basis"] == "OBSERVED" and pit.status == "IN_PROGRESS"
 
 
-def test_не_начатая_при_видимом_участке_веха_опаздывает(enums):
+def test_не_начатый_при_видимом_участке_этап_опаздывает(enums):
     # Экскаватор без самосвалов: сигнатура «экскаватор + самосвал» не выполнена.
     pit = _stage(_run(enums, _days(FIRST_WEEK, trucks=False)), PIT_STAGE)
 
@@ -315,7 +315,7 @@ def test_не_начатая_при_видимом_участке_веха_оп�
     assert pit.delay_days == 4
 
 
-def test_невидимая_веха_идёт_по_плану(enums):
+def test_невидимый_этап_идёт_по_плану(enums):
     # Подготовка территории: пятно застройки не размечено, наблюдать нечего.
     prep = _stage(_run(enums, _days(FIRST_WEEK)), PREPARATION)
 
@@ -323,8 +323,8 @@ def test_невидимая_веха_идёт_по_плану(enums):
     assert (prep.status, prep.delay_days, prep.confidence) == ("DONE", 0, "LOW")
 
 
-def test_веха_до_начала_наблюдений_выполнена_по_плану(enums):
-    """Раздел 10.3a: наблюдения с 15.10, окно вехи 01–10.10, её сигнатуры после не видно."""
+def test_этап_до_начала_наблюдений_выполнен_по_плану(enums):
+    """Раздел 10.3a: наблюдения с 15.10, окно этапа 01–10.10, его сигнатуры после не видно."""
     early = make_stage("Ранняя", date(2026, 10, 1), date(2026, 10, 10), rule=PIT_STAGE.rule)
 
     (stage,) = _run(enums, _days(FIRST_WEEK, trucks=False), plan=make_plan(early)).stages
@@ -334,8 +334,8 @@ def test_веха_до_начала_наблюдений_выполнена_по
     assert (stage.status, stage.delay_days) == ("DONE", 0)
 
 
-def test_веха_начатая_до_наблюдений_получает_плановый_прогресс(enums):
-    """Раздел 10.3a: веха идёт с 01.10, участок видим с 15.10, дальше работа в полную силу."""
+def test_этап_начатый_до_наблюдений_получает_плановый_прогресс(enums):
+    """Раздел 10.3a: этап идёт с 01.10, участок видим с 15.10, дальше работа в полную силу."""
     start, end = date(2026, 10, 1), date(2026, 11, 20)
     norm = count_working_days(CALENDAR, start, end)
     running = make_stage("Идущая", start, end, norm_duration_days=norm, rule=PIT_STAGE.rule)
@@ -353,7 +353,7 @@ def test_веха_начатая_до_наблюдений_получает_пл
     assert stage.expected_start == start
 
 
-def test_веха_начатая_до_наблюдений_без_сигнатуры_опаздывает(enums):
+def test_этап_начатый_до_наблюдений_без_сигнатуры_опаздывает(enums):
     start, end = date(2026, 10, 1), date(2026, 11, 20)
     running = make_stage("Идущая", start, end, rule=PIT_STAGE.rule)
 

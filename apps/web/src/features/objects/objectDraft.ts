@@ -68,7 +68,7 @@ export type DraftProblems = Partial<Record<"name" | "planStart" | keyof TepDraft
 export function draftProblems(draft: ObjectDraft, forGenerator: boolean): DraftProblems {
   const problems: DraftProblems = {};
   if (!draft.name.trim()) problems.name = "Укажите название объекта";
-  if (forGenerator && !draft.planStart) problems.planStart = "Нужна для расчёта дат вех";
+  if (forGenerator && !draft.planStart) problems.planStart = "Нужна для расчёта дат этапов";
   for (const key of TEP_KEYS) {
     const value = parseNumber(draft.tep[key]);
     if (value != null && (Number.isNaN(value) || value < 0)) problems[key] = "Нужно число не меньше нуля";

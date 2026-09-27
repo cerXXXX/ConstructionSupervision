@@ -1,4 +1,4 @@
-"""Правила «веха → техника»: главная настройка методики, правится оператором (F11)."""
+"""Правила «этап → техника»: главная настройка методики, правится оператором (F11)."""
 
 from typing import Annotated
 from uuid import UUID
@@ -10,7 +10,7 @@ from src.api.deps import ActorDep, AnalysisDep, SessionDep
 from src.api.schemas.rules import RuleCreate, RuleRead, RuleUpdate
 from src.services.rules import RuleService
 
-router = APIRouter(prefix="/rules", tags=["Правила вех"])
+router = APIRouter(prefix="/rules", tags=["Правила этапов"])
 
 CHANGE_NOTE = (
     "Коды классов проверяются по `equipment_classes.yaml`. Версия правила и `plan_version` "
@@ -18,7 +18,7 @@ CHANGE_NOTE = (
 )
 
 
-@router.get("", response_model=Page[RuleRead], summary="Правила вех")
+@router.get("", response_model=Page[RuleRead], summary="Правила этапов")
 async def list_rules(
     session: SessionDep,
     signal: AnalysisDep,
@@ -36,7 +36,7 @@ async def list_rules(
     "",
     response_model=RuleRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Создать правило вехи",
+    summary="Создать правило этапа",
     description=CHANGE_NOTE,
 )
 async def create_rule(
@@ -51,13 +51,13 @@ async def create_rule(
     return rule
 
 
-@router.get("/{rule_id}", response_model=RuleRead, summary="Правило вехи")
+@router.get("/{rule_id}", response_model=RuleRead, summary="Правило этапа")
 async def get_rule(rule_id: UUID, session: SessionDep, signal: AnalysisDep):
     return await RuleService(session, signal).get(rule_id)
 
 
 @router.patch(
-    "/{rule_id}", response_model=RuleRead, summary="Изменить правило вехи", description=CHANGE_NOTE
+    "/{rule_id}", response_model=RuleRead, summary="Изменить правило этапа", description=CHANGE_NOTE
 )
 async def update_rule(
     rule_id: UUID, payload: RuleUpdate, session: SessionDep, signal: AnalysisDep, actor: ActorDep
@@ -68,8 +68,8 @@ async def update_rule(
 @router.delete(
     "/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Удалить правило вехи",
-    description="По вехе без правила не проверяются D1, D2, D8, D9. `plan_version` растёт.",
+    summary="Удалить правило этапа",
+    description="По этапу без правила не проверяются D1, D2, D8, D9. `plan_version` растёт.",
 )
 async def delete_rule(
     rule_id: UUID, session: SessionDep, signal: AnalysisDep, actor: ActorDep

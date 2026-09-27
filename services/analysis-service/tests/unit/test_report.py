@@ -164,7 +164,7 @@ def test_ограничения_честно_говорят_когда_site_не
     assert "Число снимков без времени съёмки неизвестно" in text
 
 
-def test_ограничения_называют_вехи_закрытые_отметкой_кем_и_когда(report_input):
+def test_ограничения_называют_этапы_закрытые_отметкой_кем_и_когда(report_input):
     """ADR-0015: отметка сильнее снимков, поэтому в отчёте видно, кто и когда её поставил."""
     pit = PLAN.stages[1].model_copy(
         update={"completed_on": date(2026, 10, 21), "completed_by": "Петров П. П."}
@@ -176,7 +176,7 @@ def test_ограничения_называют_вехи_закрытые_от�
 
     text = "\n".join(build_context(replace(report_input, plan=plan, stages=stages))["limitations"])
 
-    assert "закрытых отметкой оператора «выполнена»: 1" in text
+    assert "закрытых отметкой оператора «выполнен»: 1" in text
     assert "«Разработка котлована» — 21.10.2026, Петров П. П." in text
 
 
@@ -259,7 +259,7 @@ def test_ссылки_резюме_только_на_известные_id_и_т
     assert "<script>" not in html and "&lt;script&gt;" in html
 
 
-def test_гант_по_полосе_на_веху_загрузка_по_клетке_на_класс_и_день(report_input):
+def test_гант_по_полосе_на_этап_загрузка_по_клетке_на_класс_и_день(report_input):
     context = build_context(report_input)
     classes = {e.equipment_class for e in report_input.equipment}
 

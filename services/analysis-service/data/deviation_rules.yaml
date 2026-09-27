@@ -8,7 +8,7 @@
 #   predicate        — имя функции из реестра core/predicates.py;
 #   severity         — базовая серьёзность (enums.yaml: severity);
 #   params           — пороги. min_sessions — сколько рабочих сессий подряд держится
-#                      условие (у D1, D2, D8 его задаёт правило вехи, а не эта запись);
+#                      условие (у D1, D2, D8 его задаёт правило этапа, а не эта запись);
 #                      escalate_after_days + escalate_to — повышение серьёзности, если
 #                      условие держится столько рабочих дней; variants — другие
 #                      формулировки того же кода: предикат выбирает вариант полем
@@ -30,7 +30,7 @@ rules:
       Этап «{stage_name}» идёт по плану с {plan_start:date} по {plan_end:date}.
       На участке «{area_name}» {sessions_checked} рабочих сессий подряд нет ни одной
       единицы обязательной техники: {groups:groups}. Транзитная техника учитывается
-      за последние {transient_window_sessions} сессии. Правило вехи, версия {stage_rule_version}.
+      за последние {transient_window_sessions} сессии. Правило этапа, версия {stage_rule_version}.
 
   D2:
     predicate: incomplete_set
@@ -41,15 +41,15 @@ rules:
       Этап «{stage_name}» идёт по плану с {plan_start:date} по {plan_end:date}.
       На участке «{area_name}» {sessions_checked} рабочих сессий подряд: {observed:counts}.
       Не выполнено: {groups_failed:groups}. Транзитная техника учитывается за последние
-      {transient_window_sessions} сессии. Правило вехи, версия {stage_rule_version}.
+      {transient_window_sessions} сессии. Правило этапа, версия {stage_rule_version}.
 
   # D3–D6: ключ — участок и класс техники; min_sessions — в params (T11).
   D3:
     predicate: unexpected_equipment
     severity: MEDIUM
     # Одиночный кадр отклонения не порождает (methodology.md, раздел 6).
-    # variants.ahead — формулировка, когда класс нужен будущей вехе участка: ключом
-    # отклонения тогда становится та веха.
+    # variants.ahead — формулировка, когда класс нужен будущему этапу участка: ключом
+    # отклонения тогда становится тот этап.
     params:
       min_sessions: 2
       variants:
@@ -57,13 +57,13 @@ rules:
           title_template: "Возможное опережение: {equipment_name} для «{future_stage_name}»"
           message_template: >-
             На участке «{area_name}» {sessions_checked} рабочих сессий подряд:
-            {equipment_name}, {count} ед. Этой техники нет в правилах активных вех участка
-            ({active_stages:list}), но она нужна вехе «{future_stage_name}», которая по плану
+            {equipment_name}, {count} ед. Этой техники нет в правилах активных этапов участка
+            ({active_stages:list}), но она нужна этапу «{future_stage_name}», который по плану
             начинается {future_plan_start:date}.
     title_template: "Техника не по этапу: {equipment_name}"
     message_template: >-
       На участке «{area_name}» {sessions_checked} рабочих сессий подряд: {equipment_name},
-      {count} ед. Этой техники нет в правилах активных вех участка: {active_stages:list}.
+      {count} ед. Этой техники нет в правилах активных этапов участка: {active_stages:list}.
 
   D4:
     predicate: idle_equipment
@@ -80,7 +80,7 @@ rules:
     title_template: "Техника не в той зоне: {equipment_name}"
     message_template: >-
       {state_reason}. Так {sessions_checked} рабочих сессий подряд, единиц: {count}.
-      Активные по плану вехи: {active_stages:list}.
+      Активные по плану этапы: {active_stages:list}.
 
   D6:
     predicate: danger_zone
@@ -91,7 +91,7 @@ rules:
       В опасной зоне «{area_name}» замечено: {equipment_name}, {count} ед. Рабочих
       сессий подряд: {sessions_checked}.
 
-  # D7: ключ — веха, задающая плановую визуальную стадию на дату. Базовый текст — отставание,
+  # D7: ключ — этап, задающий плановую визуальную стадию на дату. Базовый текст — отставание,
   # variants.ahead — опережение. label_names — как метки stage_label (enums.yaml) звучат в тексте.
   D7:
     predicate: stage_mismatch
@@ -118,7 +118,7 @@ rules:
       (уверенность {observed_conf}), а по плану этапа «{stage_name}» уже должен быть
       {planned_stage_name}. Прогресс этапа не засчитывается, пока стадия не догонит план.
 
-  # D8: серия — min_sessions правила вехи, как у D1 и D2.
+  # D8: серия — min_sessions правила этапа, как у D1 и D2.
   D8:
     predicate: stage_overrun
     severity: HIGH
@@ -127,10 +127,10 @@ rules:
     message_template: >-
       Этап «{stage_name}» по плану закончился {plan_end:date}, но на участке «{area_name}»
       {sessions_checked} рабочих сессий подряд держится его признак: {signature_observed:counts}.
-      Это {days_after_plan_end} рабочих дней после плановой даты. Правило вехи, версия
+      Это {days_after_plan_end} рабочих дней после плановой даты. Правило этапа, версия
       {stage_rule_version}.
 
-  # D9: k_days — сколько первых рабочих дней вехи ждать фактического старта;
+  # D9: k_days — сколько первых рабочих дней этапа ждать фактического старта;
   # min_visible_share — в какой доле рабочих сессий этих дней участок должен быть виден,
   # чтобы «не начат» было выводом, а не догадкой.
   D9:
@@ -145,7 +145,7 @@ rules:
       {sessions_total} рабочих сессий этих дней.
 
   # D10: reason_names — как причины слепоты (enums.yaml: visibility_reason) звучат в тексте.
-  # variants.no_area — у активной вехи нет ни одного размеченного участка её типа.
+  # variants.no_area — у активного этапа нет ни одного размеченного участка его типа.
   D10:
     predicate: blind_area
     severity: INFO

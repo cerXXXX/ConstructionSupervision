@@ -1,4 +1,4 @@
-"""Генератор графика: сроки по МРР раскладываются на вехи шаблона, даты — по календарю."""
+"""Генератор графика: сроки по МРР раскладываются на этапы шаблона, даты — по календарю."""
 
 from dataclasses import replace
 from datetime import date
@@ -31,7 +31,7 @@ def _working_days(first: date, last: date) -> int:
     return count_working_days(CALENDAR, first, last) + 1
 
 
-def test_демо_объект_все_вехи_шаблона_по_порядку_от_даты_начала():
+def test_демо_объект_все_этапы_шаблона_по_порядку_от_даты_начала():
     schedule = _generate()
 
     assert [s.code for s in schedule.stages] == [s.code for s in TEMPLATES]
@@ -41,13 +41,13 @@ def test_демо_объект_все_вехи_шаблона_по_порядк�
     assert [p.months for p in schedule.periods] == pytest.approx([1.0, 1.5, 4.7, 1.5])
 
 
-def test_длительность_вехи_это_рабочие_дни_между_её_датами():
+def test_длительность_этапа_это_рабочие_дни_между_его_датами():
     for stage in _generate().stages:
         assert stage.norm_duration_days == _working_days(stage.plan_start, stage.plan_end)
         assert CALENDAR.is_working_day(stage.plan_start) and CALENDAR.is_working_day(stage.plan_end)
 
 
-def test_доли_раскладывают_период_на_вехи():
+def test_доли_раскладывают_период_на_этапы():
     schedule = _generate()
     stages = {s.code: s for s in schedule.stages}
     underground = schedule.periods[1].working_days
@@ -69,9 +69,9 @@ def test_связи_шаблона_соблюдены():
                 assert stage.plan_start >= before.plan_start
 
 
-def test_цепочка_вех_занимает_срок_по_нормам_плюс_сваи():
+def test_цепочка_этапов_занимает_срок_по_нормам_плюс_сваи():
     """Конец графика — сумма периодов МРР в рабочих днях и время на сваи, с точностью до
-    округления долей вех."""
+    округления долей этапов."""
     schedule = _generate()
     planned = sum(p.working_days for p in schedule.periods) + 10
     actual = _working_days(START, max(s.plan_end for s in schedule.stages))
@@ -79,7 +79,7 @@ def test_цепочка_вех_занимает_срок_по_нормам_пл�
     assert abs(actual - planned) <= 3
 
 
-def test_без_свай_веха_свай_выпадает_а_связи_переходят_на_её_предшественников():
+def test_без_свай_этап_свай_выпадает_а_связи_переходят_на_его_предшественников():
     stages = _stages(piles=0)
 
     assert "12.3.2" not in stages
@@ -97,12 +97,12 @@ def test_работа_в_две_смены_сокращает_срок():
     assert max(s.plan_end for s in two_shifts.stages) < max(s.plan_end for s in _generate().stages)
 
 
-def test_у_каждой_вехи_основание_со_ссылкой_на_мрр():
+def test_у_каждого_этапа_основание_со_ссылкой_на_мрр():
     stages = _stages()
 
     assert all(s.basis.startswith("МРР-3.2.81-12") for s in stages.values())
     assert "стр. 1.18" in stages["12.3.1"].basis
-    assert "доля вехи 0,35" in stages["12.3.1"].basis
+    assert "доля этапа 0,35" in stages["12.3.1"].basis
     assert "п. 5.1.6" in stages["12.3.2"].basis
 
 
@@ -118,7 +118,7 @@ def test_старт_в_выходной_переносится_на_рабочи
     assert _generate(start=date(2026, 9, 20)).stages[0].plan_start == START  # воскресенье
 
 
-def test_веха_без_доли_в_шаблоне_не_генерируется():
+def test_этап_без_доли_в_шаблоне_не_генерируется():
     broken = [replace(s, share=None) if s.code == "12.7" else s for s in TEMPLATES]
 
     with pytest.raises(NormsNotAvailable, match=r"12\.7"):
@@ -129,11 +129,11 @@ def test_повторный_вызов_даёт_тот_же_график():
     assert _generate() == _generate()
 
 
-def test_шаблон_без_доли_или_без_вех_не_даёт_стартовать():
+def test_шаблон_без_доли_или_без_этапов_не_даёт_стартовать():
     check_generator_template("RESIDENTIAL_MONOLITH", TEMPLATES, NORMS)
     broken = [replace(s, share=None) if s.code == "12.7" else s for s in TEMPLATES]
 
     with pytest.raises(NormsError, match="share"):
         check_generator_template("RESIDENTIAL_MONOLITH", broken, NORMS)
-    with pytest.raises(NormsError, match="шаблона вех нет"):
+    with pytest.raises(NormsError, match="шаблона этапов нет"):
         check_generator_template("ROAD", (), NORMS)

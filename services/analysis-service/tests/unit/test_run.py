@@ -95,7 +95,7 @@ def test_у_каждого_отклонения_есть_текст_факты_�
         assert deviation.finding.facts and deviation.finding.evidence
 
 
-def test_результат_содержит_факт_вех_агрегаты_и_статус(enums):
+def test_результат_содержит_факт_этапов_агрегаты_и_статус(enums):
     result = _analyze(_all_days(), enums)
 
     assert [s.stage_id for s in result.stage_facts] == [s.id for s in PLAN.stages]

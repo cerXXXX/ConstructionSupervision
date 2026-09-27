@@ -109,7 +109,7 @@ export interface paths {
         };
         /**
          * Весь план объекта
-         * @description Вехи по `seq`, связи, правила, календарь и классы техники одним ответом. Объект без вех — не ошибка: `stages: []`. Выключенное правило приходит как `rule: null`.
+         * @description Этапы по `seq`, связи, правила, календарь и классы техники одним ответом. Объект без этапов — не ошибка: `stages: []`. Выключенное правило приходит как `rule: null`.
          */
         get: operations["get_plan_api_v1_plan_objects__object_id__plan_get"];
         put?: never;
@@ -131,7 +131,7 @@ export interface paths {
         put?: never;
         /**
          * Сгенерировать график по МРР-3.2.81-12
-         * @description Сроки периодов — табл. 1 п. 5.1.21 с интерполяцией и коэффициентами, вехи и правила — из шаблона типа объекта, даты — по календарю объекта. У каждой вехи в `basis` — откуда её срок. Поверх существующего графика — только с `force=true` (ручные правки затираются). Нет норм для типа или параметры вне таблицы — `NORMS_NOT_AVAILABLE`, график тогда импортируется из файла.
+         * @description Сроки периодов — табл. 1 п. 5.1.21 с интерполяцией и коэффициентами, этапы и правила — из шаблона типа объекта, даты — по календарю объекта. У каждого этапа в `basis` — откуда его срок. Поверх существующего графика — только с `force=true` (ручные правки затираются). Нет норм для типа или параметры вне таблицы — `NORMS_NOT_AVAILABLE`, график тогда импортируется из файла.
          */
         post: operations["generate_plan_api_v1_plan_objects__object_id__plan_generate_post"];
         delete?: never;
@@ -151,7 +151,7 @@ export interface paths {
         put?: never;
         /**
          * Импорт графика из CSV или XLSX
-         * @description Столбцы: код, наименование, начало, окончание (обязательно); тип участка, визуальная стадия, связи (`12.3.1 FS+2`, несколько — через запятую), фаза. Недостающее берётся из шаблона вехи с тем же кодом, вместе с правилом «веха → техника». График заменяется целиком; поверх существующего — только с `force=true`. Ошибки — `PLAN_IMPORT_INVALID` со списком `details.errors` (строка, столбец, текст).
+         * @description Столбцы: код, наименование, начало, окончание (обязательно); тип участка, визуальная стадия, связи (`12.3.1 FS+2`, несколько — через запятую), фаза. Недостающее берётся из шаблона этапа с тем же кодом, вместе с правилом «этап → техника». График заменяется целиком; поверх существующего — только с `force=true`. Ошибки — `PLAN_IMPORT_INVALID` со списком `details.errors` (строка, столбец, текст).
          */
         post: operations["import_plan_api_v1_plan_objects__object_id__plan_import_post"];
         delete?: never;
@@ -168,8 +168,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Вехи объекта
-         * @description Вехи по `seq` вместе с правилом «веха → техника» (`rule`, `null` — правила нет).
+         * Этапы объекта
+         * @description Этапы по `seq` вместе с правилом «этап → техника» (`rule`, `null` — правила нет).
          */
         get: operations["list_stages_api_v1_plan_objects__object_id__stages_get"];
         put?: never;
@@ -187,11 +187,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Правила вех */
+        /** Правила этапов */
         get: operations["list_rules_api_v1_plan_rules_get"];
         put?: never;
         /**
-         * Создать правило вехи
+         * Создать правило этапа
          * @description Коды классов проверяются по `equipment_classes.yaml`. Версия правила и `plan_version` объекта растут, в analysis уходит сигнал «пересчитай». `X-Actor` — кто правит, в журнал.
          */
         post: operations["create_rule_api_v1_plan_rules_post"];
@@ -208,19 +208,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Правило вехи */
+        /** Правило этапа */
         get: operations["get_rule_api_v1_plan_rules__rule_id__get"];
         put?: never;
         post?: never;
         /**
-         * Удалить правило вехи
-         * @description По вехе без правила не проверяются D1, D2, D8, D9. `plan_version` растёт.
+         * Удалить правило этапа
+         * @description По этапу без правила не проверяются D1, D2, D8, D9. `plan_version` растёт.
          */
         delete: operations["delete_rule_api_v1_plan_rules__rule_id__delete"];
         options?: never;
         head?: never;
         /**
-         * Изменить правило вехи
+         * Изменить правило этапа
          * @description Коды классов проверяются по `equipment_classes.yaml`. Версия правила и `plan_version` объекта растут, в analysis уходит сигнал «пересчитай». `X-Actor` — кто правит, в журнал.
          */
         patch: operations["update_rule_api_v1_plan_rules__rule_id__patch"];
@@ -240,8 +240,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Изменить веху
-         * @description Даты (включительно), тип участка, нормативная длительность, стадия по фото, отметка «веха выполнена» (`completed_on`, `completion_note`; автор — из `X-Actor`, `completed_on: null` снимает отметку). `plan_version` объекта растёт, в analysis уходит сигнал «пересчитай».
+         * Изменить этап
+         * @description Даты (включительно), тип участка, нормативная длительность, стадия по фото, отметка «этап выполнен» (`completed_on`, `completion_note`; автор — из `X-Actor`, `completed_on: null` снимает отметку). `plan_version` объекта растёт, в analysis уходит сигнал «пересчитай».
          */
         patch: operations["update_stage_api_v1_plan_stages__stage_id__patch"];
         trace?: never;
@@ -508,7 +508,7 @@ export interface components {
             plan_start: string | null;
             /**
              * Plan Version
-             * @description Растёт при любой правке вех, правил или календаря; 0 — план не заводился
+             * @description Растёт при любой правке этапов, правил или календаря; 0 — план не заводился
              */
             plan_version: number;
             /**
@@ -636,7 +636,7 @@ export interface components {
             plan_version: number;
             /**
              * Stages
-             * @description Все вехи объекта по seq
+             * @description Все этапы объекта по seq
              */
             stages: components["schemas"]["PlanStage"][];
         };
@@ -699,7 +699,7 @@ export interface components {
             basis: string;
             /**
              * Critical Stages
-             * @description Сколько вех на критическом пути
+             * @description Сколько этапов на критическом пути
              */
             critical_stages: number;
             /**
@@ -723,12 +723,12 @@ export interface components {
             plan_version: number;
             /**
              * Rules
-             * @description Сколько вех получили правило из шаблона
+             * @description Сколько этапов получили правило из шаблона
              */
             rules: number;
             /**
              * Stages
-             * @description Сколько вех в новом графике
+             * @description Сколько этапов в новом графике
              */
             stages: number;
             /**
@@ -741,7 +741,7 @@ export interface components {
         PlanImportResult: {
             /**
              * Critical Stages
-             * @description Сколько вех на критическом пути
+             * @description Сколько этапов на критическом пути
              */
             critical_stages: number;
             /**
@@ -753,12 +753,12 @@ export interface components {
             plan_version: number;
             /**
              * Rules
-             * @description Сколько вех получили правило из шаблона
+             * @description Сколько этапов получили правило из шаблона
              */
             rules: number;
             /**
              * Stages
-             * @description Сколько вех в новом графике
+             * @description Сколько этапов в новом графике
              */
             stages: number;
         };
@@ -806,7 +806,7 @@ export interface components {
             completed_by?: string | null;
             /**
              * Completed On
-             * @description Отметка оператора «веха выполнена» — последний день работ, включительно; как её учитывает анализ — methodology.md, 10.3b
+             * @description Отметка оператора «этап выполнен» — последний день работ, включительно; как её учитывает анализ — methodology.md, 10.3b
              */
             completed_on?: string | null;
             /** Completion Note */
@@ -830,7 +830,7 @@ export interface components {
             /**
              * Plan End
              * Format: date
-             * @description Последний рабочий день вехи, включительно
+             * @description Последний рабочий день этапа, включительно
              */
             plan_end: string;
             /**
@@ -840,7 +840,7 @@ export interface components {
             plan_start: string;
             /** Predecessors */
             predecessors: components["schemas"]["PredecessorRead"][];
-            /** @description null — правила нет или оно выключено: D1, D2, D8, D9 по вехе не проверяются */
+            /** @description null — правила нет или оно выключено: D1, D2, D8, D9 по этапу не проверяются */
             rule?: components["schemas"]["PlanRule"] | null;
             /** Seq */
             seq: number;
@@ -928,7 +928,7 @@ export interface components {
             /**
              * Stage Id
              * Format: uuid
-             * @description У вехи не больше одного правила
+             * @description У этапа не больше одного правила
              */
             stage_id: string;
         };
@@ -986,7 +986,7 @@ export interface components {
         };
         /**
          * Signature
-         * @description Признак фактического старта вехи: техника одновременно и (или) стадия по фото.
+         * @description Признак фактического старта этапа: техника одновременно и (или) стадия по фото.
          */
         Signature: {
             /** Equipment */
@@ -1010,7 +1010,7 @@ export interface components {
             completed_by?: string | null;
             /**
              * Completed On
-             * @description Отметка «веха выполнена»: последний день работ (ADR-0015)
+             * @description Отметка «этап выполнен»: последний день работ (ADR-0015)
              */
             completed_on?: string | null;
             /**
@@ -1047,7 +1047,7 @@ export interface components {
             /**
              * Plan End
              * Format: date
-             * @description Последний рабочий день вехи, включительно
+             * @description Последний рабочий день этапа, включительно
              */
             plan_end: string;
             /**
@@ -1057,7 +1057,7 @@ export interface components {
             plan_start: string;
             /** Predecessors */
             predecessors: components["schemas"]["PredecessorRead"][];
-            /** @description Правило «веха → техника» */
+            /** @description Правило «этап → техника» */
             rule?: components["schemas"]["RuleRead"] | null;
             /** Seq */
             seq: number;
@@ -1090,7 +1090,7 @@ export interface components {
         StageUpdate: {
             /**
              * Completed On
-             * @description Отметка «веха выполнена» — последний день работ; автор — из `X-Actor`. null — снять отметку вместе с автором и комментарием
+             * @description Отметка «этап выполнен» — последний день работ; автор — из `X-Actor`. null — снять отметку вместе с автором и комментарием
              */
             completed_on?: string | null;
             /**

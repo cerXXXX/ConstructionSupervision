@@ -1,6 +1,6 @@
 """Контекст PDF-отчёта: восемь разделов из готовых выводов (README, раздел 5).
 
-Отчёт оформляет выводы, а не делает новые: каждое число здесь — поле статуса, вехи,
+Отчёт оформляет выводы, а не делает новые: каждое число здесь — поле статуса, этапы,
 загрузки техники, отклонения или фактов периода. Считаются только суммы и доли для таблиц
 (прогресс фазы — средний по нормативным длительностям, как SPI объекта в методике, 10.6).
 """
@@ -20,7 +20,7 @@ from src.report.model import DeviationSnapshot, ReportInput
 REJECTED = "REJECTED"
 # Код отклонения «участок вне контроля ИИ» — его эпизоды перечисляются в «Ограничениях».
 BLIND_CODE = "D10"
-# Веха закрыта отметкой оператора (stage_fact.facts.basis, methodology.md, 10.3b).
+# Этап закрыт отметкой оператора (stage_fact.facts.basis, methodology.md, 10.3b).
 OPERATOR = "OPERATOR"
 
 
@@ -117,7 +117,7 @@ def _title(inp: ReportInput, as_of: date, tz) -> dict[str, Any]:
 
 
 def _summary(inp: ReportInput, facts: dict) -> dict[str, Any]:
-    """SPI, прогресс по фазам (веса — нормативные длительности), вехи в риске."""
+    """SPI, прогресс по фазам (веса — нормативные длительности), этапы в риске."""
     phases: dict[str, dict[str, float]] = {}
     for stage in inp.plan.stages:
         fact = facts.get(stage.id)
@@ -226,7 +226,7 @@ def limitations(inp: ReportInput, deviations: Sequence[DeviationSnapshot]) -> li
     by_plan = [f for f in inp.stages if f.basis == "PLAN"]
     if by_plan:
         out.append(
-            f"Вех, прогресс которых взят по плану, а не по наблюдениям: {len(by_plan)} — они "
+            f"Этапов, прогресс которых взят по плану, а не по наблюдениям: {len(by_plan)} — они "
             "прошли до начала наблюдений или их участки не были видны; снимками они не проверены."
         )
     out.extend(_marked_stages(inp))
@@ -270,7 +270,7 @@ def limitations(inp: ReportInput, deviations: Sequence[DeviationSnapshot]) -> li
 
 
 def _marked_stages(inp: ReportInput) -> list[str]:
-    """Вехи, закрытые отметкой оператора: отметка сильнее снимков, поэтому видно, кем и когда."""
+    """Этапы, закрытые отметкой оператора: отметка сильнее снимков, поэтому видно, кем и когда."""
     plan = {s.id: s for s in inp.plan.stages}
     marked = [
         plan[f.stage_id]
@@ -285,7 +285,7 @@ def _marked_stages(inp: ReportInput) -> list[str]:
         for s in marked
     ]
     return [
-        f"Вех, закрытых отметкой оператора «выполнена»: {len(marked)} ({'; '.join(items)}). "
+        f"Этапов, закрытых отметкой оператора «выполнен»: {len(marked)} ({'; '.join(items)}). "
         "Их окончание подтвердил человек, а не снимки; со следующего дня после отметки "
         "отклонения по ним не ищутся."
     ]

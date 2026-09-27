@@ -1,4 +1,4 @@
-"""Правка вехи: даты включительно, работы только на рабочем участке, отметка «выполнена»."""
+"""Правка этапа: даты включительно, работы только на рабочем участке, отметка «выполнен»."""
 
 from datetime import date
 
@@ -16,7 +16,7 @@ ROLES = {"PIT": "WORK", "ENTRY_GATE": "SERVICE", "DANGER": "SAFETY", "ROAD": "WO
 START = date(2026, 10, 15)
 
 
-def test_веха_в_один_день_допустима():
+def test_этап_в_один_день_допустим():
     check_stage(START, START, "PIT", ROLES)
 
 
@@ -26,7 +26,7 @@ def test_конец_раньше_начала_отклоняется():
 
 
 @pytest.mark.parametrize("zone_type", ["ENTRY_GATE", "DANGER", "SPACEPORT"])
-def test_веха_не_бывает_на_служебном_опасном_или_неизвестном_участке(zone_type):
+def test_этап_не_бывает_на_служебном_опасном_или_неизвестном_участке(zone_type):
     with pytest.raises(StageZoneError, match="PIT"):
         check_stage(START, START, zone_type, ROLES)
 
@@ -51,7 +51,7 @@ def test_снятая_отметка_уносит_автора_и_коммент
     assert changes == {"completed_on": None, "completed_by": None, "completion_note": None}
 
 
-def test_комментарий_к_уже_отмеченной_вехе_не_меняет_автора():
+def test_комментарий_к_уже_отмеченному_этапу_не_меняет_автора():
     assert completion_changes({"completion_note": "акт"}, START, "Пётр") == {
         "completion_note": "акт"
     }

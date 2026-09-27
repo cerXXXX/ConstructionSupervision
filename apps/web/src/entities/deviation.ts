@@ -17,7 +17,7 @@ const record = (v: unknown): Facts | null =>
   v != null && typeof v === "object" && !Array.isArray(v) ? (v as Facts) : null;
 const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
-/** Группа правила вехи: «любой из» классов, норма и сколько наблюдалось. */
+/** Группа правила этапа: «любой из» классов, норма и сколько наблюдалось. */
 export type GroupRow = { classes: string; min: number; observed: number; ok: boolean };
 
 /** Группы `required` с наблюдением (D1, D2): из них видно, чего именно не хватило. */
@@ -37,7 +37,7 @@ export function groupRows(facts: Facts, names: Names): GroupRow[] {
 export type FactLine = { label: string; value: string };
 
 /**
- * Ключевые числа вывода в том порядке, в каком их читает оператор: веха и её даты, машина
+ * Ключевые числа вывода в том порядке, в каком их читает оператор: этап и его даты, машина
  * и её статус, почему участок не виден, сколько держалось. Отсутствующие поля пропускаются.
  */
 export function factLines(facts: Facts): FactLine[] {
@@ -47,7 +47,7 @@ export function factLines(facts: Facts): FactLine[] {
   };
   const stage = text(facts.stage_name);
   if (stage) {
-    add("Веха", `${text(facts.stage_code) ?? ""} ${stage}`.trim());
+    add("Этап", `${text(facts.stage_code) ?? ""} ${stage}`.trim());
     const start = text(facts.plan_start);
     const end = text(facts.plan_end);
     if (start || end) add("По плану", `${formatPlanDate(start)} — ${formatPlanDate(end)}`);
@@ -66,11 +66,11 @@ export function factLines(facts: Facts): FactLine[] {
   }
   add("Почему так", text(facts.state_reason));
   const active = list(facts.active_stages).filter((s): s is string => typeof s === "string");
-  if (active.length) add("Активные вехи", active.join(", "));
+  if (active.length) add("Активные этапы", active.join(", "));
   const expected = list(facts.expected_classes).filter((s): s is string => typeof s === "string");
   if (expected.length) add("Ожидается на участке", expected.join(", "));
   const future = text(facts.future_stage_name);
-  if (future) add("Есть в правиле будущей вехи", `${future} с ${formatPlanDate(text(facts.future_plan_start))}`);
+  if (future) add("Есть в правиле будущего этапа", `${future} с ${formatPlanDate(text(facts.future_plan_start))}`);
   const reason = text(facts.reason_name);
   if (reason) {
     const usable = number(facts.cameras_usable);

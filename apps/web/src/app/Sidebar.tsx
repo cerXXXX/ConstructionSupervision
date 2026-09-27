@@ -110,7 +110,7 @@ function ObjectNav({ objectId }: { objectId: string }) {
           Реквизиты и график
         </NavItem>
         <NavItem to={`${base}/settings/rules`} icon="rules">
-          Правила «веха → техника»
+          Правила «этап → техника»
         </NavItem>
         <NavItem to={`${base}/settings/zones`} icon="zones">
           Зоны на камерах

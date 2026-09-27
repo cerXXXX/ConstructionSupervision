@@ -38,7 +38,7 @@ export function PlanSetupDialog({
   initialMode = "generate",
 }: {
   object: ObjectRead;
-  /** Сколько вех в текущем графике; больше нуля — график будет заменён. */
+  /** Сколько этапов в текущем графике; больше нуля — график будет заменён. */
   stages: number;
   open: boolean;
   onClose: () => void;
@@ -108,7 +108,7 @@ export function PlanSetupDialog({
       open={open}
       onClose={onClose}
       title={replace ? "Перестроить график" : "Построить график"}
-      description="Вехи, связи, критический путь и правила «веха → техника» для каждой вехи."
+      description="Этапы, связи, критический путь и правила «этап → техника» для каждого этапа."
       size="lg"
       busy={run.isPending}
       onSubmit={submit}
@@ -140,7 +140,7 @@ export function PlanSetupDialog({
           <div className="flex gap-3 rounded-xl bg-amber-50 p-3.5 text-sm text-amber-900 ring-1 ring-amber-200">
             <Icon name="alert" size={17} className="mt-0.5 shrink-0" />
             <p>
-              Текущий график ({stages} вех) будет заменён целиком. Ручные правки дат и правил вех
+              Текущий график ({stages} этапов) будет заменён целиком. Ручные правки дат и правил этапов
               пропадут, анализ пересчитается по новому графику.
             </p>
           </div>
@@ -150,7 +150,7 @@ export function PlanSetupDialog({
           <div className="space-y-4">
             <p className="text-sm text-muted">
               Сроки — по МРР-3.2.81-12 (табл. 1, п. 5.1.21) с интерполяцией и коэффициентами, даты —
-              по рабочему календарю объекта. У каждой вехи будет указано основание срока.
+              по рабочему календарю объекта. У каждого этапа будет указано основание срока.
             </p>
             <Field label="Начало СМР" required error={tried ? problems.planStart : null} className="max-w-xs">
               <input
@@ -167,7 +167,7 @@ export function PlanSetupDialog({
             <p className="text-sm text-muted">
               Обязательные столбцы: код, наименование, начало, окончание. Необязательные: тип участка,
               визуальная стадия, связи (<code className="rounded bg-ink/5 px-1">12.3.1 FS+2</code>, через
-              запятую), фаза. Недостающее и правила техники берутся из шаблона вехи с тем же кодом.
+              запятую), фаза. Недостающее и правила техники берутся из шаблона этапа с тем же кодом.
             </p>
             <Field label="Файл графика" required error={tried && !file ? "Выберите файл" : null}>
               <input
@@ -191,7 +191,7 @@ function Result({ outcome }: { outcome: Outcome }) {
   return (
     <div className="space-y-3 text-sm">
       <div className="grid grid-cols-3 gap-3">
-        <Fact label="Вех" value={result.stages} />
+        <Fact label="Этапов" value={result.stages} />
         <Fact label="На критическом пути" value={result.critical_stages} />
         <Fact label="С правилами техники" value={result.rules} />
       </div>

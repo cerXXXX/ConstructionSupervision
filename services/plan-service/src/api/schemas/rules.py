@@ -1,4 +1,4 @@
-"""DTO правила «веха → техника». Форма совпадает с `stages[].rule` контракта «весь план»."""
+"""DTO правила «этап → техника». Форма совпадает с `stages[].rule` контракта «весь план»."""
 
 from datetime import datetime
 from uuid import UUID
@@ -16,14 +16,14 @@ class RequiredGroup(BaseModel):
 
 
 class Signature(BaseModel):
-    """Признак фактического старта вехи: техника одновременно и (или) стадия по фото."""
+    """Признак фактического старта этапа: техника одновременно и (или) стадия по фото."""
 
     equipment: list[str] = Field(default_factory=list)
     stage_label: StageLabel | None = Field(default=None, description="Стадия по фото не раньше")
 
 
 class RuleCreate(BaseModel):
-    stage_id: UUID = Field(description="У вехи не больше одного правила")
+    stage_id: UUID = Field(description="У этапа не больше одного правила")
     required: list[RequiredGroup] = Field(default_factory=list)
     allowed: list[str] = Field(default_factory=list, description="Не вызывает D3")
     signature: Signature = Field(default_factory=Signature)

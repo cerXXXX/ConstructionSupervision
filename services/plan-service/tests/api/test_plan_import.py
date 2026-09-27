@@ -34,7 +34,7 @@ async def test_демо_график_даёт_весь_план_как_фикс�
     }
     assert [str(s) for s in analysis.signals] == [object_id]
     plan = (await client.get(f"{OBJECTS}/{object_id}/plan")).json()
-    assert plan["object"]["plan_start"] == "2026-09-21"  # начало СМР — по первой вехе
+    assert plan["object"]["plan_start"] == "2026-09-21"  # начало СМР — по первому этапу
     prep, pit, slab = plan["stages"]
     # Значения — как в services/analysis-service/tests/fixtures/plan.json.
     assert [(s["code"], s["plan_start"], s["plan_end"], s["norm_duration_days"]) for s in plan["stages"]] == [

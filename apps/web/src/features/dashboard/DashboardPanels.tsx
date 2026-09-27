@@ -24,7 +24,7 @@ import { ErrorBox, Loading } from "@/shared/ui/QueryState";
 import { useToast } from "@/shared/ui/Toast";
 
 const STEP_TEXT: Record<SetupStep["key"], { title: string; text: string }> = {
-  plan: { title: "График работ", text: "Вехи и сроки — по нормам МРР или из файла" },
+  plan: { title: "График работ", text: "Этапы и сроки — по нормам МРР или из файла" },
   images: { title: "Снимки с камер", text: "Папка на камеру: камеры заведутся сами" },
   zones: { title: "Зоны на камерах", text: "Где котлован, въезд, склад — чтобы относить технику к участкам" },
   analysis: { title: "Первый анализ", text: "Сверка план-факт; дальше запускается сам" },
@@ -160,12 +160,12 @@ export function AttentionPanel({ objectId }: { objectId: string }) {
 
 const STAGE_KEYS = ["done", "in_progress", "late", "ahead", "not_started"] as const;
 
-/** Вехи по статусам одной полосой и вехи критического пути с прогнозом позже плана. */
+/** Этапы по статусам одной полосой и этапы критического пути с прогнозом позже плана. */
 export function StagesPanel({ objectId, status }: { objectId: string; status: ObjectStatus }) {
   const total = status.stages.total ?? 0;
   const risk = stagesAtRisk(status.stages_at_risk);
   return (
-    <Panel title={`Вехи: ${total}`} icon="gantt" bodyClassName="p-5 space-y-4" actions={
+    <Panel title={`Этапы: ${total}`} icon="gantt" bodyClassName="p-5 space-y-4" actions={
       <ButtonLink to={`/objects/${objectId}/gantt`} size="sm" variant="ghost">Гант <Icon name="arrowRight" size={14} /></ButtonLink>
     }>
       {total > 0 && (
@@ -192,7 +192,7 @@ export function StagesPanel({ objectId, status }: { objectId: string; status: Ob
       <div>
         <p className="mb-1.5 text-[13px] font-medium">В риске</p>
         {risk.length === 0 ? (
-          <p className="text-sm text-muted">Вех критического пути с прогнозом позже плана нет.</p>
+          <p className="text-sm text-muted">Этапов критического пути с прогнозом позже плана нет.</p>
         ) : (
           <ul className="space-y-1">
             {risk.map((stage) => (
@@ -218,12 +218,12 @@ export function StagesPanel({ objectId, status }: { objectId: string; status: Ob
   );
 }
 
-/** Ход работ: вехи, которые идут сейчас, — выполнено против плана на момент анализа. */
+/** Ход работ: этапы, которые идут сейчас, — выполнено против плана на момент анализа. */
 export function ActiveStagesPanel({ objectId }: { objectId: string }) {
   const { isPending, active } = useActiveStages(objectId);
   if (isPending || active.length === 0) return null;
   return (
-    <Panel title="Ход работ" description="Вехи в работе: выполнено против плана на момент анализа" icon="layers" bodyClassName="px-5 py-3">
+    <Panel title="Ход работ" description="Этапы в работе: выполнено против плана на момент анализа" icon="layers" bodyClassName="px-5 py-3">
       <ul className="divide-y divide-ink/[0.06]">
         {active.map(({ stage, progress }) => {
           const done = Math.round(progress.progress * 100);

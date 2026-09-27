@@ -83,7 +83,7 @@ def test_d1_срабатывает_после_min_sessions_пустых_сесс
     assert finding.evidence[0]["detection_ids"] == []
 
 
-def test_d1_после_дня_отметки_выполнена_не_ищется(enums):
+def test_d1_после_дня_отметки_выполнен_не_ищется(enums):
     """Раздел 10.3b: экскаватор уехал после приёмки котлована — это не «нет техники»."""
     pit = PLAN.stages[1].model_copy(update={"completed_on": DAY})
     plan = PLAN.model_copy(update={"stages": (PLAN.stages[0], pit, PLAN.stages[2])})
@@ -143,13 +143,13 @@ def test_вне_рабочего_времени_отклонений_нет(enum
     assert _findings(make_facts(*night, *sunday), enums) == []
 
 
-def test_вне_дат_вехи_отклонений_нет(enums):
+def test_вне_дат_этапа_отклонений_нет(enums):
     after_plan = _day_sessions([_empty] * 3, day=date(2027, 1, 15))
 
     assert _findings(make_facts(*after_plan), enums) == []
 
 
-def test_без_размеченного_участка_типа_вехи_d1_нет(enums):
+def test_без_размеченного_участка_типа_этапа_d1_нет(enums):
     # 01.10 активна «Подготовка территории» (пятно застройки), а размечен только котлован.
     sessions = _day_sessions([_empty] * 3, day=date(2026, 10, 1))
 

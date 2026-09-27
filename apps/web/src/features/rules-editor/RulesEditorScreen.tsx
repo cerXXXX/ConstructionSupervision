@@ -30,12 +30,12 @@ import { PageHeader } from "@/shared/ui/Page";
 import { Empty, ErrorBox, Loading } from "@/shared/ui/QueryState";
 import { useToast } from "@/shared/ui/Toast";
 
-// Людей правило вехи не касается: они участвуют только в D6 (methodology.md, раздел 6).
+// Людей правило этапа не касается: они участвуют только в D6 (methodology.md, раздел 6).
 const NOT_EQUIPMENT = "person";
 const STAGE_LABELS = Object.keys(ru.stageLabel) as StageLabel[];
 
 /**
- * Редактор правил «веха → техника» (T31): логика — данные, а не код. Меняем правило —
+ * Редактор правил «этап → техника» (T31): логика — данные, а не код. Меняем правило —
  * анализ пересчитывает ленту, и видно, какие отклонения исчезли или появились.
  */
 export function RulesEditorScreen() {
@@ -45,8 +45,8 @@ export function RulesEditorScreen() {
   return (
     <div>
       <PageHeader
-        title="Правила «веха → техника»"
-        description="Какая техника обязательна на вехе, какая допустима и по какому признаку веха считается начатой. Сохранение пересчитывает ленту предупреждений."
+        title="Правила «этап → техника»"
+        description="Какая техника обязательна на этапе, какая допустима и по какому признаку этап считается начатым. Сохранение пересчитывает ленту предупреждений."
       />
 
       {stages.isPending && <Loading />}
@@ -61,13 +61,13 @@ export function RulesEditorScreen() {
             </ButtonLink>
           }
         >
-          Правила приходят вместе с вехами — из шаблона при генерации по нормам МРР или импорте файла.
+          Правила приходят вместе с этапами — из шаблона при генерации по нормам МРР или импорте файла.
         </Empty>
       )}
       {stage && (
         <div className="grid items-start gap-5 lg:grid-cols-[21rem_minmax(0,1fr)]">
           <StageList items={items} current={stage} onSelect={select} />
-          {/* Ключ — веха, а не версия правила: после сохранения итог пересчёта остаётся на экране. */}
+          {/* Ключ — этап, а не версия правила: после сохранения итог пересчёта остаётся на экране. */}
           <RuleEditor key={stage.id} objectId={objectId} stage={stage} />
         </div>
       )}
@@ -92,7 +92,7 @@ function StageList({
       <div className="sticky top-0 z-10 border-b border-ink/[0.07] bg-white p-2.5">
         <div className="relative">
           <Icon name="search" size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Найти веху" className={`${fieldClass("input", "sm")} pl-9`} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Найти этап" className={`${fieldClass("input", "sm")} pl-9`} />
         </div>
       </div>
       <ul className="p-2">
@@ -156,7 +156,7 @@ function RuleEditor({ objectId, stage }: { objectId: string; stage: StageRead })
       {!stage.rule && (
         <p className="flex gap-2.5 border-b border-amber-200 bg-amber-50 px-6 py-3 text-sm text-amber-900">
           <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
-          У вехи нет правила: по ней не проверяются D1, D2, D8, D9, прогресс идёт по плану. Заполните
+          У этапа нет правила: по нему не проверяются D1, D2, D8, D9, прогресс идёт по плану. Заполните
           правило и сохраните — оно появится.
         </p>
       )}
@@ -164,7 +164,7 @@ function RuleEditor({ objectId, stage }: { objectId: string; stage: StageRead })
       <div className="space-y-7 p-6">
         <Section
           title="Обязательная техника"
-          hint="Группа выполнена, если классов из неё в сумме не меньше минимума. Все группы — комплект вехи: нет ни одной — D1, часть — D2."
+          hint="Группа выполнена, если классов из неё в сумме не меньше минимума. Все группы — комплект этапа: нет ни одной — D1, часть — D2."
         >
           {draft.required.length === 0 && <p className="text-sm text-muted">Групп нет.</p>}
           <div className="space-y-2">
@@ -204,7 +204,7 @@ function RuleEditor({ objectId, stage }: { objectId: string; stage: StageRead })
           </Button>
         </Section>
 
-        <Section title="Допустимая техника" hint="Её присутствие на участке вехи не вызывает D3 «техника не по этапу».">
+        <Section title="Допустимая техника" hint="Её присутствие на участке этапа не вызывает D3 «техника не по этапу».">
           <Chips
             codes={draft.allowed}
             names={names}
@@ -216,7 +216,7 @@ function RuleEditor({ objectId, stage }: { objectId: string; stage: StageRead })
 
         <Section
           title="Сигнатура старта"
-          hint="Веха считается начатой, когда эти классы видны одновременно, а стадия по фото — не раньше указанной."
+          hint="Этап считается начатым, когда эти классы видны одновременно, а стадия по фото — не раньше указанной."
         >
           <div className="flex flex-wrap items-center gap-3">
             <Chips
@@ -288,8 +288,8 @@ function SaveBar({
 
   const onDelete = async () => {
     const ok = await confirm({
-      title: `Удалить правило вехи «${stage.name}»?`,
-      message: "По вехе перестанут проверяться D1, D2, D8, D9, прогресс пойдёт по плану. Лента пересчитается сразу.",
+      title: `Удалить правило этапа «${stage.name}»?`,
+      message: "По этапу перестанут проверяться D1, D2, D8, D9, прогресс пойдёт по плану. Лента пересчитается сразу.",
       confirmLabel: "Удалить правило",
       tone: "danger",
     });

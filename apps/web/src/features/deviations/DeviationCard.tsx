@@ -206,7 +206,7 @@ function RuleSection({ objectId, explain, facts }: { objectId: string; explain: 
         <div className="flex gap-1">
           {stageVersion != null && explain.deviation.stage_id && (
             <Link to={`/objects/${objectId}/settings/rules?stage=${explain.deviation.stage_id}`} className="text-xs font-medium text-accent hover:underline">
-              правило вехи →
+              правило этапа →
             </Link>
           )}
           <Link to="/settings/deviation-rules" className="ml-3 text-xs font-medium text-accent hover:underline">
@@ -234,7 +234,7 @@ function RuleSection({ objectId, explain, facts }: { objectId: string; explain: 
             </div>
           )}
           {stageVersion != null && (
-            <p className="text-muted">Правило вехи «веха → техника», версия {stageVersion}: на нём построены нормы выше.</p>
+            <p className="text-muted">Правило этапа «этап → техника», версия {stageVersion}: на нём построены нормы выше.</p>
           )}
         </div>
       )}

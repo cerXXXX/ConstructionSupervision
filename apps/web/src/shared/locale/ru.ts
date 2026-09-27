@@ -65,15 +65,15 @@ export const ru = {
     LATE: "с опозданием",
     AHEAD: "с опережением",
   } as Record<string, string>,
-  // Статус одной вехи (карточка вехи на Ганте); выше — те же значения во множественном числе.
+  // Статус одного этапа (карточка этапа на Ганте); выше — те же значения во множественном числе.
   stageStatus: {
-    NOT_STARTED: "Не начата",
+    NOT_STARTED: "Не начат",
     IN_PROGRESS: "В работе",
-    DONE: "Завершена",
+    DONE: "Завершён",
     LATE: "С опозданием",
     AHEAD: "С опережением",
   } as Record<string, string>,
-  // Типы связей вех (interservice.md, §1): что с чем связано.
+  // Типы связей этапов (interservice.md, §1): что с чем связано.
   linkType: {
     FS: "окончание → начало",
     SS: "начало → начало",
@@ -166,7 +166,7 @@ export const ru = {
     ROAD: "Дорожные работы",
     OTHER: "Прочее",
   } as Record<string, string>,
-  // Фаза вехи (enums.yaml: construction_phase).
+  // Фаза этапа (enums.yaml: construction_phase).
   stagePhase: {
     PREPARATORY: "Подготовка",
     SUBSTRUCTURE: "Подземная часть",

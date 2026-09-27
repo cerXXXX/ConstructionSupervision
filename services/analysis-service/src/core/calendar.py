@@ -54,7 +54,7 @@ def is_working_day(calendar: Calendar, day: date) -> bool:
 
 
 def local_date(calendar: Calendar, moment: datetime) -> date:
-    """Местная дата момента: по ней сессия относится к дню и к активным вехам."""
+    """Местная дата момента: по ней сессия относится к дню и к активным этапам."""
     return moment.astimezone(calendar.tz).date()
 
 
@@ -73,7 +73,7 @@ def is_working_session(calendar: Calendar, window_start: datetime, window_end: d
 
 
 def count_working_days(calendar: Calendar, start: date, end: date) -> int:
-    """Число рабочих дней в отрезке [start, end], обе даты включительно, как у вех."""
+    """Число рабочих дней в отрезке [start, end], обе даты включительно, как у этапов."""
     days = 0
     current = start
     while current <= end:

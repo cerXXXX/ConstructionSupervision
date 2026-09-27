@@ -2,7 +2,7 @@ import { formatDelay, formatMoment, formatPlanDate } from "@/entities/format";
 import type { StageSaveResult } from "@/features/gantt/useGantt";
 import { label, ru } from "@/shared/locale/ru";
 
-/** Итог правки вехи: «было → стало» по прогнозу вехи, критическому пути и отставанию объекта. */
+/** Итог правки этапа: «было → стало» по прогнозу этапа, критическому пути и отставанию объекта. */
 export function SaveSummary({ result }: { result: StageSaveResult }) {
   const { before, after } = result;
   const change = (was: string, now: string) => (was === now ? `${now} (без изменений)` : `${was} → ${now}`);
@@ -14,10 +14,10 @@ export function SaveSummary({ result }: { result: StageSaveResult }) {
     <div className="rounded-xl bg-emerald-50 p-4 text-emerald-950 ring-1 ring-emerald-200">
       <p className="mb-1 font-medium">Сохранено, анализ пересчитан на {formatMoment(result.run.as_of)}:</p>
       <ul className="space-y-0.5">
-        <li>статус вехи: {change(status(before), status(after))}</li>
-        <li>прогноз окончания вехи: {change(formatPlanDate(before.stage?.forecast_end), formatPlanDate(after.stage?.forecast_end))}</li>
+        <li>статус этапа: {change(status(before), status(after))}</li>
+        <li>прогноз окончания этапа: {change(formatPlanDate(before.stage?.forecast_end), formatPlanDate(after.stage?.forecast_end))}</li>
         <li>
-          отставание вехи: {change(formatDelay(before.stage?.delay_days), formatDelay(after.stage?.delay_days))} {ru.units.workDays}
+          отставание этапа: {change(formatDelay(before.stage?.delay_days), formatDelay(after.stage?.delay_days))} {ru.units.workDays}
         </li>
         <li>на критическом пути: {change(critical(before.critical), critical(after.critical))}</li>
         <li>объект: {change(objectDelay(before), objectDelay(after))}</li>

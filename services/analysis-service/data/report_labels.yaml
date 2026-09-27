@@ -22,9 +22,9 @@ severity:
   INFO: Инфо
 
 stage_fact_status:
-  NOT_STARTED: не начата
+  NOT_STARTED: не начат
   IN_PROGRESS: в работе
-  DONE: завершена
+  DONE: завершён
   LATE: с опозданием
   AHEAD: с опережением
 

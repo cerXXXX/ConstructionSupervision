@@ -84,7 +84,7 @@ class CalendarService:
         # Название на рабочие дни не влияет: план от него не меняется.
         if changes.keys() - {"name"}:
             object_ids = list(await self._objects.ids_with_calendar(calendar_id))
-            # Выходные и праздники меняют число рабочих дней, а с ним резервы вех.
+            # Выходные и праздники меняют число рабочих дней, а с ним резервы этапов.
             await refresh_critical_path(self._session, object_ids)
             await self._plan_version.changed(object_ids)
         return calendar

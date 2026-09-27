@@ -1,4 +1,4 @@
-"""Правила «веха → техника»: создание, правка, удаление с ростом версий и сигналом (F11).
+"""Правила «этап → техника»: создание, правка, удаление с ростом версий и сигналом (F11).
 
 Каждая правка правила меняет план объекта: версия правила растёт (она попадает в
 отклонение), растёт plan_version объекта, и в analysis уходит сигнал «пересчитай».
@@ -26,7 +26,7 @@ class StageRuleNotFound(NotFoundError):
     code = "STAGE_RULE_NOT_FOUND"
 
     def __init__(self, rule_id: UUID) -> None:
-        super().__init__("Правило для вехи не найдено", rule_id=str(rule_id))
+        super().__init__("Правило для этапа не найдено", rule_id=str(rule_id))
 
 
 class StageRuleAlreadyExists(ConflictError):
@@ -73,7 +73,7 @@ class RuleService:
         _check(fields)
         if await self._repo.by_stage(stage.id) is not None:
             raise StageRuleAlreadyExists(
-                "У вехи уже есть правило: правьте его, а не создавайте второе",
+                "У этапа уже есть правило: правьте его, а не создавайте второе",
                 stage_id=str(stage.id),
             )
         fields["stage_id"] = stage.id
@@ -101,7 +101,7 @@ class RuleService:
         return rule
 
     async def delete(self, rule_id: UUID, actor: str | None) -> None:
-        """Веха без правила: по ней не проверяются D1, D2, D8, D9 (interservice.md, раздел 1)."""
+        """Этап без правила: по нему не проверяются D1, D2, D8, D9 (interservice.md, раздел 1)."""
         rule = await self.get(rule_id)
         stage = await self._stages.get(rule.stage_id)
         await self._repo.delete(rule)

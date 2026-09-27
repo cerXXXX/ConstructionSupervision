@@ -28,7 +28,7 @@ class RunError(ValueError):
 
 @dataclass(frozen=True)
 class AnalysisResult:
-    """Всё, что прогон записывает в analysisdb: отклонения, факт по вехам, агрегаты, статус."""
+    """Всё, что прогон записывает в analysisdb: отклонения, факт по этапам, агрегаты, статус."""
 
     object_id: UUID
     as_of: datetime
@@ -39,7 +39,7 @@ class AnalysisResult:
     daily_activity: tuple[DailyActivity, ...]
     daily_equipment: tuple[DailyEquipment, ...]
     object_status: ObjectForecast
-    # Счётчики для дашборда: отклонения по серьёзности, слепые участки, вехи по статусам.
+    # Счётчики для дашборда: отклонения по серьёзности, слепые участки, этапы по статусам.
     counters: dict[str, Any]
     stats: dict[str, Any]
 
@@ -80,7 +80,7 @@ def analyze(
     deviations = tuple(describe(f, by_code[f.code], ctx.class_names) for f in findings)
     result = forecast(ctx, forecast_params)
     started = {s.stage_id for s in result.stages if s.actual_start is not None}
-    # Не начатая веха после своих плановых дат дала бы только строки «не видно»: это шум,
+    # Не начатый этап после своих плановых дат дал бы только строки «не видно»: это шум,
     # а не факт. Её опоздание и так видно по статусу и прогнозу.
     activity = tuple(
         row

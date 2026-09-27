@@ -1,7 +1,7 @@
-"""Предикаты по вехе и видимости: D7, D9, D10 (docs/methodology.md, разделы 7, 8 и 9).
+"""Предикаты по этапу и видимости: D7, D9, D10 (docs/methodology.md, разделы 7, 8 и 9).
 
 D7 сравнивает уверенную стадию по фото с плановой визуальной стадией. D9 смотрит на
-отрезок первых рабочих дней вехи целиком, а не на серию сессий. D10 —
+отрезок первых рабочих дней этапа целиком, а не на серию сессий. D10 —
 единственный вывод по невидимому: он говорит «проверьте вручную» там, где остальные
 предикаты молчат. Модуль регистрирует предикаты при импорте; импортирует его
 `core/predicates.py`.
@@ -51,7 +51,7 @@ def _stage_facts(stage: Stage) -> dict[str, Any]:
 def _stage_mismatch_state(
     ctx: Context, session: SessionFact
 ) -> tuple[Stage, StageObservation, int] | bool | None:
-    """Состояние сессии для D7: (веха, наблюдение, на сколько стадий расходится) или нет.
+    """Состояние сессии для D7: (этап, наблюдение, на сколько стадий расходится) или нет.
 
     Неуверенная стадия — «не наблюдалась»: серию не рвёт и в неё не входит.
     """
@@ -115,7 +115,7 @@ def stage_mismatch(ctx: Context, rule: DeviationRule) -> list[Finding]:
     """D7: уверенная стадия по фото раньше или позже плановой визуальной стадии."""
     min_sessions = rule.params.get("min_sessions", 1)
     states = [(s, _stage_mismatch_state(ctx, s)) for s in ctx.sessions]
-    # Ключ — веха, задающая плановую стадию: смена вехи в плане начинает новую серию.
+    # Ключ — этап, задающий плановую стадию: смена этапа в плане начинает новую серию.
     keys = dict.fromkeys(state[0].id for _, state in states if isinstance(state, tuple))
     findings = []
     for key in keys:
@@ -143,9 +143,9 @@ def _signature_names(ctx: Context, stage: Stage) -> list[str]:
 def late_start(ctx: Context, rule: DeviationRule) -> list[Finding]:
     """D9: за `k_days` рабочих дней с `plan_start` сигнатура не собралась в фактический старт.
 
-    Проверяется, только когда эти дни прошли к `as_of` и участок вехи был виден хотя бы
-    в доле `min_visible_share` рабочих сессий этих дней: не видели — не обвиняем. Веху,
-    отмеченную выполненной не позже срока, выполнили — D9 по ней нет (раздел 10.3b).
+    Проверяется, только когда эти дни прошли к `as_of` и участок этапа был виден хотя бы
+    в доле `min_visible_share` рабочих сессий этих дней: не видели — не обвиняем. Этап,
+    отмеченный выполненным не позже срока, выполнили — D9 по нему нет (раздел 10.3b).
     """
     k, min_share = rule.params["k_days"], rule.params["min_visible_share"]
     today = local_date(ctx.calendar, ctx.as_of)
@@ -197,7 +197,7 @@ def late_start(ctx: Context, rule: DeviationRule) -> list[Finding]:
         # Рамок сигнатуры нет — доказательство сами снимки участка: на них видно, что пусто.
         images = [i for cam in last.cameras if cam.usable for i in cam.image_ids]
         # Старт так и не собрался — условие держится до последней сессии; собрался с
-        # опозданием — отклонение закрылось в момент старта; веху закрыли отметкой без
+        # опозданием — отклонение закрылось в момент старта; этап закрыли отметкой без
         # наблюдённого старта — последней сессией дня отметки.
         if start is not None:
             ended_at = start.window_start
@@ -311,7 +311,7 @@ def _unmarked_finding(
         "first_seen_at": streak.sessions[0].window_start.isoformat(),
         "last_seen_at": last_session.window_end.isoformat(),
         "held_working_days": held,
-        "evidence_absent_reason": "у вехи нет размеченного участка её типа — снимков по ней нет",
+        "evidence_absent_reason": "у этапа нет размеченного участка его типа — снимков по нему нет",
     }
     return Finding(
         code=rule.code,
@@ -331,7 +331,7 @@ def _unmarked_finding(
 
 
 def _unmarked_stages(ctx: Context, rule: DeviationRule, min_sessions: int) -> list[Finding]:
-    """Активная веха, у которой в сессии нет ни одного участка её типа (раздел 7)."""
+    """Активный этап, у которого в сессии нет ни одного участка его типа (раздел 7)."""
     findings = []
     for stage in ctx.plan.stages:
         rows = []
@@ -350,6 +350,6 @@ def _unmarked_stages(ctx: Context, rule: DeviationRule, min_sessions: int) -> li
 
 @register("blind_area")
 def blind_area(ctx: Context, rule: DeviationRule) -> list[Finding]:
-    """D10: участок слепой `min_sessions` рабочих сессий подряд или у активной вехи нет участка."""
+    """D10: участок слепой `min_sessions` рабочих сессий подряд или у активного этапа нет участка."""
     min_sessions = rule.params.get("min_sessions", 1)
     return _blind_areas(ctx, rule, min_sessions) + _unmarked_stages(ctx, rule, min_sessions)

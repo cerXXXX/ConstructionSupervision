@@ -34,7 +34,7 @@ def _visibility(facts: Facts, area: str) -> set[str]:
     return {a.visibility.status for s in facts.sessions for a in s.areas if a.area == area}
 
 
-def test_план_разбирается_и_вехи_идут_по_порядку():
+def test_план_разбирается_и_этапы_идут_по_порядку():
     plan = load_plan()
 
     assert [s.seq for s in plan.stages] == [1, 2, 3]
@@ -53,7 +53,7 @@ def test_классы_в_правилах_есть_в_плане():
         assert used <= known, stage.name
 
 
-def test_вехи_идут_на_рабочих_участках(enums):
+def test_этапы_идут_на_рабочих_участках(enums):
     plan = load_plan()
 
     assert plan.object.object_type in enums.values["object_type"]
@@ -112,7 +112,7 @@ def test_неизвестные_поля_поставщика_игнорирую
     assert Plan.model_validate(raw).stages[0].name == "Подготовка территории"
 
 
-def test_отметка_выполнена_разбирается_и_необязательна():
+def test_отметка_выполнен_разбирается_и_необязательна():
     """Контракт 1: поля отметки новые и необязательные — старый ответ плана тоже разбирается."""
     raw = load_plan().model_dump(mode="json")
     raw["stages"][1] |= {

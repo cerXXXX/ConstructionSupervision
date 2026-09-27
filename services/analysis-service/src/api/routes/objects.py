@@ -1,4 +1,4 @@
-"""Выводы по объекту: статус, прогресс вех, загрузка техники (срезы последнего прогона)."""
+"""Выводы по объекту: статус, прогресс этапов, загрузка техники (срезы последнего прогона)."""
 
 from datetime import date
 from typing import Annotated
@@ -32,7 +32,7 @@ async def get_status(object_id: UUID, session: SessionDep):
 @router.get(
     "/{object_id}/progress",
     response_model=ProgressRead,
-    summary="Прогресс, SPI и прогноз по вехам — данные для Ганта",
+    summary="Прогресс, SPI и прогноз по этапам — данные для Ганта",
 )
 async def get_progress(object_id: UUID, session: SessionDep):
     status, stages, activity = await ResultsService(session).progress(object_id)

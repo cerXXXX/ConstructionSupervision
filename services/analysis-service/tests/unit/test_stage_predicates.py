@@ -118,7 +118,7 @@ def test_в_демо_дни_стадия_совпадает_с_планом(enum
     assert _findings(load_facts(name), enums, ["D7"]) == []
 
 
-def test_без_вехи_с_плановой_стадией_d7_нет(enums):
+def test_без_этапа_с_плановой_стадией_d7_нет(enums):
     # 01.10 активна только «Подготовка территории», visual_stage у неё не задан.
     assert _findings(make_facts(*_photo("FRAME", day=date(2026, 10, 1))), enums, ["D7"]) == []
 
@@ -159,14 +159,14 @@ def test_в_плановые_даты_d8_нет(enums):
     assert _findings(load_facts("facts_normal_day.json"), enums, ["D8"]) == []
 
 
-def test_веха_без_правила_d8_не_даёт(enums):
+def test_этап_без_правила_d8_не_даёт(enums):
     plan = make_plan(OVERRUN_PLAN.stages[0].model_copy(update={"rule": None}))
 
     assert _findings(load_facts("facts_normal_day.json"), enums, ["D8"], plan) == []
 
 
-def test_после_отметки_выполнена_d8_нет(enums):
-    """Раздел 10.3b: веху закрыли в плановый срок — техника после него этап не затягивает."""
+def test_после_отметки_выполнен_d8_нет(enums):
+    """Раздел 10.3b: этап закрыли в плановый срок — техника после него этап не затягивает."""
     marked = OVERRUN_PLAN.stages[0].model_copy(update={"completed_on": date(2026, 10, 16)})
 
     assert _findings(load_facts("facts_normal_day.json"), enums, ["D8"], make_plan(marked)) == []
@@ -244,7 +244,7 @@ def _marked_pit(day):
     return make_plan(PIT_STAGE.model_copy(update={"completed_on": day}))
 
 
-def test_отмеченная_до_срока_старта_веха_d9_не_даёт(enums):
+def test_отмеченный_до_срока_старта_этап_d9_не_даёт(enums):
     facts = make_facts(*_first_days(_excavator))
 
     assert _findings(facts, enums, ["D9"], _marked_pit(FIRST_DAYS[1]), as_of=AFTER) == []
@@ -328,7 +328,7 @@ def test_тёмные_кадры_без_ссылок_d10_не_дают(enums):
     assert _findings(make_facts(*sessions), enums, ["D10"]) == []
 
 
-def test_d10_по_вехе_без_размеченного_участка(enums):
+def test_d10_по_этапу_без_размеченного_участка(enums):
     # 01.10 активна «Подготовка территории» (пятно застройки), размечен только котлован.
     sessions = _sessions(_excavator, date(2026, 10, 1), 2)
 
@@ -341,7 +341,7 @@ def test_d10_по_вехе_без_размеченного_участка(enums)
     assert "(BUILDING_FOOTPRINT) не размечен" in deviation.message
 
 
-def test_у_закрытой_отметкой_вехи_без_участка_d10_нет(enums):
+def test_у_закрытого_отметкой_этапа_без_участка_d10_нет(enums):
     marked = PREPARATION.model_copy(update={"completed_on": date(2026, 9, 30)})
     sessions = _sessions(_excavator, date(2026, 10, 1), 2)
 

@@ -20,7 +20,7 @@ class PlanServiceUnavailable(UpstreamError):
 
 class PlanClient(ServiceClient):
     async def get_plan(self, object_id: UUID) -> Plan:
-        """Весь план: вехи, правила, календарь, классы техники."""
+        """Весь план: этапы, правила, календарь, классы техники."""
         try:
             payload = await self.get(f"/api/v1/plan/objects/{object_id}/plan")
         except UpstreamError as exc:

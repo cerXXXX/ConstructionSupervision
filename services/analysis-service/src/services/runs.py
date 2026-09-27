@@ -89,11 +89,11 @@ def forecast_params() -> ForecastParams:
 
 
 def period_start(plan: Plan) -> datetime:
-    """Начало периода фактов: местная полночь даты начала СМР (или первой вехи)."""
+    """Начало периода фактов: местная полночь даты начала СМР (или первого этапа)."""
     first = plan.object.plan_start or min((s.plan_start for s in plan.stages), default=None)
     if first is None:
         raise PlanNotReady(
-            "У объекта нет ни даты начала СМР, ни вех: анализировать нечего",
+            "У объекта нет ни даты начала СМР, ни этапов: анализировать нечего",
             object_id=str(plan.object.id),
         )
     local = datetime.combine(first, time(0), tzinfo=ZoneInfo(plan.calendar.timezone))

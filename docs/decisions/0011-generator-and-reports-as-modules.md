@@ -20,9 +20,9 @@ ADR-0002 вынес в отдельные сервисы `pos-engine` (норм�
 ## Решение
 
 - **Генератор графика — модуль `plan-service`:** `src/core/schedule_generator.py`, нормы и
-  шаблоны вех в `services/plan-service/data/`. Вход — тип объекта и параметры (этажность,
-  площадь, секции, сваи, сменность, дата начала). Выход — вехи с датами, связями, критическим
-  путём и правилами «веха → техника» из шаблона. Всё, что не нужно ТЗ, не переносится:
+  шаблоны этапов в `services/plan-service/data/`. Вход — тип объекта и параметры (этажность,
+  площадь, секции, сваи, сменность, дата начала). Выход — этапы с датами, связями, критическим
+  путём и правилами «этап → техника» из шаблона. Всё, что не нужно ТЗ, не переносится:
   КСР, 299-ПП, закон № 42, разбор наименования объекта.
 - **Отчёты и LLM-резюме — модуль `analysis-service`:** `src/report/`, эндпоинты
   `/api/v1/analysis/reports` и `/api/v1/analysis/summary`. Правила LLM из
@@ -35,7 +35,7 @@ ADR-0002 вынес в отдельные сервисы `pos-engine` (норм�
 
 | Что | Где |
 | :--- | :--- |
-| Нормативы сроков и шаблоны вех | `services/plan-service/data/mrr_norms.json`, `wbs_templates.json` |
+| Нормативы сроков и шаблоны этапов | `services/plan-service/data/mrr_norms.json`, `wbs_templates.json` |
 | Тексты предупреждений D1–D10 | `deviation_rule.message_template`; начальные значения — `services/analysis-service/data/deviation_rules.yaml` |
 | Промпты LLM | `services/analysis-service/prompts/*.md` |
 

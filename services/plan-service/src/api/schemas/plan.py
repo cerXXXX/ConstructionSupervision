@@ -63,7 +63,7 @@ class PlanStage(BaseModel):
     zone_type: ZoneType
     visual_stage: StageLabel | None
     plan_start: date
-    plan_end: date = Field(description="Последний рабочий день вехи, включительно")
+    plan_end: date = Field(description="Последний рабочий день этапа, включительно")
     norm_duration_days: int
     predecessors: list[PredecessorRead]
     is_critical: bool
@@ -71,11 +71,11 @@ class PlanStage(BaseModel):
     basis: str | None
     rule: PlanRule | None = Field(
         default=None,
-        description="null — правила нет или оно выключено: D1, D2, D8, D9 по вехе не проверяются",
+        description="null — правила нет или оно выключено: D1, D2, D8, D9 по этапу не проверяются",
     )
     completed_on: date | None = Field(
         default=None,
-        description="Отметка оператора «веха выполнена» — последний день работ, включительно; "
+        description="Отметка оператора «этап выполнен» — последний день работ, включительно; "
         "как её учитывает анализ — methodology.md, 10.3b",
     )
     completed_by: str | None = None
@@ -85,9 +85,9 @@ class PlanStage(BaseModel):
 class PlanImportResult(BaseModel):
     object_id: UUID
     plan_version: int
-    stages: int = Field(description="Сколько вех в новом графике")
-    rules: int = Field(description="Сколько вех получили правило из шаблона")
-    critical_stages: int = Field(description="Сколько вех на критическом пути")
+    stages: int = Field(description="Сколько этапов в новом графике")
+    rules: int = Field(description="Сколько этапов получили правило из шаблона")
+    critical_stages: int = Field(description="Сколько этапов на критическом пути")
 
 
 class PlanGenerateRequest(BaseModel):
@@ -117,4 +117,4 @@ class Plan(BaseModel):
     plan_version: int
     calendar: PlanCalendar
     equipment_classes: list[PlanEquipmentClass]
-    stages: list[PlanStage] = Field(description="Все вехи объекта по seq")
+    stages: list[PlanStage] = Field(description="Все этапы объекта по seq")

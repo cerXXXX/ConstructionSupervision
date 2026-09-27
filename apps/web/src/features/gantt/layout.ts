@@ -2,7 +2,7 @@
  * Геометрия диаграммы Ганта: даты → пиксели, полосы, связи, шкала месяцев. Чистые функции без
  * React: экран только рисует то, что здесь посчитано.
  *
- * Даты плана — `YYYY-MM-DD` без пояса, обе границы вехи включительно. Внутри — номер дня от
+ * Даты плана — `YYYY-MM-DD` без пояса, обе границы этапа включительно. Внутри — номер дня от
  * эпохи (UTC), чтобы не зависеть от пояса браузера.
  */
 
@@ -48,7 +48,7 @@ export function makeScale(days: number[], pxPerDay: number): Scale {
 
 export const width = (scale: Scale) => (scale.end - scale.start) * scale.pxPerDay;
 
-/** Левый край дня. Конец вехи включительно, поэтому правый край полосы — `x(end + 1)`. */
+/** Левый край дня. Конец этапа включительно, поэтому правый край полосы — `x(end + 1)`. */
 export const x = (scale: Scale, day: number) => (day - scale.start) * scale.pxPerDay;
 
 export const rowTop = (row: number) => HEADER_HEIGHT + row * ROW_HEIGHT;

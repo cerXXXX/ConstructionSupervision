@@ -21,7 +21,7 @@ import { PageHeader, Segmented } from "@/shared/ui/Page";
 import { Empty, ErrorBox, Loading } from "@/shared/ui/QueryState";
 import { useToast } from "@/shared/ui/Toast";
 
-// Веха закрыта отметкой оператора (stage_fact.facts.basis, methodology.md, 10.3b).
+// Этап закрыт отметкой оператора (stage_fact.facts.basis, methodology.md, 10.3b).
 const OPERATOR = "OPERATOR";
 
 const ZOOMS: { label: string; value: Zoom }[] = [
@@ -31,7 +31,7 @@ const ZOOMS: { label: string; value: Zoom }[] = [
 ];
 
 /**
- * Гант план-факт (F10): плановые окна вех из plan-service, факт и прогноз из analysis-service.
+ * Гант план-факт (F10): плановые окна этапов из plan-service, факт и прогноз из analysis-service.
  * Прогноз — при сохранении текущего темпа, с уверенностью (apps/web/README.md, §5).
  */
 export function GanttScreen() {
@@ -43,7 +43,7 @@ export function GanttScreen() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [planMode, setPlanMode] = useState<PlanMode | null>(null);
   const activeDraft = draft && draft.stageId === selected?.stage.id ? draft : null;
-  // Черновик — только у выбранной вехи: переход к другой вехе его сбрасывает.
+  // Черновик — только у выбранного этапа: переход к другому этапу его сбрасывает.
   const choose = (stageId: string) => {
     if (stageId !== selected?.stage.id) setDraft(null);
     select(stageId);
@@ -53,7 +53,7 @@ export function GanttScreen() {
     <div>
       <PageHeader
         title="График план-факт"
-        description="Плановые окна вех, фактический старт, выполнение и прогноз окончания. Полосу можно тянуть мышью — даты уйдут в черновик вехи."
+        description="Плановые окна этапов, фактический старт, выполнение и прогноз окончания. Полосу можно тянуть мышью — даты уйдут в черновик этапа."
         meta={
           plan.data &&
           rows.length > 0 && (
@@ -101,7 +101,7 @@ export function GanttScreen() {
           }
         >
           Без графика не с чем сверять факт. Сгенерируйте его по нормам МРР-3.2.81-12 из этажности и
-          площади или загрузите из файла — вехи придут вместе с правилами техники.
+          площади или загрузите из файла — этапы придут вместе с правилами техники.
         </Empty>
       )}
       {progress.data === null && rows.length > 0 && (
@@ -139,7 +139,7 @@ export function GanttScreen() {
           ) : (
             <p className="flex items-center gap-2 text-sm text-muted">
               <Icon name="info" size={15} />
-              Щёлкните по вехе — откроется её карточка с фактом, прогнозом и правкой дат.
+              Щёлкните по этапу — откроется его карточка с фактом, прогнозом и правкой дат.
             </p>
           )}
         </div>
@@ -222,10 +222,10 @@ function StagePanel({
         <div className="space-y-3 text-sm">
           <p className={`rounded-xl p-3 ${stage.is_critical ? "bg-accent/[0.06]" : stage.total_float_days < 0 ? "bg-red-50" : "bg-canvas/60"}`}>
             {stage.is_critical
-              ? "На критическом пути: задержка вехи сдвигает окончание объекта."
+              ? "На критическом пути: задержка этапа сдвигает окончание объекта."
               : stage.total_float_days < 0
-                ? `Резерв ${formatDelay(stage.total_float_days)} ${ru.units.workDays}: даты вехи нарушают связи с соседями.`
-                : `Резерв ${stage.total_float_days} ${ru.units.workDays}: на столько веха может сдвинуться без сдвига объекта.`}
+                ? `Резерв ${formatDelay(stage.total_float_days)} ${ru.units.workDays}: даты этапа нарушают связи с соседями.`
+                : `Резерв ${stage.total_float_days} ${ru.units.workDays}: на столько этап может сдвинуться без сдвига объекта.`}
           </p>
           {stage.basis && <p className="text-muted">Основание срока: {stage.basis}</p>}
           {stage.predecessors.length > 0 && (
@@ -248,7 +248,7 @@ function StagePanel({
 
         <div className="space-y-3 text-sm">
           {!progress ? (
-            <p className="text-muted">Факта по вехе нет: анализ её ещё не считал.</p>
+            <p className="text-muted">Факта по этапу нет: анализ его ещё не считал.</p>
           ) : (
             <>
               <div>
@@ -295,8 +295,8 @@ function StagePanel({
 }
 
 /**
- * Правка плановых дат вехи (F11): черновик общий с перетаскиванием на диаграмме, сохранение —
- * PATCH вехи и прогон анализа, затем «было → стало» по прогнозу вехи и отставанию объекта.
+ * Правка плановых дат этапа (F11): черновик общий с перетаскиванием на диаграмме, сохранение —
+ * PATCH этапа и прогон анализа, затем «было → стало» по прогнозу этапа и отставанию объекта.
  */
 function DatesEditor({
   objectId,
@@ -359,7 +359,7 @@ function DatesEditor({
                 {
                   onSuccess: () => {
                     onDraft(null);
-                    toast.success("Даты вехи сохранены", "Анализ пересчитан — итог ниже");
+                    toast.success("Даты этапа сохранены", "Анализ пересчитан — итог ниже");
                   },
                   onError: (error) => toast.error(error, "Даты не сохранены"),
                 },
@@ -373,7 +373,7 @@ function DatesEditor({
       {issues.length > 0 && <p className="text-red-700">Не сохранить: {issues.join("; ")}.</p>}
       <p className="text-xs text-muted">
         Полосу можно тянуть на диаграмме: целиком — длительность в рабочих днях сохраняется, за
-        край — меняется начало или конец. Соседние вехи не сдвигаются: нарушенную связь покажет
+        край — меняется начало или конец. Соседние этапы не сдвигаются: нарушенную связь покажет
         отрицательный резерв.
       </p>
       {save.data && <SaveSummary result={save.data} />}
@@ -381,12 +381,12 @@ function DatesEditor({
   );
 }
 
-/** Откуда прогресс вехи: отметка оператора, план (и почему) или наблюдения (сколько дней). */
+/** Откуда прогресс этапа: отметка оператора, план (и почему) или наблюдения (сколько дней). */
 function basis(facts: Record<string, unknown>): string {
   if (facts.basis === OPERATOR) {
     const on = typeof facts.completed_on === "string" ? formatPlanDate(facts.completed_on) : "—";
     const by = typeof facts.completed_by === "string" ? `, отметил ${facts.completed_by}` : "";
-    return `Выполнена по отметке оператора: последний день работ ${on}${by}. Окончание подтвердил человек, а не снимки.`;
+    return `Выполнен по отметке оператора: последний день работ ${on}${by}. Окончание подтвердил человек, а не снимки.`;
   }
   if (typeof facts.basis_reason === "string") return `Прогресс по плану: ${facts.basis_reason}.`;
   if (facts.basis === "OBSERVED") {

@@ -127,7 +127,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Прогресс, SPI и прогноз по вехам — данные для Ганта */
+        /** Прогресс, SPI и прогноз по этапам — данные для Ганта */
         get: operations["get_progress_api_v1_analysis_objects__object_id__progress_get"];
         put?: never;
         post?: never;
@@ -538,7 +538,7 @@ export interface components {
             spi: number | null;
             /**
              * Stages
-             * @description Вехи по статусам и `total`
+             * @description Этапы по статусам и `total`
              */
             stages: {
                 [key: string]: number;
@@ -592,7 +592,7 @@ export interface components {
         };
         /**
          * ProgressRead
-         * @description Названия и плановые даты вех — в plan-service; здесь только факт и прогноз.
+         * @description Названия и плановые даты этапов — в plan-service; здесь только факт и прогноз.
          */
         ProgressRead: {
             /**

@@ -99,7 +99,7 @@ class Deviation(Base, TimestampMixin):
         CheckConstraint(
             "verdict IS NULL OR verdict IN ('CONFIRMED', 'REJECTED')", name="ck_deviation_verdict"
         ),
-        # Открытое отклонение единственно по ключу «объект + веха + участок + код +
+        # Открытое отклонение единственно по ключу «объект + этап + участок + код +
         # класс»: повторный прогон обновляет строку, а не плодит дубли. NULLS NOT
         # DISTINCT обязателен — у D7 нет участка, у D1 нет класса, и без него два
         # NULL считались бы разными значениями.
@@ -168,7 +168,7 @@ class DeviationRule(Base, TimestampMixin):
 
 
 class StageFact(Base, TimestampMixin):
-    """Вывод по одной вехе: прогресс, SPI, прогноз, задержка.
+    """Вывод по одному этапу: прогресс, SPI, прогноз, задержка.
 
     `confidence` не украшение: при двух сессиях и слепом участке уверенный прогноз
     вводит в заблуждение, и об этом обязан знать интерфейс.
@@ -198,7 +198,7 @@ class StageFact(Base, TimestampMixin):
 
 
 class DailyActivity(Base):
-    """Активность по вехе за день — вход прогноза и доказательство темпа."""
+    """Активность по этапу за день — вход прогноза и доказательство темпа."""
 
     __tablename__ = "daily_activity"
 
@@ -209,7 +209,7 @@ class DailyActivity(Base):
     day: Mapped[date] = mapped_column("date", Date, primary_key=True)
     sessions_total: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     sessions_working: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    # Пусто — участок вехи за день ни разу не был виден: «не знаем», а не ноль.
+    # Пусто — участок этапа за день ни разу не был виден: «не знаем», а не ноль.
     activity_index: Mapped[float | None] = mapped_column(Float)
     # Слепые сессии не штрафуют индекс, а снижают уверенность: «не видно»
     # и «не работают» — разные утверждения.
@@ -251,5 +251,5 @@ class ObjectStatus(Base):
     spi: Mapped[float | None] = mapped_column(Float)
     confidence: Mapped[str] = mapped_column(String(8), server_default=text("'LOW'"))
     counters: Mapped[dict] = mapped_column(JSONB, server_default=text("'{}'::jsonb"))
-    # Вехи критического пути с прогнозом позже плана.
+    # Этапы критического пути с прогнозом позже плана.
     stages_at_risk: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))

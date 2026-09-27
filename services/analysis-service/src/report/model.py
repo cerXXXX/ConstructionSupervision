@@ -26,13 +26,13 @@ class StatusSnapshot:
     # Дни наблюдений, доля видимых сессий — числа, на которых стоит уверенность.
     facts: Mapping[str, Any] = field(default_factory=dict)
     blind_areas: int = 0
-    # Вехи критического пути с прогнозом позже плана — как их отдал прогон.
+    # Этапы критического пути с прогнозом позже плана — как их отдал прогон.
     stages_at_risk: Sequence[Mapping[str, Any]] = ()
 
 
 @dataclass(frozen=True)
 class StageSnapshot:
-    """Факт и прогноз вехи (`stage_fact`)."""
+    """Факт и прогноз этапа (`stage_fact`)."""
 
     stage_id: UUID
     actual_start: date | None
@@ -44,7 +44,7 @@ class StageSnapshot:
     status: str
     confidence: str
     # PLAN — прогресс по плану (участок не видели), OBSERVED — по наблюдениям,
-    # OPERATOR — веха закрыта отметкой оператора «выполнена».
+    # OPERATOR — этап закрыт отметкой оператора «выполнен».
     basis: str | None = None
 
 

@@ -3,7 +3,7 @@
 Базовое правило заказчика: на статичном снимке техника работает, если она в рабочей
 зоне, где по плану сейчас идут работы. Неподвижность между сессиями только уточняет
 его. Транзитная техника по месту не простаивает: движение для неё норма. Техника,
-работающая стоя (`works_in_place`), на рабочем участке с активной вехой не простаивает
+работающая стоя (`works_in_place`), на рабочем участке с активным этапом не простаивает
 из-за неподвижности. Класс
 `person` статуса не получает, опасная зона проверяется отдельно (D6).
 """
@@ -47,16 +47,16 @@ def _state(
     if role == ROLE_SERVICE:
         return IDLE, "стоит на служебном участке, а не на рабочем"
     if role is None:
-        return OUT_OF_ZONE, "за пределами участков работ вехи не ведутся"
+        return OUT_OF_ZONE, "за пределами участков работ этапа не ведутся"
     if not stage_here:
-        return OUT_OF_ZONE, "на рабочем участке, где по плану нет активной вехи этого типа"
+        return OUT_OF_ZONE, "на рабочем участке, где по плану нет активного этапа этого типа"
     if in_place:
-        return WORKING, "на участке идёт веха; работает стоя, неподвижность — норма"
+        return WORKING, "на участке идёт этап; работает стоя, неподвижность — норма"
     if item.static is not None and item.static == item.count:
-        return IDLE, f"на участке идёт веха, но {item.static} из {item.count} не сдвинулись"
+        return IDLE, f"на участке идёт этап, но {item.static} из {item.count} не сдвинулись"
     if item.static is None:
-        return WORKING, "на участке идёт веха; сравнить с прошлой сессией не с чем"
-    return WORKING, f"на участке идёт веха; сдвинулись {item.count - item.static} из {item.count}"
+        return WORKING, "на участке идёт этап; сравнить с прошлой сессией не с чем"
+    return WORKING, f"на участке идёт этап; сдвинулись {item.count - item.static} из {item.count}"
 
 
 def equipment_states(
@@ -68,7 +68,7 @@ def equipment_states(
     class_names: dict[str, str],
     works_in_place: frozenset[str] = frozenset(),
 ) -> tuple[EquipmentStatus, ...]:
-    """Статусы всей техники сессии; `active` — вехи, активные на местную дату сессии.
+    """Статусы всей техники сессии; `active` — этапы, активные на местную дату сессии.
 
     Невидимые участки пропускаются: детекций там нет, и «не видно» — не «стоит».
     """
@@ -89,7 +89,7 @@ def equipment_states(
         where = f"на участке «{name}»" if name else "вне размеченных зон"
         label = class_names.get(cls, cls)
         if not active_types:
-            state, why = UNKNOWN, "на дату нет ни одной активной вехи"
+            state, why = UNKNOWN, "на дату нет ни одного активного этапа"
         else:
             state, why = _state(
                 role, zone_type in active_types, cls in transient, cls in works_in_place, item

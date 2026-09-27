@@ -22,7 +22,7 @@ RULE_KEYS = {"id", "version", "required", "allowed", "signature", "min_sessions"
 
 @pytest.fixture
 async def two_stages(client, session, demo_stage) -> dict:
-    """К котловану из demo_stage — плита FS после него и параллельная короткая веха."""
+    """К котловану из demo_stage — плита FS после него и параллельный короткий этап."""
     from src.dal.models import Stage
 
     pit = UUID(demo_stage["stage_id"])
@@ -83,7 +83,7 @@ async def test_выключенное_правило_приходит_как_nul
     assert plan["stages"][1]["rule"] is None
 
 
-async def test_объект_без_вех_не_ошибка(client):
+async def test_объект_без_этапов_не_ошибка(client):
     created = (await client.post(OBJECTS, json={"name": "Жилой дом без графика"})).json()
 
     plan = (await client.get(f"{OBJECTS}/{created['id']}/plan")).json()
@@ -100,7 +100,7 @@ async def test_весь_план_несуществующего_объекта(c
 
 
 async def test_правка_даты_пересчитывает_критический_путь(client, two_stages):
-    """Котлован кончается 20.11 (пятница), следующая веха — 21.11: шестидневка, резерва нет.
+    """Котлован кончается 20.11 (пятница), следующий этап — 21.11: шестидневка, резерва нет.
 
     Сдвиг конца котлована на 19.11 даёт ему день резерва; короткие сваи с резервом всегда.
     """

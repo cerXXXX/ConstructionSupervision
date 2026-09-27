@@ -606,7 +606,7 @@
             "additionalProperties": {
               "type": "integer"
             },
-            "description": "Вехи по статусам и `total`",
+            "description": "Этапы по статусам и `total`",
             "title": "Stages",
             "type": "object"
           },
@@ -736,7 +736,7 @@
         "type": "object"
       },
       "ProgressRead": {
-        "description": "Названия и плановые даты вех — в plan-service; здесь только факт и прогноз.",
+        "description": "Названия и плановые даты этапов — в plan-service; здесь только факт и прогноз.",
         "properties": {
           "as_of": {
             "format": "date-time",
@@ -2054,7 +2054,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Прогресс, SPI и прогноз по вехам — данные для Ганта",
+        "summary": "Прогресс, SPI и прогноз по этапам — данные для Ганта",
         "tags": [
           "Выводы по объекту"
         ]

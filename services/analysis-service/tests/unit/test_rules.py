@@ -1,4 +1,4 @@
-"""Проверка правила вехи в сессии: группы, транзитное окно, сигнатура, видимость."""
+"""Проверка правила этапа в сессии: группы, транзитное окно, сигнатура, видимость."""
 
 from datetime import date, time, timedelta
 
@@ -122,7 +122,7 @@ def test_слепой_котлован_не_оценивается(enums):
     assert not (check.complete or check.partial or check.nothing_required)
 
 
-def test_неразмеченный_участок_типа_вехи_не_оценивается(enums):
+def test_неразмеченный_участок_типа_этапа_не_оценивается(enums):
     at = windows(DAY, time(6), 1)[0]
     session = make_session(at, make_area(GATE, cameras_total=2))
 
@@ -187,12 +187,12 @@ def test_пустая_сигнатура_не_выполняется_никог�
     assert check.complete and not check.signature_met
 
 
-def test_веху_без_правила_проверять_нельзя(enums):
+def test_этап_без_правила_проверять_нельзя(enums):
     stage = make_stage("Без правила", DAY, DAY)
 
     with pytest.raises(ValueError):
         _checks(_pit_sessions({"excavator": 1}), enums, stage)
 
 
-def test_ожидаемые_классы_вехи():
+def test_ожидаемые_классы_этапа():
     assert expected_classes(PIT_STAGE.rule) == {"excavator", "dump_truck", "bulldozer", "loader"}

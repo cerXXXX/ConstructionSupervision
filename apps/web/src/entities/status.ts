@@ -56,7 +56,7 @@ const STAGE_STATUS_TONE: Record<string, string> = {
   AHEAD: "bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-600/20",
 };
 
-// Заливка выполненной части полосы на Ганте — тем же цветом, что бейдж статуса вехи.
+// Заливка выполненной части полосы на Ганте — тем же цветом, что бейдж статуса этапа.
 const STAGE_STATUS_FILL: Record<string, string> = {
   NOT_STARTED: "fill-stone-400",
   IN_PROGRESS: "fill-amber-500",

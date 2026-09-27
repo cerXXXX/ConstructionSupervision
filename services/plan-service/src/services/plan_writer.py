@@ -31,7 +31,7 @@ class Link(Protocol):
 
 
 class StageDraft(Protocol):
-    """Веха до записи в базу: её дают и импорт (ImportedStage), и генератор (GeneratedStage)."""
+    """Этап до записи в базу: его дают и импорт (ImportedStage), и генератор (GeneratedStage)."""
 
     seq: int
     code: str
@@ -87,7 +87,7 @@ class PlanWriter:
 def _rows(
     obj: ConstructionObject, drafts: Sequence[StageDraft], source: str
 ) -> tuple[list[Stage], list[StageRule]]:
-    """Строки базы: id вех задаются заранее, чтобы связи ссылались на них по UUID."""
+    """Строки базы: id этапов задаются заранее, чтобы связи ссылались на них по UUID."""
     ids = {d.code: uuid4() for d in drafts}
     stages, rules = [], []
     for item in drafts:

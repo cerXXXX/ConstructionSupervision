@@ -16,7 +16,7 @@ class Settings(BaseServiceSettings):
     # Справочные файлы контрактов, смонтированные только для чтения: классы техники
     # (equipment_classes.yaml) и перечисления (enums.yaml). ADR-0014.
     contracts_dir: str = "/contracts"
-    # Шаблоны вех по типам объектов, путь от каталога сервиса.
+    # Шаблоны этапов по типам объектов, путь от каталога сервиса.
     wbs_templates_file: str = "data/wbs_templates.json"
     # Нормы МРР для генератора графика, путь от каталога сервиса.
     mrr_norms_file: str = "data/mrr_norms.json"

@@ -53,7 +53,7 @@ class ObjectRead(BaseModel):
         description="Рабочий календарь; при создании — DEFAULT_CALENDAR"
     )
     plan_version: int = Field(
-        description="Растёт при любой правке вех, правил или календаря; 0 — план не заводился"
+        description="Растёт при любой правке этапов, правил или календаря; 0 — план не заводился"
     )
     created_at: datetime
     updated_at: datetime

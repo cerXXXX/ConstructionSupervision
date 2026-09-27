@@ -1,4 +1,4 @@
-"""API правил «веха → техника»: форма из контракта, проверка классов, версии и сигнал."""
+"""API правил «этап → техника»: форма из контракта, проверка классов, версии и сигнал."""
 
 RULES = "/api/v1/plan/rules"
 OBJECTS = "/api/v1/plan/objects"
@@ -19,7 +19,7 @@ async def _plan_version(client, demo_stage) -> int:
     return obj["plan_version"]
 
 
-async def test_правило_создаётся_в_форме_контракта_и_видно_у_вехи(client, demo_stage, analysis):
+async def test_правило_создаётся_в_форме_контракта_и_видно_у_этапа(client, demo_stage, analysis):
     response = await _create(client, demo_stage)
 
     assert response.status_code == 201
@@ -41,7 +41,7 @@ async def test_минимум_сессий_по_умолчанию_из_базы
     assert rule["min_sessions"] == 2
 
 
-async def test_второе_правило_у_вехи_это_конфликт(client, demo_stage):
+async def test_второе_правило_у_этапа_это_конфликт(client, demo_stage):
     await _create(client, demo_stage)
 
     response = await _create(client, demo_stage)
@@ -78,7 +78,7 @@ async def test_пустая_группа_и_неизвестная_стадия_
     assert (empty.status_code, label.status_code) == (422, 422)
 
 
-async def test_правило_для_несуществующей_вехи(client):
+async def test_правило_для_несуществующего_этапа(client):
     response = await client.post(
         RULES, json=PIT_RULE | {"stage_id": "00000000-0000-0000-0000-000000000000"}
     )
@@ -118,7 +118,7 @@ async def test_правка_с_опечаткой_не_меняет_правил
     assert (await client.get(f"{RULES}/{rule['id']}")).json()["version"] == 1
 
 
-async def test_фильтр_по_объекту_и_вехе(client, demo_stage):
+async def test_фильтр_по_объекту_и_этапу(client, demo_stage):
     rule = (await _create(client, demo_stage)).json()
 
     by_object = (await client.get(RULES, params={"object_id": demo_stage["object"]["id"]})).json()
@@ -128,7 +128,7 @@ async def test_фильтр_по_объекту_и_вехе(client, demo_stage):
     assert by_stage["total"] == 1
 
 
-async def test_удаление_правила_оставляет_веху_без_правила(client, demo_stage, analysis):
+async def test_удаление_правила_оставляет_этап_без_правила(client, demo_stage, analysis):
     rule = (await _create(client, demo_stage)).json()
 
     assert (await client.delete(f"{RULES}/{rule['id']}")).status_code == 204

@@ -25,7 +25,7 @@ const SOURCES: { kind: Source; icon: IconName; title: string; text: string }[] =
     kind: "generate",
     icon: "sparkle",
     title: "По нормам МРР",
-    text: "Вехи, сроки и правила техники — по МРР-3.2.81-12 из этажности и площади",
+    text: "Этапы, сроки и правила техники — по МРР-3.2.81-12 из этажности и площади",
   },
   { kind: "import", icon: "upload", title: "Из файла", text: "CSV или XLSX: код, название, начало, окончание" },
   { kind: "later", icon: "clock", title: "Позже", text: "Объект без графика; построить можно в настройках" },

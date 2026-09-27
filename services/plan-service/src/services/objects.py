@@ -55,7 +55,7 @@ class ObjectService:
         changes = payload.model_dump(exclude_unset=True)
 
         if "plan_start" in changes and obj.plan_version > 0:
-            # Сдвиг даты начала после построения графика меняет все вехи,
+            # Сдвиг даты начала после построения графика меняет все этапы,
             # поэтому выполняется перегенерацией плана, а не правкой поля.
             raise ValidationError(
                 "Дата начала меняется через перегенерацию плана, а не напрямую",

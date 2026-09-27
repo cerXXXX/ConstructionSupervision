@@ -65,7 +65,7 @@ class RequiredGroup(_Input):
 
 
 class Signature(_Input):
-    """Признак фактического старта вехи."""
+    """Признак фактического старта этапа."""
 
     equipment: tuple[str, ...] = ()
     stage_label: str | None = None
@@ -89,7 +89,7 @@ class Stage(_Input):
     work_codes: tuple[str, ...] = ()
     zone_type: str
     visual_stage: str | None = None
-    # Обе даты включительно: plan_end — последний рабочий день вехи.
+    # Обе даты включительно: plan_end — последний рабочий день этапа.
     plan_start: date
     plan_end: date
     norm_duration_days: int = Field(gt=0)
@@ -97,9 +97,9 @@ class Stage(_Input):
     is_critical: bool = False
     total_float_days: int = 0
     basis: str | None = None
-    # null — по вехе не проверяются D1, D2, D8, D9.
+    # null — по этапу не проверяются D1, D2, D8, D9.
     rule: StageRule | None = None
-    # Отметка оператора «веха выполнена» — последний день работ (methodology.md, 10.3b).
+    # Отметка оператора «этап выполнен» — последний день работ (methodology.md, 10.3b).
     completed_on: date | None = None
     completed_by: str | None = None
     completion_note: str | None = None

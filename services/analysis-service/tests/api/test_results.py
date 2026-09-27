@@ -1,4 +1,4 @@
-"""API выводов по объекту: статус, прогресс вех, загрузка техники (T16a)."""
+"""API выводов по объекту: статус, прогресс этапов, загрузка техники (T16a)."""
 
 from tests.conftest import DEMO_OBJECT_ID
 
@@ -31,7 +31,7 @@ async def test_без_прогона_статуса_нет(client):
     assert response.json()["error"]["code"] == "OBJECT_NOT_ANALYZED"
 
 
-async def test_прогресс_вех_с_активностью_по_дням(client, analyzed):
+async def test_прогресс_этапов_с_активностью_по_дням(client, analyzed):
     body = (await client.get(f"{BASE}/progress")).json()
 
     assert body["as_of"] == "2026-10-22T12:00:00Z"

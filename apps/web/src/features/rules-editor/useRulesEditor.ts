@@ -13,7 +13,7 @@ import type { AnalysisSchema } from "@/shared/api/schemas";
 
 export type RunRead = AnalysisSchema<"RunRead">;
 
-/** Выбранная веха — в адресе (`?stage=`): ссылку на правило можно переслать. */
+/** Выбранный этап — в адресе (`?stage=`): ссылку на правило можно переслать. */
 export function useSelectedStage(objectId: string) {
   const stages = useQuery(stagesQuery(objectId));
   const [params, setParams] = useSearchParams();
@@ -61,14 +61,14 @@ export function useSaveRule(objectId: string, stage: StageRead) {
 }
 
 /**
- * Удаление правила вехи: по ней перестают проверяться D1, D2, D8, D9, прогресс идёт по
+ * Удаление правила этапа: по нему перестают проверяться D1, D2, D8, D9, прогресс идёт по
  * плану. Как и сохранение — с прогоном анализа и сравнением ленты до и после.
  */
 export function useDeleteRule(objectId: string, stage: StageRead) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      if (!stage.rule) throw new Error("У вехи нет правила");
+      if (!stage.rule) throw new Error("У этапа нет правила");
       const before = await feedCodes(objectId);
       await apiDelete(`/plan/rules/${stage.rule.id}`);
       await apiPost<RunRead>("/analysis/runs?wait=true", { object_id: objectId, triggered_by: "MANUAL" });

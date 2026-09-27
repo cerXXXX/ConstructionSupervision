@@ -28,7 +28,7 @@ export type Zoom = "fit" | number;
 
 const MIN_FIT_PX = 0.5;
 
-/** Несохранённые даты вехи: их задают перетаскивание и форма карточки. */
+/** Несохранённые даты этапа: их задают перетаскивание и форма карточки. */
 export type Draft = { stageId: string; dates: Dates };
 
 type Props = {
@@ -45,9 +45,9 @@ type Props = {
 type Drag = { stageId: string; mode: DragMode; originX: number; from: Dates };
 
 /**
- * Диаграмма: слева вехи, справа SVG-сетка по дням. Полоса — плановое окно вехи, заливка —
+ * Диаграмма: слева этапы, справа SVG-сетка по дням. Полоса — плановое окно этапа, заливка —
  * фактический прогресс, треугольник — фактический старт, пунктирный хвост — прогноз позже плана.
- * Полосу можно тянуть целиком или за край: даты уходят в черновик, сохраняет карточка вехи.
+ * Полосу можно тянуть целиком или за край: даты уходят в черновик, сохраняет карточка этапа.
  */
 export function GanttChart(props: Props) {
   const { rows, asOfDay, zoom, selectedId, onSelect, draft, calendar, onDraft } = props;
@@ -89,7 +89,7 @@ export function GanttChart(props: Props) {
     <div className="flex overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-ink/[0.07]">
       <ul className="w-72 shrink-0 border-r border-ink/10 text-sm">
         <li style={{ height: HEADER_HEIGHT }} className="flex items-end border-b border-ink/10 px-3 pb-1.5 text-xs font-medium uppercase tracking-wide text-muted">
-          Веха
+          Этап
         </li>
         {rows.map((r) => (
           <li key={r.stage.id} style={{ height: ROW_HEIGHT }}>
@@ -106,9 +106,9 @@ export function GanttChart(props: Props) {
               </span>
               <span className="truncate">{r.stage.name}</span>
               {r.stage.completed_on && (
-                <span className="ml-auto text-emerald-700" title="Выполнена по отметке оператора">
+                <span className="ml-auto text-emerald-700" title="Выполнен по отметке оператора">
                   <Icon name="check" size={14} />
-                  <span className="sr-only">выполнена по отметке</span>
+                  <span className="sr-only">выполнен по отметке</span>
                 </span>
               )}
             </button>
@@ -330,7 +330,7 @@ function tooltip({ stage, progress }: GanttRow): string {
   ];
   if (stage.completed_on) {
     const by = stage.completed_by ? `, ${stage.completed_by}` : "";
-    lines.push(`Выполнена по отметке: ${formatPlanDate(stage.completed_on)}${by}`);
+    lines.push(`Выполнен по отметке: ${formatPlanDate(stage.completed_on)}${by}`);
   }
   if (progress) {
     lines.push(

@@ -1,7 +1,7 @@
 """Прогресс, SPI, прогноз окончания и статус объекта (F9, docs/methodology.md, разделы 8, 10).
 
-Прогноз линеен: сохранится средний темп последних рабочих дней. Сдвиг вехи переносится
-на зависимые вехи по связям `predecessors`. Каждое число прогноза сохраняется в `facts`,
+Прогноз линеен: сохранится средний темп последних рабочих дней. Сдвиг этапа переносится
+на зависимые этапы по связям `predecessors`. Каждое число прогноза сохраняется в `facts`,
 а при нехватке данных система говорит «не знаю» (`UNKNOWN`, уверенность `LOW`), а не
 выдаёт уверенное число по двум снимкам.
 """
@@ -30,14 +30,14 @@ PARTIAL = "PARTIAL"
 HIGH, MEDIUM, LOW = "HIGH", "MEDIUM", "LOW"
 NOT_STARTED, IN_PROGRESS, DONE, LATE, AHEAD = "NOT_STARTED", "IN_PROGRESS", "DONE", "LATE", "AHEAD"
 ON_TRACK, DELAY, UNKNOWN = "ON_TRACK", "DELAY", "UNKNOWN"
-# Откуда прогресс вехи (facts.basis): снимки, план или отметка оператора «выполнена».
+# Откуда прогресс этапа (facts.basis): снимки, план или отметка оператора «выполнен».
 OBSERVED, BY_PLAN, OPERATOR = "OBSERVED", "PLAN", "OPERATOR"
 # «В основном» — больше половины: это определение слова, а не калибруемый порог.
 MOSTLY = 0.5
 
 
 class ForecastError(ValueError):
-    """План нельзя прогнозировать: цикл в связях или ссылка на неизвестную веху."""
+    """План нельзя прогнозировать: цикл в связях или ссылка на неизвестный этап."""
 
 
 @dataclass(frozen=True)
@@ -73,7 +73,7 @@ class VisibilityShare:
 
 @dataclass(frozen=True)
 class StageForecast:
-    """Строка stage_fact: факт, прогресс и прогноз вехи на `as_of`."""
+    """Строка stage_fact: факт, прогресс и прогноз этапа на `as_of`."""
 
     stage_id: UUID
     actual_start: date | None
@@ -82,7 +82,7 @@ class StageForecast:
     progress: float
     planned_progress: float | None
     spi: float | None
-    # Ожидаемые даты с учётом темпа и связей; по ним строится перенос на зависимые вехи.
+    # Ожидаемые даты с учётом темпа и связей; по ним строится перенос на зависимые этапы.
     expected_start: date
     expected_end: date
     # None — прогноз по темпу не строился: наблюдений меньше MIN_DAYS_FOR_FORECAST.
@@ -166,9 +166,9 @@ def confidence(
 
 
 def planned_progress(calendar: Calendar, stage: Stage, today: date) -> float | None:
-    """Доля рабочих дней вехи, прошедших к `today` включительно (раздел 10.4).
+    """Доля рабочих дней этапа, прошедших к `today` включительно (раздел 10.4).
 
-    None — в окне вехи нет ни одного рабочего дня, и доля не определена.
+    None — в окне этапа нет ни одного рабочего дня, и доля не определена.
     """
     total = count_working_days(calendar, stage.plan_start, stage.plan_end)
     if total == 0:
@@ -188,7 +188,7 @@ def observation_start(ctx: Context, zone_type: str) -> date | None:
 
 @dataclass(frozen=True)
 class _Observed:
-    """Что видно по вехе к `as_of`: старт, эффективные дни, темп."""
+    """Что видно по этапу к `as_of`: старт, эффективные дни, темп."""
 
     start: ActualStart | None
     rows: tuple[DailyActivity, ...]
@@ -212,7 +212,7 @@ def _observe(
 ) -> _Observed:
     start = actual_start(ctx, stage)
     rows = daily_activity(ctx, stage, since=start.day) if start else ()
-    # Пока объект на фото не дошёл до стадии вехи, прогресс не засчитывается (раздел 8).
+    # Пока объект на фото не дошёл до стадии этапа, прогресс не засчитывается (раздел 8).
     restricted = (
         stage.visual_stage is not None
         and last_label is not None
@@ -220,7 +220,7 @@ def _observe(
     )
     credited = 0.0
     if start is not None and observed_from is not None and stage.plan_start < observed_from:
-        # Веха шла по плану, пока её участок не начали наблюдать (раздел 10.3a).
+        # Этап шёл по плану, пока его участок не начали наблюдать (раздел 10.3a).
         before = planned_progress(ctx.calendar, stage, observed_from - timedelta(days=1))
         credited = (before or 0.0) * stage.norm_duration_days
     effective, done_day = credited, None
@@ -247,7 +247,7 @@ def _observe(
 def _constraints(
     calendar: Calendar, stage: Stage, dates: dict[UUID, tuple[date, date]]
 ) -> tuple[date | None, date | None]:
-    """Самые ранние начало и конец вехи по связям с ожидаемыми датами предшественников.
+    """Самые ранние начало и конец этапа по связям с ожидаемыми датами предшественников.
 
     Лаг — в рабочих днях календаря объекта. FS с лагом 0 — следующий рабочий день.
     """
@@ -256,7 +256,7 @@ def _constraints(
     for link in stage.predecessors:
         if link.stage_id not in dates:
             raise ForecastError(
-                f"Веха {stage.name!r} ссылается на неизвестную веху {link.stage_id}"
+                f"Этап {stage.name!r} ссылается на неизвестный этап {link.stage_id}"
             )
         pred_start, pred_end = dates[link.stage_id]
         if link.type == "FS":
@@ -268,7 +268,7 @@ def _constraints(
         elif link.type == "SF":
             end_min = _later(end_min, add_working_days(calendar, pred_start, link.lag_days))
         else:
-            raise ForecastError(f"Неизвестный тип связи {link.type!r} у вехи {stage.name!r}")
+            raise ForecastError(f"Неизвестный тип связи {link.type!r} у этапа {stage.name!r}")
     return start_min, end_min
 
 
@@ -277,16 +277,16 @@ def _later(current: date | None, candidate: date) -> date:
 
 
 def _order(stages: tuple[Stage, ...]) -> list[Stage]:
-    """Вехи в порядке связей: предшественник раньше последователя."""
+    """Этапы в порядке связей: предшественник раньше последователя."""
     by_id = {s.id: s for s in stages}
     graph = {s.id: {p.stage_id for p in s.predecessors} for s in stages}
     try:
         order = list(TopologicalSorter(graph).static_order())
     except CycleError as exc:
-        raise ForecastError(f"Цикл в связях вех: {exc.args[1]}") from exc
+        raise ForecastError(f"Цикл в связях этапов: {exc.args[1]}") from exc
     missing = [i for i in order if i not in by_id]
     if missing:
-        raise ForecastError(f"Связь ссылается на неизвестную веху: {missing[0]}")
+        raise ForecastError(f"Связь ссылается на неизвестный этап: {missing[0]}")
     return [by_id[i] for i in order]
 
 
@@ -303,7 +303,7 @@ def _status(fp: ForecastParams, delay: int | None) -> str:
 def _unobservable(
     ctx: Context, stage: Stage, today: date, start: date, end: date, reason: str
 ) -> StageForecast:
-    """Веху не проверить по фото: она идёт по плану со сдвигом только по связям."""
+    """Этап не проверить по фото: он идёт по плану со сдвигом только по связям."""
     planned = planned_progress(ctx.calendar, stage, today)
     if today < start:
         status = NOT_STARTED
@@ -337,10 +337,10 @@ def _by_mark(
     marked: date,
     obs: _Observed | None,
 ) -> StageForecast:
-    """Веха закрыта отметкой оператора (раздел 10.3b): выполнена в дату отметки.
+    """Этап закрыт отметкой оператора (раздел 10.3b): выполнен в дату отметки.
 
     Отметка сильнее снимков, но старт — только по снимкам: если сигнатура не собралась
-    до отметки или веха шла до начала наблюдений, он неизвестен, а для связей — плановый.
+    до отметки или этап шёл до начала наблюдений, он неизвестен, а для связей — плановый.
     """
     before_observation = obs is not None and obs.credited_days > 0
     start = obs.start if obs is not None and not before_observation else None
@@ -395,21 +395,21 @@ def _stage_forecast(
             obs = _observe(ctx, fp, stage, today, last_label, observed_from)
         return _by_mark(ctx, stage, today, by_plan_start, marked, obs)
     if stage.rule is None:
-        reason = "у вехи нет правила: по снимкам её не проверить, прогресс — по плану"
+        reason = "у этапа нет правила: по снимкам его не проверить, прогресс — по плану"
         return _unobservable(ctx, stage, today, by_plan_start, by_plan_end, reason)
 
     observed_from = observation_start(ctx, stage.zone_type)
     obs = _observe(ctx, fp, stage, today, last_label, observed_from)
-    # «Не видно» — не «не начато» (раздел 7): участок вехи с её начала ни разу не был виден,
-    # и считать её опоздавшей не на чем.
+    # «Не видно» — не «не начато» (раздел 7): участок этапа с его начала ни разу не был виден,
+    # и считать его опоздавшим не на чем.
     if obs.start is None and visibility(ctx, stage.zone_type, since=stage.plan_start).visible == 0:
-        reason = "участок вехи с плановой даты начала ни разу не был виден — прогресс по плану"
+        reason = "участок этапа с плановой даты начала ни разу не был виден — прогресс по плану"
         return _unobservable(ctx, stage, today, by_plan_start, by_plan_end, reason)
-    # Всё окно вехи — до начала наблюдений, и после него работ вехи не видно (раздел 10.3a).
+    # Всё окно этапа — до начала наблюдений, и после него работ этапа не видно (раздел 10.3a).
     if obs.start is None and observed_from is not None and stage.plan_end < observed_from:
-        reason = "плановое окно вехи закончилось до начала наблюдений — выполнена по плану"
+        reason = "плановое окно этапа закончилось до начала наблюдений — выполнен по плану"
         return _unobservable(ctx, stage, today, by_plan_start, by_plan_end, reason)
-    # Веха шла до начала наблюдений: её настоящий старт снимки не застали.
+    # Этап шёл до начала наблюдений: его настоящий старт снимки не застали.
     before_observation = obs.credited_days > 0
     floored = False
     remaining = None
@@ -430,7 +430,7 @@ def _stage_forecast(
             forecast_end = end
         status = None
     else:
-        # Не начата, хотя участок видели: раньше «сегодня» уже не начнётся, раньше
+        # Не начат, хотя участок видели: раньше «сегодня» уже не начнётся, раньше
         # предшественников — тоже.
         start = max(by_plan_start, today)
         end = max(add_working_days(ctx.calendar, start, duration - 1), end_min or start)
@@ -492,7 +492,7 @@ def _stage_forecast(
 def _object_forecast(
     ctx: Context, fp: ForecastParams, stages: dict[UUID, Stage], results: list[StageForecast]
 ) -> ObjectForecast:
-    """Статус объекта по вехам критического пути (разделы 10.6–10.8)."""
+    """Статус объекта по этапам критического пути (разделы 10.6–10.8)."""
     days = len({local_date(ctx.calendar, s.window_start) for s in ctx.sessions})
     seen = visibility(ctx)
     critical = [
@@ -509,7 +509,7 @@ def _object_forecast(
         for r in sorted(critical, key=lambda r: -r.delay_days)
         if r.delay_days > 0 and r.status != DONE
     )
-    # Веха по отметке оператора входит в SPI: её освоенный объём подтверждён (раздел 10.3b).
+    # Этап по отметке оператора входит в SPI: его освоенный объём подтверждён (раздел 10.3b).
     observable = [
         r for r in results if r.facts["basis"] in (OBSERVED, OPERATOR) and r.planned_progress
     ]
@@ -546,7 +546,7 @@ def _object_forecast(
 
 
 def forecast(ctx: Context, fp: ForecastParams) -> Forecast:
-    """Прогноз всех вех и статус объекта на `ctx.as_of`."""
+    """Прогноз всех этапов и статус объекта на `ctx.as_of`."""
     today = local_date(ctx.calendar, ctx.as_of)
     last_label = last_confident_stage(ctx)
     dates: dict[UUID, tuple[date, date]] = {}

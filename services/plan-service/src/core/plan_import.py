@@ -1,8 +1,8 @@
 """Импорт календарного графика из CSV или XLSX (ТЗ, п. 3: код, наименование, начало, окончание,
 необязательно тип участка, визуальная стадия, связи).
 
-Строка с кодом из шаблона вех получает оттуда недостающее: фазу, тип участка, визуальную
-стадию, связи и правило «веха → техника». Столбцы файла главнее шаблона. Ошибки собираются
+Строка с кодом из шаблона этапов получает оттуда недостающее: фазу, тип участка, визуальную
+стадию, связи и правило «этап → техника». Столбцы файла главнее шаблона. Ошибки собираются
 по всем строкам сразу, с номером строки файла: исправлять файл по одной ошибке за загрузку
 долго.
 """
@@ -62,7 +62,7 @@ class ImportedLink:
     code: str
     type: str
     lag_days: int
-    # Связь из шаблона, а не из файла: на веху, которой в файле нет, она просто не ставится.
+    # Связь из шаблона, а не из файла: на этап, которого в файле нет, она просто не ставится.
     from_template: bool = False
 
 
@@ -123,7 +123,7 @@ def parse_schedule(
     vocab: Vocabulary,
     calendar: WorkCalendar,
 ) -> list[ImportedStage]:
-    """Вехи графика в порядке строк файла; при любой проблеме — PlanImportError со всеми."""
+    """Этапы графика в порядке строк файла; при любой проблеме — PlanImportError со всеми."""
     header_row, columns = _header(table)
     issues: list[ImportIssue] = []
     stages: list[ImportedStage] = []
@@ -135,7 +135,7 @@ def parse_schedule(
         if stage is not None:
             stages.append(stage)
     if not stages and not issues:
-        issues.append(ImportIssue(None, None, "В файле нет ни одной вехи"))
+        issues.append(ImportIssue(None, None, "В файле нет ни одного этапа"))
     stages = _drop_missing_template_links(stages)
     issues += _check_codes_and_links(stages)
     if issues:
@@ -173,7 +173,7 @@ def _row(
     calendar: WorkCalendar,
     issues: list[ImportIssue],
 ) -> ImportedStage | None:
-    """Одна строка файла → веха; проблемы складываются в issues, веха тогда None."""
+    """Одна строка файла → этап; проблемы складываются в issues, этап тогда None."""
     found: list[ImportIssue] = []
 
     def problem(column: str, message: str) -> None:
@@ -181,9 +181,9 @@ def _row(
 
     code, name = _code(values.get("code")), _text(values.get("name"))
     if not code:
-        problem("код", "Пустой код вехи")
+        problem("код", "Пустой код этапа")
     if not name:
-        problem("наименование", "Пустое наименование вехи")
+        problem("наименование", "Пустое наименование этапа")
     start, end = _date(values.get("start")), _date(values.get("end"))
     if start is None:
         problem("начало", f"Дата не распознана: {values.get('start')!r}; ожидается ГГГГ-ММ-ДД")
@@ -193,14 +193,14 @@ def _row(
 
     phase = _text(values.get("phase")) or (template.phase if template else None)
     if phase is None:
-        problem("фаза", "Фаза не указана, а шаблона вехи с таким кодом нет")
+        problem("фаза", "Фаза не указана, а шаблона этапа с таким кодом нет")
     elif phase not in vocab.phases:
         problem("фаза", f"Неизвестная фаза {phase!r}; допустимо: {list(vocab.phases)}")
     zone_type = _text(values.get("zone_type")) or (template.zone_type if template else None)
     if zone_type is None:
-        problem("тип участка", "Тип участка не указан, а шаблона вехи с таким кодом нет")
+        problem("тип участка", "Тип участка не указан, а шаблона этапа с таким кодом нет")
     elif vocab.zone_roles.get(zone_type) != WORK_ROLE:
-        problem("тип участка", f"На участке типа {zone_type!r} работы вех не идут")
+        problem("тип участка", f"На участке типа {zone_type!r} работы этапов не идут")
     visual = _text(values.get("visual_stage")) or (template.visual_stage if template else None)
     if visual is not None and visual not in vocab.stage_labels:
         problem("визуальная стадия", f"Неизвестная стадия {visual!r}")
@@ -213,7 +213,7 @@ def _row(
         else:
             duration = count_working_days(calendar, start, end + timedelta(days=1))
             if duration == 0:
-                problem("окончание", "В интервале вехи нет ни одного рабочего дня")
+                problem("окончание", "В интервале этапа нет ни одного рабочего дня")
     if found:
         issues += found
         return None
@@ -231,7 +231,7 @@ def _row(
         work_codes=template.work_codes if template else (code,),
         predecessors=links,
         rule=template.rule if template else None,
-        basis=f"Импорт графика; правило и участок — шаблон вехи {code}"
+        basis=f"Импорт графика; правило и участок — шаблон этапа {code}"
         if template
         else "Импорт графика",
     )
@@ -257,7 +257,7 @@ def _links(raw: Any, template: TemplateStage | None, problem) -> tuple[ImportedL
 
 
 def _drop_missing_template_links(stages: list[ImportedStage]) -> list[ImportedStage]:
-    """Файл может содержать не все вехи шаблона: связи шаблона на отсутствующие не ставятся."""
+    """Файл может содержать не все этапы шаблона: связи шаблона на отсутствующие не ставятся."""
     codes = {s.code for s in stages}
     return [
         replace(
@@ -269,7 +269,7 @@ def _drop_missing_template_links(stages: list[ImportedStage]) -> list[ImportedSt
 
 
 def _check_codes_and_links(stages: Sequence[ImportedStage]) -> list[ImportIssue]:
-    """Повторы кодов, связи на отсутствующие вехи, циклы — по всему графику."""
+    """Повторы кодов, связи на отсутствующие этапы, циклы — по всему графику."""
     issues: list[ImportIssue] = []
     seen: dict[str, int] = {}
     for stage in stages:
@@ -285,7 +285,7 @@ def _check_codes_and_links(stages: Sequence[ImportedStage]) -> list[ImportIssue]
             if link.code not in seen:
                 issues.append(
                     ImportIssue(
-                        stage.row, "связи", f"Связь на веху {link.code}, которой нет в файле"
+                        stage.row, "связи", f"Связь на этап {link.code}, которого нет в файле"
                     )
                 )
     if issues:
@@ -323,7 +323,7 @@ def _text(value: Any) -> str | None:
 
 
 def _code(value: Any) -> str | None:
-    """Код вехи из ячейки: Excel превращает «10.11» в дату, а «12» — в число 12.0.
+    """Код этапа из ячейки: Excel превращает «10.11» в дату, а «12» — в число 12.0.
 
     Дата `d.m.<год>` восстанавливается в код `d.m` — то же правило, что для справочника работ
     (data/README.md). Код вида «12.10», ставший числом 12.1, восстановить нельзя: такой

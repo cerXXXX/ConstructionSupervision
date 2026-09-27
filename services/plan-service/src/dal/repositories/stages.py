@@ -19,7 +19,7 @@ class StageRepository:
     async def list_for_object(
         self, object_id: UUID, *, limit: int, offset: int
     ) -> tuple[list[Stage], int]:
-        """Вехи объекта в порядке графика (seq)."""
+        """Этапы объекта в порядке графика (seq)."""
         query = select(Stage).where(Stage.object_id == object_id)
         total = await self._session.scalar(select(func.count()).select_from(query.subquery()))
         rows = await self._session.scalars(
@@ -28,14 +28,14 @@ class StageRepository:
         return list(rows), int(total or 0)
 
     async def all_for_object(self, object_id: UUID) -> Sequence[Stage]:
-        """Все вехи объекта по seq — для «весь план» и критического пути."""
+        """Все этапы объекта по seq — для «весь план» и критического пути."""
         rows = await self._session.scalars(
             select(Stage).where(Stage.object_id == object_id).order_by(Stage.seq, Stage.plan_start)
         )
         return rows.all()
 
     async def replace_for_object(self, object_id: UUID, stages: Sequence[Stage]) -> None:
-        """Весь график объекта заменяется новым; правила старых вех уходят каскадом."""
+        """Весь график объекта заменяется новым; правила старых этапов уходят каскадом."""
         await self._session.execute(delete(Stage).where(Stage.object_id == object_id))
         self._session.add_all(stages)
         await self._session.flush()

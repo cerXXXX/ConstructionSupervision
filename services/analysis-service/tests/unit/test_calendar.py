@@ -70,7 +70,7 @@ def test_окно_через_местную_полночь_не_рабочее()
     assert not is_working_session(CAL, _utc(21, 20, 45), _utc(21, 21, 15))
 
 
-def test_даты_вехи_включительно():
+def test_даты_этапа_включительно():
     # Пн 19.10 — Сб 24.10: шесть рабочих дней шестидневки.
     assert count_working_days(CAL, date(2026, 10, 19), date(2026, 10, 24)) == 6
     assert count_working_days(CAL, date(2026, 10, 19), date(2026, 10, 19)) == 1

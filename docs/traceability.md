@@ -14,7 +14,7 @@
 | F4 | Статус техники: работает / простой / вне зоны | `analysis-service` (смещение — `site-service`) | `core/equipment_state.py`, site `core/movement.py` | Must | ✓ |
 | F5 | Контроль видимости участков | `site-service`, `analysis-service` | site `core/aggregation.py`, analysis `core/stage_predicates.py` (D10) | Must | ✓ |
 | F6 | Классификация стадии объекта по снимку | `vision-service`, `site-service` | `models/stage_classifier.py`, `core/stages.py`, site `core/aggregation.py` | Must | частично |
-| F7 | Сопоставление сессии с активными вехами графика | `analysis-service` | `core/plan_on_date.py`, `core/rules.py`, `core/run.py` | Must | ✓ |
+| F7 | Сопоставление сессии с активными этапами графика | `analysis-service` | `core/plan_on_date.py`, `core/rules.py`, `core/run.py` | Must | ✓ |
 | F8 | Выявление отклонений D1–D10 с объяснением | `analysis-service` | `core/predicates.py`, `core/explain.py` | Must | частично |
 | F9 | Прогноз задержки и даты окончания | `analysis-service` | `core/activity.py`, `core/forecast.py` | Must | ✓ |
 | F10 | Отчёт план-факт: Гант, загрузка техники, лента, PDF | `analysis-service`, `web` | `report/`, web `features/gantt`, `features/deviations` | Must | частично |
@@ -30,7 +30,7 @@
 «работает стоя» снимает ложный простой крана и насоса. F9 — прогноз, перенос по связям и
 статус объекта на дашборде и в Ганте. F15 — у каждого сервиса OpenAPI и Swagger, сводный
 Swagger в gateway (`/docs`), снапшоты в `packages/contracts/openapi/`. `—` у F13: процента
-готовности по снимку нет, прогресс вехи ограничивается только стадией по фото. Оговорки по
+готовности по снимку нет, прогресс этапа ограничивается только стадией по фото. Оговорки по
 остальным — ниже.
 
 F12 (T35): резюме в PDF и `POST /analysis/summary` пишет локальная Gemma 4 E4B (llama.cpp на
@@ -74,9 +74,9 @@ API (T34c, `POST /api/v1/analysis/reports`): восемь разделов, за
 снимки-доказательства с рамками, «Ограничения»; экран отчётов — `/objects/:id/reports` (T34d).
 Загрузки техники на экране интерфейса нет: она только в PDF.
 
-Оговорка по F11: зоны (T40), правила «веха → техника» (T31, `/objects/:id/settings/rules`) и
-даты вех (T32b, Гант `/objects/:id/gantt`: форма и перетаскивание) правятся в интерфейсе с
-пересчётом анализа. Там же, в карточке вехи, — отметка оператора «веха выполнена» и её снятие
+Оговорка по F11: зоны (T40), правила «этап → техника» (T31, `/objects/:id/settings/rules`) и
+даты этапов (T32b, Гант `/objects/:id/gantt`: форма и перетаскивание) правятся в интерфейсе с
+пересчётом анализа. Там же, в карточке этапа, — отметка оператора «этап выполнен» и её снятие
 (T46, ADR-0015): анализ принимает отметку как факт (methodology.md, 10.3b). Генерация графика по МРР и импорт из файла — диалог «Построить график»
 (T45): при создании объекта, в настройках объекта (`/objects/:id/settings`), в меню объекта и на
 пустом Ганте; поверх существующего графика — с предупреждением о замене. В браузере проверены

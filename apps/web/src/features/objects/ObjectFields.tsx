@@ -25,7 +25,7 @@ export function RequisiteFields({
           maxLength={300}
         />
       </Field>
-      <Field label="Тип объекта" hint="По типу выбираются нормы МРР и шаблон вех">
+      <Field label="Тип объекта" hint="По типу выбираются нормы МРР и шаблон этапов">
         <select
           value={draft.objectType}
           onChange={(e) => onChange({ ...draft, objectType: e.target.value as ObjectType })}

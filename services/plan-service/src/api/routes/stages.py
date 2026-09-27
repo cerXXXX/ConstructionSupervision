@@ -1,4 +1,4 @@
-"""Вехи календарного графика: список объекта и ручная правка."""
+"""Этапы календарного графика: список объекта и ручная правка."""
 
 from typing import Annotated
 from uuid import UUID
@@ -16,8 +16,8 @@ router = APIRouter(tags=["График"])
 @router.get(
     "/objects/{object_id}/stages",
     response_model=Page[StageRead],
-    summary="Вехи объекта",
-    description="Вехи по `seq` вместе с правилом «веха → техника» (`rule`, `null` — правила нет).",
+    summary="Этапы объекта",
+    description="Этапы по `seq` вместе с правилом «этап → техника» (`rule`, `null` — правила нет).",
 )
 async def list_stages(
     object_id: UUID,
@@ -34,9 +34,9 @@ async def list_stages(
 @router.patch(
     "/stages/{stage_id}",
     response_model=StageRead,
-    summary="Изменить веху",
+    summary="Изменить этап",
     description="Даты (включительно), тип участка, нормативная длительность, стадия по фото, "
-    "отметка «веха выполнена» (`completed_on`, `completion_note`; автор — из `X-Actor`, "
+    "отметка «этап выполнен» (`completed_on`, `completion_note`; автор — из `X-Actor`, "
     "`completed_on: null` снимает отметку). `plan_version` объекта растёт, в analysis уходит "
     "сигнал «пересчитай».",
 )

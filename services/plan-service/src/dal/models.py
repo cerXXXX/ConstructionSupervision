@@ -34,8 +34,8 @@ PHASES = (
     "NETWORKS",
     "LANDSCAPING",
 )
-# Только типы зон с ролью WORK (enums.yaml: zone_type_role): работы вехи идут на
-# рабочем участке, а въезд, склад и опасная зона вехой не бывают.
+# Только типы зон с ролью WORK (enums.yaml: zone_type_role): работы этапа идут на
+# рабочем участке, а въезд, склад и опасная зона этапом не бывают.
 STAGE_ZONE_TYPES = ("PIT", "BUILDING_FOOTPRINT", "PERIMETER", "ROAD")
 STAGE_LABELS = ("PIT", "PILES", "FOUNDATION", "FRAME", "FACADE", "LANDSCAPING")
 STAGE_SOURCES = ("GENERATED", "IMPORT", "MANUAL")
@@ -96,7 +96,7 @@ class ConstructionObject(Base, TimestampMixin):
     plan_start: Mapped[date | None] = mapped_column(Date)
     calendar_id: Mapped[UUID | None] = mapped_column(ForeignKey("work_calendar.id"))
     status: Mapped[str] = mapped_column(String(16), server_default=text("'DRAFT'"), index=True)
-    # Растёт при любой правке вех, правил или календаря и попадает в прогон анализа:
+    # Растёт при любой правке этапов, правил или календаря и попадает в прогон анализа:
     # по нему видно, на какой версии плана построен вывод.
     plan_version: Mapped[int] = mapped_column(Integer, server_default=text("0"))
 
@@ -120,7 +120,7 @@ class WorkType(Base):
 
 
 class Stage(Base, TimestampMixin):
-    """Веха календарного графика: укрупнённый этап работ с плановыми датами."""
+    """Этап календарного графика: укрупнённая единица работ с плановыми датами."""
 
     __tablename__ = "stage"
     __table_args__ = (
@@ -145,7 +145,7 @@ class Stage(Base, TimestampMixin):
     phase: Mapped[str] = mapped_column(String(32))
     seq: Mapped[int] = mapped_column(Integer)
     zone_type: Mapped[str] = mapped_column(String(32))
-    # Как объект выглядит на фото во время вехи: нужен для D7 и ограничения прогресса.
+    # Как объект выглядит на фото во время этапа: нужен для D7 и ограничения прогресса.
     visual_stage: Mapped[str | None] = mapped_column(String(32))
     plan_start: Mapped[date] = mapped_column(Date)
     plan_end: Mapped[date] = mapped_column(Date)
@@ -155,9 +155,9 @@ class Stage(Base, TimestampMixin):
     is_critical: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     total_float_days: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     source: Mapped[str] = mapped_column(String(16), server_default=text("'MANUAL'"))
-    # Откуда длительность: норматив и доля вехи для генератора, «импорт» для файла.
+    # Откуда длительность: норматив и доля этапа для генератора, «импорт» для файла.
     basis: Mapped[str | None] = mapped_column(Text)
-    # Отметка оператора «веха выполнена» — факт о работах, а не правка плана (ADR-0015):
+    # Отметка оператора «этап выполнен» — факт о работах, а не правка плана (ADR-0015):
     # последний день работ включительно, кто отметил и почему.
     completed_on: Mapped[date | None] = mapped_column(Date)
     completed_by: Mapped[str | None] = mapped_column(Text)
@@ -165,9 +165,9 @@ class Stage(Base, TimestampMixin):
 
 
 class StageRule(Base, TimestampMixin):
-    """Правило «веха → техника»: группы обязательной, допустимая и сигнатура старта.
+    """Правило «этап → техника»: группы обязательной, допустимая и сигнатура старта.
 
-    Создаётся из шаблона вехи, дальше редактируется оператором в интерфейсе. Где
+    Создаётся из шаблона этапа, дальше редактируется оператором в интерфейсе. Где
     искать технику, задаёт `stage.zone_type`. Версия растёт при каждой правке и
     попадает в отклонение, чтобы вывод оставался воспроизводимым.
     """
@@ -176,7 +176,7 @@ class StageRule(Base, TimestampMixin):
     __table_args__ = (CheckConstraint("min_sessions >= 1", name="ck_rule_min_sessions"),)
 
     id: Mapped[UUID] = mapped_column(primary_key=True, server_default=text("gen_random_uuid()"))
-    # У вехи не больше одного правила.
+    # У этапа не больше одного правила.
     stage_id: Mapped[UUID] = mapped_column(ForeignKey("stage.id", ondelete="CASCADE"), unique=True)
     # [{"any_of": ["excavator"], "min": 1}, {"any_of": ["dump_truck"], "min": 2}]
     required: Mapped[list] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))

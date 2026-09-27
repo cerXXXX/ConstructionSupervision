@@ -416,7 +416,7 @@
             "title": "Plan Start"
           },
           "plan_version": {
-            "description": "Растёт при любой правке вех, правил или календаря; 0 — план не заводился",
+            "description": "Растёт при любой правке этапов, правил или календаря; 0 — план не заводился",
             "title": "Plan Version",
             "type": "integer"
           },
@@ -755,7 +755,7 @@
             "type": "integer"
           },
           "stages": {
-            "description": "Все вехи объекта по seq",
+            "description": "Все этапы объекта по seq",
             "items": {
               "$ref": "#/components/schemas/PlanStage"
             },
@@ -901,7 +901,7 @@
             "type": "string"
           },
           "critical_stages": {
-            "description": "Сколько вех на критическом пути",
+            "description": "Сколько этапов на критическом пути",
             "title": "Critical Stages",
             "type": "integer"
           },
@@ -927,12 +927,12 @@
             "type": "integer"
           },
           "rules": {
-            "description": "Сколько вех получили правило из шаблона",
+            "description": "Сколько этапов получили правило из шаблона",
             "title": "Rules",
             "type": "integer"
           },
           "stages": {
-            "description": "Сколько вех в новом графике",
+            "description": "Сколько этапов в новом графике",
             "title": "Stages",
             "type": "integer"
           },
@@ -959,7 +959,7 @@
       "PlanImportResult": {
         "properties": {
           "critical_stages": {
-            "description": "Сколько вех на критическом пути",
+            "description": "Сколько этапов на критическом пути",
             "title": "Critical Stages",
             "type": "integer"
           },
@@ -973,12 +973,12 @@
             "type": "integer"
           },
           "rules": {
-            "description": "Сколько вех получили правило из шаблона",
+            "description": "Сколько этапов получили правило из шаблона",
             "title": "Rules",
             "type": "integer"
           },
           "stages": {
-            "description": "Сколько вех в новом графике",
+            "description": "Сколько этапов в новом графике",
             "title": "Stages",
             "type": "integer"
           }
@@ -1118,7 +1118,7 @@
                 "type": "null"
               }
             ],
-            "description": "Отметка оператора «веха выполнена» — последний день работ, включительно; как её учитывает анализ — methodology.md, 10.3b",
+            "description": "Отметка оператора «этап выполнен» — последний день работ, включительно; как её учитывает анализ — methodology.md, 10.3b",
             "title": "Completed On"
           },
           "completion_note": {
@@ -1162,7 +1162,7 @@
             "type": "string"
           },
           "plan_end": {
-            "description": "Последний рабочий день вехи, включительно",
+            "description": "Последний рабочий день этапа, включительно",
             "format": "date",
             "title": "Plan End",
             "type": "string"
@@ -1188,7 +1188,7 @@
                 "type": "null"
               }
             ],
-            "description": "null — правила нет или оно выключено: D1, D2, D8, D9 по вехе не проверяются"
+            "description": "null — правила нет или оно выключено: D1, D2, D8, D9 по этапу не проверяются"
           },
           "seq": {
             "title": "Seq",
@@ -1383,7 +1383,7 @@
             "$ref": "#/components/schemas/Signature"
           },
           "stage_id": {
-            "description": "У вехи не больше одного правила",
+            "description": "У этапа не больше одного правила",
             "format": "uuid",
             "title": "Stage Id",
             "type": "string"
@@ -1532,7 +1532,7 @@
         "type": "object"
       },
       "Signature": {
-        "description": "Признак фактического старта вехи: техника одновременно и (или) стадия по фото.",
+        "description": "Признак фактического старта этапа: техника одновременно и (или) стадия по фото.",
         "properties": {
           "equipment": {
             "items": {
@@ -1604,7 +1604,7 @@
                 "type": "null"
               }
             ],
-            "description": "Отметка «веха выполнена»: последний день работ (ADR-0015)",
+            "description": "Отметка «этап выполнен»: последний день работ (ADR-0015)",
             "title": "Completed On"
           },
           "completion_note": {
@@ -1659,7 +1659,7 @@
             "type": "string"
           },
           "plan_end": {
-            "description": "Последний рабочий день вехи, включительно",
+            "description": "Последний рабочий день этапа, включительно",
             "format": "date",
             "title": "Plan End",
             "type": "string"
@@ -1685,7 +1685,7 @@
                 "type": "null"
               }
             ],
-            "description": "Правило «веха → техника»"
+            "description": "Правило «этап → техника»"
           },
           "seq": {
             "title": "Seq",
@@ -1786,7 +1786,7 @@
                 "type": "null"
               }
             ],
-            "description": "Отметка «веха выполнена» — последний день работ; автор — из `X-Actor`. null — снять отметку вместе с автором и комментарием",
+            "description": "Отметка «этап выполнен» — последний день работ; автор — из `X-Actor`. null — снять отметку вместе с автором и комментарием",
             "title": "Completed On"
           },
           "completion_note": {
@@ -2039,7 +2039,7 @@
     }
   },
   "info": {
-    "description": "Сервис плана: объекты, справочник работ, календарный график, правила «веха → техника». Единственное место, где план можно изменить.",
+    "description": "Сервис плана: объекты, справочник работ, календарный график, правила «этап → техника». Единственное место, где план можно изменить.",
     "title": "plan-service",
     "version": "0.1.0"
   },
@@ -2704,7 +2704,7 @@
     },
     "/api/v1/plan/objects/{object_id}/plan": {
       "get": {
-        "description": "Вехи по `seq`, связи, правила, календарь и классы техники одним ответом. Объект без вех — не ошибка: `stages: []`. Выключенное правило приходит как `rule: null`.",
+        "description": "Этапы по `seq`, связи, правила, календарь и классы техники одним ответом. Объект без этапов — не ошибка: `stages: []`. Выключенное правило приходит как `rule: null`.",
         "operationId": "get_plan_api_v1_plan_objects__object_id__plan_get",
         "parameters": [
           {
@@ -2758,7 +2758,7 @@
     },
     "/api/v1/plan/objects/{object_id}/plan/generate": {
       "post": {
-        "description": "Сроки периодов — табл. 1 п. 5.1.21 с интерполяцией и коэффициентами, вехи и правила — из шаблона типа объекта, даты — по календарю объекта. У каждой вехи в `basis` — откуда её срок. Поверх существующего графика — только с `force=true` (ручные правки затираются). Нет норм для типа или параметры вне таблицы — `NORMS_NOT_AVAILABLE`, график тогда импортируется из файла.",
+        "description": "Сроки периодов — табл. 1 п. 5.1.21 с интерполяцией и коэффициентами, этапы и правила — из шаблона типа объекта, даты — по календарю объекта. У каждого этапа в `basis` — откуда его срок. Поверх существующего графика — только с `force=true` (ручные правки затираются). Нет норм для типа или параметры вне таблицы — `NORMS_NOT_AVAILABLE`, график тогда импортируется из файла.",
         "operationId": "generate_plan_api_v1_plan_objects__object_id__plan_generate_post",
         "parameters": [
           {
@@ -2855,7 +2855,7 @@
     },
     "/api/v1/plan/objects/{object_id}/plan/import": {
       "post": {
-        "description": "Столбцы: код, наименование, начало, окончание (обязательно); тип участка, визуальная стадия, связи (`12.3.1 FS+2`, несколько — через запятую), фаза. Недостающее берётся из шаблона вехи с тем же кодом, вместе с правилом «веха → техника». График заменяется целиком; поверх существующего — только с `force=true`. Ошибки — `PLAN_IMPORT_INVALID` со списком `details.errors` (строка, столбец, текст).",
+        "description": "Столбцы: код, наименование, начало, окончание (обязательно); тип участка, визуальная стадия, связи (`12.3.1 FS+2`, несколько — через запятую), фаза. Недостающее берётся из шаблона этапа с тем же кодом, вместе с правилом «этап → техника». График заменяется целиком; поверх существующего — только с `force=true`. Ошибки — `PLAN_IMPORT_INVALID` со списком `details.errors` (строка, столбец, текст).",
         "operationId": "import_plan_api_v1_plan_objects__object_id__plan_import_post",
         "parameters": [
           {
@@ -2945,7 +2945,7 @@
     },
     "/api/v1/plan/objects/{object_id}/stages": {
       "get": {
-        "description": "Вехи по `seq` вместе с правилом «веха → техника» (`rule`, `null` — правила нет).",
+        "description": "Этапы по `seq` вместе с правилом «этап → техника» (`rule`, `null` — правила нет).",
         "operationId": "list_stages_api_v1_plan_objects__object_id__stages_get",
         "parameters": [
           {
@@ -3014,7 +3014,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Вехи объекта",
+        "summary": "Этапы объекта",
         "tags": [
           "График"
         ]
@@ -3114,9 +3114,9 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Правила вех",
+        "summary": "Правила этапов",
         "tags": [
-          "Правила вех"
+          "Правила этапов"
         ]
       },
       "post": {
@@ -3182,15 +3182,15 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Создать правило вехи",
+        "summary": "Создать правило этапа",
         "tags": [
-          "Правила вех"
+          "Правила этапов"
         ]
       }
     },
     "/api/v1/plan/rules/{rule_id}": {
       "delete": {
-        "description": "По вехе без правила не проверяются D1, D2, D8, D9. `plan_version` растёт.",
+        "description": "По этапу без правила не проверяются D1, D2, D8, D9. `plan_version` растёт.",
         "operationId": "delete_rule_api_v1_plan_rules__rule_id__delete",
         "parameters": [
           {
@@ -3245,9 +3245,9 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Удалить правило вехи",
+        "summary": "Удалить правило этапа",
         "tags": [
-          "Правила вех"
+          "Правила этапов"
         ]
       },
       "get": {
@@ -3296,9 +3296,9 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Правило вехи",
+        "summary": "Правило этапа",
         "tags": [
-          "Правила вех"
+          "Правила этапов"
         ]
       },
       "patch": {
@@ -3374,15 +3374,15 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Изменить правило вехи",
+        "summary": "Изменить правило этапа",
         "tags": [
-          "Правила вех"
+          "Правила этапов"
         ]
       }
     },
     "/api/v1/plan/stages/{stage_id}": {
       "patch": {
-        "description": "Даты (включительно), тип участка, нормативная длительность, стадия по фото, отметка «веха выполнена» (`completed_on`, `completion_note`; автор — из `X-Actor`, `completed_on: null` снимает отметку). `plan_version` объекта растёт, в analysis уходит сигнал «пересчитай».",
+        "description": "Даты (включительно), тип участка, нормативная длительность, стадия по фото, отметка «этап выполнен» (`completed_on`, `completion_note`; автор — из `X-Actor`, `completed_on: null` снимает отметку). `plan_version` объекта растёт, в analysis уходит сигнал «пересчитай».",
         "operationId": "update_stage_api_v1_plan_stages__stage_id__patch",
         "parameters": [
           {
@@ -3454,7 +3454,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Изменить веху",
+        "summary": "Изменить этап",
         "tags": [
           "График"
         ]

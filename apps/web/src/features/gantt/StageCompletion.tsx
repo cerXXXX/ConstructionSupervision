@@ -11,9 +11,9 @@ import { useConfirm } from "@/shared/ui/Modal";
 import { useToast } from "@/shared/ui/Toast";
 
 /**
- * Отметка оператора «веха выполнена» (T46, ADR-0015): работы приняты, а снимки добрали не всё.
- * Анализ принимает её как факт: веха завершена в дату отметки, последователи считаются от неё,
- * со следующего дня отклонения по вехе не ищутся (methodology.md, 10.3b).
+ * Отметка оператора «этап выполнен» (T46, ADR-0015): работы приняты, а снимки добрали не всё.
+ * Анализ принимает её как факт: этап завершён в дату отметки, последователи считаются от неё,
+ * со следующего дня отклонения по этапу не ищутся (methodology.md, 10.3b).
  */
 export function StageCompletion({
   objectId,
@@ -37,15 +37,15 @@ export function StageCompletion({
     save.mutate(
       { stageId: stage.id, patch: { completed_on: day, completion_note: note.trim() || null } },
       {
-        onSuccess: () => toast.success("Веха отмечена выполненной", "Анализ пересчитан — итог ниже"),
+        onSuccess: () => toast.success("Этап отмечен выполненным", "Анализ пересчитан — итог ниже"),
         onError: (error) => toast.error(error, "Отметка не сохранена"),
       },
     );
   const unmark = async () => {
     const ok = await confirm({
-      title: `Снять отметку «выполнена» с вехи «${stage.name}»?`,
+      title: `Снять отметку «выполнен» с этапа «${stage.name}»?`,
       message:
-        "Веха снова будет считаться по снимкам: вернутся прогноз по темпу и проверки D1–D10 после даты отметки.",
+        "Этап снова будет считаться по снимкам: вернутся прогноз по темпу и проверки D1–D10 после даты отметки.",
       confirmLabel: "Снять отметку",
     });
     if (ok)
@@ -68,7 +68,7 @@ export function StageCompletion({
     >
       <p className="flex items-center gap-2 font-medium">
         <Icon name="check" size={16} className={marked ? "text-emerald-700" : "text-muted"} />
-        {marked ? "Выполнена по отметке оператора" : "Отметка «веха выполнена»"}
+        {marked ? "Выполнен по отметке оператора" : "Отметка «этап выполнен»"}
       </p>
       {marked ? (
         <div className="flex flex-wrap items-end gap-3">
@@ -87,8 +87,8 @@ export function StageCompletion({
         <>
           <p className="text-xs text-muted">
             Работы приняты, а снимки добрали не всё — камера видела не весь участок. Отметка закроет
-            веху последним днём работ: прогноз последователей пойдёт от него, со следующего дня
-            отклонения по вехе не ищутся. Кто и когда отметил — видно в карточке и в отчёте.
+            этап последним днём работ: прогноз последователей пойдёт от него, со следующего дня
+            отклонения по этапу не ищутся. Кто и когда отметил — видно в карточке и в отчёте.
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1">
@@ -107,7 +107,7 @@ export function StageCompletion({
               />
             </label>
             <Button variant="primary" icon="check" disabled={!day} loading={pending} onClick={mark}>
-              {pending ? "Отмечаем и пересчитываем…" : "Отметить выполненной"}
+              {pending ? "Отмечаем и пересчитываем…" : "Отметить выполненным"}
             </Button>
           </div>
         </>

@@ -45,7 +45,7 @@ async def test_без_тела_берёт_параметры_и_дату_из_о
     response = await _generate(client, object_id)
 
     assert response.status_code == 200, response.text
-    assert response.json()["stages"] == 11  # без свай веха свай выпадает
+    assert response.json()["stages"] == 11  # без свай этап свай выпадает
 
 
 async def test_повторная_генерация_только_с_force(client):

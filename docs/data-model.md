@@ -60,7 +60,7 @@ erDiagram
 | `plan_start` | date | Плановая дата начала СМР |
 | `calendar_id` | uuid FK | Рабочий календарь |
 | `status` | text | `DRAFT` / `ACTIVE` / `ARCHIVED` |
-| `plan_version` | int | Растёт при любой правке вех, правил или календаря объекта. Попадает в прогон анализа |
+| `plan_version` | int | Растёт при любой правке этапов, правил или календаря объекта. Попадает в прогон анализа |
 
 Индексы: `(status)`, `(object_type)`.
 
@@ -95,46 +95,46 @@ erDiagram
 | `holidays` | jsonb | Список дат |
 | `work_hours` | jsonb | `{"start": "07:00", "end": "23:00"}` — местное время. Сессии вне рабочих часов не порождают отклонений |
 
-### 1.4. `stage` — веха календарного графика
+### 1.4. `stage` — этап календарного графика
 
-Веха — укрупнённый этап работ. Создаётся импортом графика, генератором или вручную.
+Этап — укрупнённая единица работ графика. Создаётся импортом графика, генератором или вручную.
 
 | Поле | Тип | Описание |
 | :--- | :--- | :--- |
 | `id` | uuid PK | |
 | `object_id` | uuid FK | |
 | `code` | text | Код по справочнику (`12.3.1`) или диапазон (`10.4-10.8`) |
-| `work_codes` | jsonb | Все коды работ, свёрнутые в веху |
+| `work_codes` | jsonb | Все коды работ, свёрнутые в этап |
 | `name` | text | «Разработка котлована» |
 | `phase` | text | `PREPARATORY` / `SUBSTRUCTURE` / `SUPERSTRUCTURE` / `ENVELOPE_ROOF` / `NETWORKS` / `LANDSCAPING` |
 | `seq` | int | Порядок в графике |
-| `zone_type` | text | Тип участка, где идут работы вехи. Только рабочая роль: `PIT` / `BUILDING_FOOTPRINT` / `PERIMETER` / `ROAD` |
-| `visual_stage` | text null | Как объект выглядит на фото во время вехи (`stage_label`). Нужен для D7 и ограничения прогресса |
+| `zone_type` | text | Тип участка, где идут работы этапа. Только рабочая роль: `PIT` / `BUILDING_FOOTPRINT` / `PERIMETER` / `ROAD` |
+| `visual_stage` | text null | Как объект выглядит на фото во время этапа (`stage_label`). Нужен для D7 и ограничения прогресса |
 | `plan_start`, `plan_end` | date | Плановые даты, обе включительно. Правятся в интерфейсе |
 | `norm_duration_days` | int | Нормативная длительность в рабочих днях — знаменатель прогресса |
 | `predecessors` | jsonb | `[{"stage_id": "...", "type": "FS", "lag_days": 0}]` |
 | `is_critical` | bool | Лежит на критическом пути |
 | `total_float_days` | int | Полный резерв времени |
 | `source` | text | `GENERATED` / `IMPORT` / `MANUAL` |
-| `basis` | text null | Откуда длительность: норматив и доля вехи для генератора, «импорт» для файла |
-| `completed_on` | date null | Отметка оператора «веха выполнена»: последний день работ, включительно ([ADR-0015](decisions/0015-stage-completion-mark.md)) |
+| `basis` | text null | Откуда длительность: норматив и доля этапа для генератора, «импорт» для файла |
+| `completed_on` | date null | Отметка оператора «этап выполнен»: последний день работ, включительно ([ADR-0015](decisions/0015-stage-completion-mark.md)) |
 | `completed_by` | text null | Кто поставил отметку (`X-Actor`) |
 | `completion_note` | text null | Комментарий к отметке: акт, кто принял |
 
 Индексы: `(object_id, seq)`, `(object_id, plan_start)`. Ограничение: `plan_end >= plan_start`.
 
-### 1.5. `stage_rule` — правило «веха → техника»
+### 1.5. `stage_rule` — правило «этап → техника»
 
-Главная настраиваемая сущность методики. Создаётся из шаблона вехи при генерации или
-импорте, дальше редактируется оператором. У вехи не больше одного правила.
+Главная настраиваемая сущность методики. Создаётся из шаблона этапа при генерации или
+импорте, дальше редактируется оператором. У этапа не больше одного правила.
 
 | Поле | Тип | Описание |
 | :--- | :--- | :--- |
 | `id` | uuid PK | |
-| `stage_id` | uuid FK unique | Веха, к которой относится правило. Где искать технику, определяет `stage.zone_type` |
+| `stage_id` | uuid FK unique | Этап, к которому относится правило. Где искать технику, определяет `stage.zone_type` |
 | `required` | jsonb | Группы обязательной техники: `[{"any_of": ["roller", "bulldozer"], "min": 1}, {"any_of": ["dump_truck"], "min": 1}]` |
 | `allowed` | jsonb | `["loader", "concrete_mixer"]` — допустимая техника, не вызывает D3 |
-| `signature` | jsonb | `{"equipment": ["excavator", "dump_truck"], "stage_label": null}` — что фиксирует фактический старт вехи |
+| `signature` | jsonb | `{"equipment": ["excavator", "dump_truck"], "stage_label": null}` — что фиксирует фактический старт этапа |
 | `min_sessions` | int | Сколько рабочих сессий подряд должно держаться условие, по умолчанию 2 |
 | `version` | int | Растёт при каждой правке |
 | `is_active` | bool | |
@@ -307,7 +307,7 @@ erDiagram
 | :--- | :--- | :--- |
 | `id` | uuid PK | |
 | `object_id` | uuid | внешняя ссылка |
-| `stage_id` | uuid null | внешняя ссылка на веху |
+| `stage_id` | uuid null | внешняя ссылка на этап |
 | `area` | text null | Ключ участка |
 | `equipment_class` | text null | Класс техники — для отклонений про конкретную технику (D3–D6) |
 | `session_id` | uuid null | Последняя сессия, в которой условие выполнялось |
@@ -343,12 +343,12 @@ erDiagram
 | `title_template` | text | Шаблон заголовка карточки с подстановкой из `facts` |
 | `message_template` | text | Шаблон текста с подстановкой из `facts` |
 
-### 3.4. `stage_fact` — факт по вехе
+### 3.4. `stage_fact` — факт по этапу
 
 | Поле | Тип | Описание |
 | :--- | :--- | :--- |
 | `object_id`, `stage_id` | uuid | Первичный ключ |
-| `actual_start` | date null | Первая рабочая сессия с сигнатурой вехи |
+| `actual_start` | date null | Первая рабочая сессия с сигнатурой этапа |
 | `last_activity_at` | timestamptz null | |
 | `effective_days` | real | Сумма индексов активности |
 | `progress` | real | 0…1, с учётом ограничения по стадии на фото |
@@ -360,15 +360,15 @@ erDiagram
 | `confidence` | text | `LOW` / `MEDIUM` / `HIGH` |
 | `facts` | jsonb | Числа прогноза: средний темп, окно, ограничение прогресса и его причина |
 
-### 3.5. `daily_activity` — активность вехи по дням
+### 3.5. `daily_activity` — активность этапа по дням
 
 | Поле | Тип | Описание |
 | :--- | :--- | :--- |
 | `object_id` | uuid | |
 | `stage_id`, `date` | uuid, date | Первичный ключ |
-| `sessions_total` | int | Рабочие сессии дня с видимым участком вехи |
+| `sessions_total` | int | Рабочие сессии дня с видимым участком этапа |
 | `sessions_working` | int | Из них — с выполненными группами `required` и работающей техникой |
-| `activity_index` | real null | `sessions_working / sessions_total`, 0…1; `null` — участок вехи за день ни разу не был виден: «не знаем», а не ноль |
+| `activity_index` | real null | `sessions_working / sessions_total`, 0…1; `null` — участок этапа за день ни разу не был виден: «не знаем», а не ноль |
 | `blind_sessions` | int | Сессии, где участок был не виден: не штрафуют индекс, а снижают `confidence` |
 
 ### 3.6. `daily_equipment` — загрузка техники по дням
@@ -392,8 +392,8 @@ erDiagram
 | `delay_days` | int null | По критическому пути |
 | `spi` | real null | По объекту |
 | `confidence` | text | `LOW` / `MEDIUM` / `HIGH` |
-| `counters` | jsonb | Отклонения по серьёзности, слепые участки, вехи в работе |
-| `stages_at_risk` | jsonb | Вехи критического пути с прогнозом позже плана |
+| `counters` | jsonb | Отклонения по серьёзности, слепые участки, этапы в работе |
+| `stages_at_risk` | jsonb | Этапы критического пути с прогнозом позже плана |
 
 ---
 

@@ -59,28 +59,28 @@
 
 <section>
   <h2>Сводка</h2>
-  <p>SPI объекта: <b>{{ summary.spi }}</b> — прогресс вех, взвешенный нормативными длительностями,
+  <p>SPI объекта: <b>{{ summary.spi }}</b> — прогресс этапов, взвешенный нормативными длительностями,
   к плановому на момент анализа. Меньше 1 — отставание.
-  Вехи по статусам: {% for name, n in summary.stage_statuses %}{{ name }} — {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+  Этапы по статусам: {% for name, n in summary.stage_statuses %}{{ name }} — {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>
   {% if summary.phases %}
   <table>
-    <tr><th>Фаза</th><th>Вех</th><th>Плановый прогресс</th><th>Фактический прогресс</th></tr>
+    <tr><th>Фаза</th><th>Этапов</th><th>Плановый прогресс</th><th>Фактический прогресс</th></tr>
     {% for p in summary.phases %}
     <tr><td>{{ p.phase }}</td><td>{{ p.stages }}</td><td>{{ p.plan }}</td><td>{{ p.fact }}</td></tr>
     {% endfor %}
   </table>
-  <p class="muted">Прогресс фазы — средний по вехам с весом нормативной длительности (раб. дн.).</p>
+  <p class="muted">Прогресс фазы — средний по этапам с весом нормативной длительности (раб. дн.).</p>
   {% endif %}
-  <h3>Вехи в зоне риска</h3>
+  <h3>Этапы в зоне риска</h3>
   {% if summary.at_risk %}
   <table>
-    <tr><th>Веха</th><th>Окончание по плану</th><th>Прогноз</th><th>Отставание, раб. дн.</th></tr>
+    <tr><th>Этап</th><th>Окончание по плану</th><th>Прогноз</th><th>Отставание, раб. дн.</th></tr>
     {% for s in summary.at_risk %}
     <tr><td>{{ s.name }}</td><td>{{ s.plan_end }}</td><td>{{ s.forecast_end }}</td><td>{{ s.delay }}</td></tr>
     {% endfor %}
   </table>
   {% else %}
-  <p>Вех критического пути с прогнозом позже плана нет.</p>
+  <p>Этапов критического пути с прогнозом позже плана нет.</p>
   {% endif %}
 </section>
 
@@ -88,7 +88,7 @@
   <h2>Диаграмма Ганта план-факт</h2>
   {% if gantt %}
   {{ gantt | safe }}
-  <p class="muted">Полоса — плановое окно вехи (красная рамка — критический путь), заливка — выполненная
+  <p class="muted">Полоса — плановое окно этапа (красная рамка — критический путь), заливка — выполненная
   доля цветом статуса, треугольник — фактический старт, пунктир — прогноз позже плана, ±N — отставание
   в рабочих днях.</p>
   {% else %}
@@ -111,7 +111,7 @@
   <h2>Отклонения за период</h2>
   {% if deviations %}
   <table>
-    <tr><th>ID</th><th>Код</th><th>Серьёзность</th><th>Веха</th><th>Участок</th><th>Что</th><th>Когда</th><th>Статус</th></tr>
+    <tr><th>ID</th><th>Код</th><th>Серьёзность</th><th>Этап</th><th>Участок</th><th>Что</th><th>Когда</th><th>Статус</th></tr>
     {% for d in deviations %}
     <tr id="dev-{{ d.id }}"><td>{{ d.id }}</td><td>{{ d.code }}</td><td class="sev-{{ d.severity_code }}">{{ d.severity }}</td>
       <td>{{ d.stage }}</td><td>{{ d.area }}</td><td><b>{{ d.title }}</b><br>{{ d.message }}</td>
