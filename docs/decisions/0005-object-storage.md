@@ -2,7 +2,8 @@
 
 **Статус:** принято, 17.09.2026. Бакеты `previews` и `reference` не используются: рамки
 рисуются поверх снимка, эталонный кадр — один из снимков
-([architecture.md](../architecture.md), раздел 7.2).
+([architecture.md](../architecture.md), раздел 7.2). Сервер хранилища в стенде — SeaweedFS
+вместо MinIO ([ADR-0016](0016-seaweedfs-instead-of-minio.md)).
 
 ## Контекст
 

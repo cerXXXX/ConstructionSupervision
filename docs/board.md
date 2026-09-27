@@ -813,6 +813,12 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       блок отметки в карточке вехи на Ганте (`features/gantt/StageCompletion.tsx`), галочка в
       списке вех. Проверено на стенде: отметка и снятие через API и в браузере, пересчёт
       «было → стало»
+- [~] `T47` infra: SeaweedFS вместо MinIO · поручение человека 27.09 · спец: ADR-0016
+      что: сервис `s3` в compose (`chrislusf/seaweedfs`, тег + digest), адреса `s3:8333` и
+      `localhost:8333`, проверка `s3` в `/health/ready` site и analysis; runbook, architecture,
+      README; перенос бакетов стенда из тома MinIO; CI: `docker compose pull` на чистом раннере
+      готово, когда: `pull` без локальных образов проходит; на стенде снимки и PDF пишутся,
+      ссылки открываются в браузере; `e2e.py` зелёный
 
 ## 8. Снято в MVP
 
