@@ -63,11 +63,13 @@ py -3.12 -m venv .venv
 .venv\Scripts\python scripts\fetch_models.py
 ```
 
-**3. Дообученные веса — нужны для демо.** Сценарий раздела 6 проверен на
-`yolov8s-worldv2-ce-ulima-v1.pt`. Скрипт их не скачивает, и в git весов нет: файл переносится
-со стенда в `data/models/`, в `.env` — `VISION_DET_WEIGHTS=/models/yolov8s-worldv2-ce-ulima-v1.pt`.
-Без них vision работает на zero-shot, а он технику Лимы почти не узнаёт (mAP50 0,07,
-[metrics.md](metrics.md), §3); демо на нём не проверялось.
+**3. Дообученные веса — нужны для демо.** Сценарий раздела 6 на чистом стенде проходит с
+`yolov8s-worldv2-ulima-v3.pt` (репетиция 27.09, board.md, T38). С `ce-ulima-v1` в «нормальный
+день» 19.10 добавляется лишнее D4 «простой» башенного крана вне зон: рамка крана у этих весов
+другая, и её нижняя точка не попадает ни в один участок. Скрипт весов не скачивает, в git их
+нет: файл переносится со стенда в `data/models/`, в `.env` —
+`VISION_DET_WEIGHTS=/models/yolov8s-worldv2-ulima-v3.pt`. Без дообученных весов vision работает
+на zero-shot, а он технику Лимы почти не узнаёт (mAP50 0,07, [metrics.md](metrics.md), §3).
 
 **4. Демо-снимки.** Их нет в git: это кадры открытого датасета Лимы
 ([ml/README.md](../ml/README.md), «Датасет Лимы», ссылка на DOI). Архив распаковывается как есть
@@ -77,7 +79,11 @@ py -3.12 -m venv .venv
 .venv\Scripts\python scripts\seed_images.py   # 56 кадров → data/seed/images/cam-*/
 ```
 
-**5. Стек.** На машине с картой NVIDIA — с оверлеем GPU (раздел 1). Сборка образа
+**5. Стек.** На машине с картой NVIDIA — с оверлеем GPU (раздел 1). Образ MinIO
+`quay.io/minio/minio:RELEASE.2024-09-22T00-33-43Z` с 27.09 не скачивается ни с quay.io, ни с
+Docker Hub (401 и `denied`). На новую машину он переносится файлом со стенда:
+`docker load -i minio-RELEASE.2024-09-22T00-33-43Z.tar` (файл — `backup/` стенда, 59 МБ), а
+`docker compose pull` запускается с `--ignore-pull-failures`. Сборка образа
 vision-service с CUDA идёт 26 минут (образ 12,4 ГБ); если образы опубликованы, быстрее их
 скачать (`docker compose pull`, раздел 10).
 
@@ -392,8 +398,12 @@ gh workflow run Release                    # то же самое вручную
 
 ```bash
 echo "$GITHUB_TOKEN" | docker login ghcr.io -u <логин> --password-stdin
-docker compose pull && docker compose up -d
+docker compose pull --ignore-pull-failures   # MinIO — файлом, раздел 2, шаг 5
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --no-build
 ```
+
+Токену достаточно права `read:packages`. Репетиция 27.09 (`v0.1.0`): `pull` — 9 минут, из них
+почти всё — образ vision-service 12,4 ГБ; от `up` до «готовы 5 из 5» — 109 с.
 
 `IMAGE_REGISTRY` и `IMAGE_TAG` в `.env` задают, откуда и какую версию тянуть. Имя образа в
 `docker-compose.yml` стоит рядом с `build:`, поэтому собранный локально образ получает то же имя,

@@ -128,8 +128,10 @@ def main() -> int:
             show.wait()
             show_days(show, expected, deviations(client, obj["id"]))
             show.step("Гант и отчёт")
-            print("Фактический старт, прогноз окончания, задержка — экран Ганта (T32); PDF-отчёт")
-            print("с LLM-резюме — T34, T35. Пока эти экраны не готовы, показ — по дашборду.")
+            print("Фактический старт, прогноз окончания, критический путь, перенос на зависимые")
+            print("вехи. Отчёт: «Сформировать PDF» — план-факт, загрузка техники, LLM-резюме.")
+            print(f"Гант:    {web}/objects/{obj['id']}/gantt")
+            print(f"Отчёты:  {web}/objects/{obj['id']}/reports")
             show.wait()
             show_rule_edit(show, expected, args.rule_edit)
         except (SeedError, LookupError) as exc:
