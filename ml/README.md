@@ -174,6 +174,23 @@ python ml/prepare/kict.py --extract   # ml/datasets/kict/Bbox_dataset_classified
 python ml/prepare/kict.py             # raw/ → ml/datasets/external/kict
 ```
 
+**Итог дообучения (27.09): не помог, в сервисе остались веса `ce-ulima-v1`.** Прогон
+`world-s-ce-ulima-kict-v1` — 10 эпох поверх `ce-ulima-v1`, Construction Equipment + KICT + Лима.
+mAP50 на тесте (`evaluate.py`, вход 1280):
+
+| Набор, класс | Рамок | `ce-ulima-v1` | `ce-ulima-kict-v1` |
+| :--- | ---: | ---: | ---: |
+| lct-test, все | 600 | 0.11 | 0.11 |
+| lct-test, pile driver | 143 | 0.00 | 0.00 |
+| lct-test, mobile crane | 89 | 0.07 | 0.01 |
+| lct-test, excavator | 243 | 0.46 | 0.44 |
+| Лима, все | 4 945 | 0.81 | 0.77 |
+| Лима, wheel loader | 116 | 0.82 | 0.64 |
+
+Буровые KICT — мелкие машины с одной точки съёмки, и буровые организаторов по ним не
+находятся. На Лиме просели погрузчики. Предположительно, модель стала путать их с бульдозерами: в KICT
+18 тысяч бульдозеров и ни одного погрузчика. Матрицу ошибок не разбирали.
+
 При сведении метки каждого датасета записываются в поле `aliases` нужного класса в
 `equipment_classes.yaml`, а сам датасет — в `datasets/external/<имя>/`.
 
