@@ -39,19 +39,67 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 
 ## 2. Первый запуск
 
-```bash
-cp .env.example .env                        # при необходимости поменять пароли и ключ API
-py -3.12 -m venv .venv                      # окружение хоста (раздел 3)
-.venv/Scripts/python -m pip install -r tools/requirements.txt
-.venv/Scripts/python scripts/fetch_models.py  # веса детектора, OpenCLIP и текстового CLIP
-docker compose up -d --build                # весь стек
-.venv/Scripts/python scripts/seed.py        # демо-объект, график, камеры, зоны, снимки, анализ
+Команды — для PowerShell на демо-стенде, из корня репозитория; Docker Desktop запущен. В Linux
+и macOS вместо `.venv\Scripts\python` — `.venv/bin/python`.
+
+**1. Настройки.**
+
+```powershell
+copy .env.example .env
 ```
 
-| Адрес | Что |
+В `.env` поменять пароли и `API_KEY`, а также:
+
+- `GATEWAY_PORT` — если порт 8080 занят. На стенде его держит AdGuard, там `8088`;
+- `VISION_DET_WEIGHTS` — дообученные веса, если они есть (шаг 3);
+- `LLM_BASE_URL` и `LLM_MODEL` — если будет LLM (раздел 4). Без них резюме шаблонное.
+
+**2. Окружение хоста и веса моделей.** `fetch_models.py` скачивает zero-shot детектор
+`yolov8s-worldv2.pt`, OpenCLIP и текстовый CLIP в `data/models/`, около 940 МБ.
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\python -m pip install -r tools\requirements.txt
+.venv\Scripts\python scripts\fetch_models.py
+```
+
+**3. Дообученные веса — нужны для демо.** Сценарий раздела 6 проверен на
+`yolov8s-worldv2-ce-ulima-v1.pt`. Скрипт их не скачивает, и в git весов нет: файл переносится
+со стенда в `data/models/`, в `.env` — `VISION_DET_WEIGHTS=/models/yolov8s-worldv2-ce-ulima-v1.pt`.
+Без них vision работает на zero-shot, а он технику Лимы почти не узнаёт (mAP50 0,07,
+[metrics.md](metrics.md), §3); демо на нём не проверялось.
+
+**4. Демо-снимки.** Их нет в git: это кадры открытого датасета Лимы
+([ml/README.md](../ml/README.md), «Датасет Лимы», ссылка на DOI). Архив распаковывается как есть
+в `ml/datasets/ulima/`, затем:
+
+```powershell
+.venv\Scripts\python scripts\seed_images.py   # 56 кадров → data/seed/images/cam-*/
+```
+
+**5. Стек.** На машине с картой NVIDIA — с оверлеем GPU (раздел 1). Сборка образа
+vision-service с CUDA идёт 26 минут (образ 12,4 ГБ); если образы опубликованы, быстрее их
+скачать (`docker compose pull`, раздел 10).
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+.venv\Scripts\python scripts\health.py        # все готовы; vision грузит модели ~40 с
+```
+
+**6. Демо-данные и проверка.**
+
+```powershell
+.venv\Scripts\python scripts\seed.py          # объект, график, правила, снимки, зоны, анализ
+.venv\Scripts\python scripts\e2e.py           # лента совпадает со сценарием → «E2E пройден»
+```
+
+`seed.py` ждёт распознавания 56 снимков (на GPU около минуты) и пересчёта фактов по зонам.
+`e2e.py` работает на отдельном объекте «E2E: …» и демо-объект не трогает.
+
+| Адрес (порт gateway — `GATEWAY_PORT`, по умолчанию 8080) | Что |
 | :--- | :--- |
 | <http://localhost:8080> | Интерфейс |
-| <http://localhost:8080/docs> | Сводный Swagger с выбором сервиса |
+| <http://localhost:8080/docs> | Сводный Swagger с выбором сервиса; страница грузит Swagger UI с cdnjs, нужен интернет |
 | <http://localhost:8001/docs> … <http://localhost:8004/docs> | Swagger отдельных сервисов |
 | <http://localhost:9001> | Консоль MinIO |
 
@@ -72,7 +120,7 @@ docker compose up -d --build                # весь стек
 | `make seed` | `.venv\Scripts\python scripts/seed.py` | Загрузить демо-данные и прогнать анализ |
 | `make demo` | `.venv\Scripts\python scripts/demo.py` | Сценарий показа: четыре дня объекта с заложенными отклонениями, ссылки на снимки |
 | `make reset` | `docker compose down -v` | Полная очистка: тома БД, бакеты MinIO, очередь |
-| `make test s=plan` | `cd services/plan-service; $env:PYTHONPATH='.'; pytest -q; cd ../..` | Тесты одного сервиса |
+| `make test s=plan` | `.venv\Scripts\python scripts/test.py plan` (без имени — все сервисы) | Тесты сервиса в одноразовом контейнере его образа, с базой `<база>_test` |
 | `make lint` | `.venv\Scripts\ruff check --config tools/ruff.toml packages services scripts; .venv\Scripts\ruff format --check --config tools/ruff.toml packages services scripts` | Линт и проверка формата |
 | `make fmt` | `.venv\Scripts\ruff format --config tools/ruff.toml packages services scripts` | Автоформатирование |
 | `make e2e` | `.venv\Scripts\python scripts/e2e.py` | Сквозной сценарий на поднятом стеке |
@@ -80,7 +128,7 @@ docker compose up -d --build                # весь стек
 | `make migrate s=plan m="…"` | `cd services/plan-service; $env:PYTHONPATH='.'; alembic revision --autogenerate -m "…"` | Создать миграцию Alembic |
 | `make models` | `.venv\Scripts\python scripts/fetch_models.py` | Скачать веса моделей |
 | `make dev` | `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build` | Стек с hot-reload |
-| `make backup` | `.venv\Scripts\python scripts/backup.py` | Дамп баз и зеркало бакетов MinIO |
+| `make backup` | — | Не реализовано: `backup.py` — заготовка (раздел 8) |
 
 **Окружение хоста — `.venv` в корне репозитория, глобальный Python не используется.** В нём
 всё, что запускается вне контейнеров: скрипты `scripts/` и `ml/prepare`, ruff той же версии,
@@ -270,6 +318,8 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
 | Снимки не открываются в браузере | Ссылка подписана на внутренний адрес MinIO | Проверить `S3_PUBLIC_ENDPOINT` (`http://localhost:9000`) |
 | Отчёт без LLM-резюме | Нет сети, неверный ключ или таймаут | Проверить `LLM_BASE_URL` и `LLM_API_KEY`; `LLM_ENABLED=false` — резюме станет шаблонным |
 | Распознавание идёт на CPU, хотя есть карта | Docker не видит GPU | `docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`; обновить драйвер NVIDIA; проверить `GET /api/v1/vision/model` |
+| Скрипт (`seed.py`, `e2e.py`) пишет `HTTP 401` или не видит сервисы | Скрипт стучится не в тот порт: `GATEWAY_PORT` не в `.env`, а задан только при `docker compose up` | Записать `GATEWAY_PORT` в `.env`; на стенде 8080 занят AdGuard, отвечает он |
+| `health.py`: сервис «недоступен», а `docker compose ps` показывает `healthy` | Docker Desktop перестал пробрасывать порт контейнера (было 27.09 с analysis после суток работы; через gateway сервис отвечал) | `docker compose restart <сервис>` |
 | `make` пишет `'grep' is not recognized` | Windows: рецепты Makefile исполняет cmd | Команды из правого столбца раздела 3 |
 | Повторная загрузка того же файла в `rejected` | Защита от дублей по sha256 | Это не ошибка |
 
@@ -279,9 +329,18 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
 
 ## 8. Резервное копирование и перенос
 
-- Данные: тома `pgdata` (три базы) и `miniodata`.
-- Логический дамп: `python scripts/backup.py` → `backup/YYYY-MM-DD/{plandb,sitedb,analysisdb}.sql`
-  + зеркало бакетов MinIO.
+- Данные: тома `pgdata` (три базы) и `miniodata`. `docker compose down` их сохраняет,
+  `docker compose down -v` стирает.
+- `scripts/backup.py` не реализован (заготовка, задачи на него нет). Дамп базы вручную,
+  по одной на команду (`plandb`, `sitedb`, `analysisdb`):
+
+  ```powershell
+  New-Item -ItemType Directory -Force backup   # в .gitignore
+  docker compose exec -T postgres pg_dump -U postgres -Fc -f /tmp/plandb.dump plandb
+  docker compose cp postgres:/tmp/plandb.dump backup\plandb.dump
+  ```
+
+  Снимки и отчёты — бакеты `images` и `reports` в MinIO; их зеркало скриптом не сделано.
 - Перенос к заказчику: те же образы, свой `.env`, свои адреса Postgres и S3.
   Ничего, кроме переменных окружения, менять не требуется.
 
@@ -292,8 +351,7 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
 `packages/contracts/*.yaml` монтируются в сервисы только для чтения
 (`./packages/contracts:/contracts:ro`).
 
-Ниже — **целевой** состав. Что из него уже стоит в compose, видно по задачам в
-[board.md](board.md).
+Состав на 27.09, без `ollama`: профиль `llm` не делается (раздел 5).
 
 | Контейнер | Образ / сборка | Команда | Зависит от | Тома |
 | :--- | :--- | :--- | :--- | :--- |
@@ -306,7 +364,6 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
 | `analysis-service` | `services/analysis-service` | `uvicorn src.main:app` | `postgres`, `minio` | `contracts` |
 | `vision-service` | `services/vision-service` | `uvicorn src.main:app` | — | `data/models` → `/models`, `contracts` |
 | `gateway` | `services/gateway` | nginx | — | собранная статика `apps/web` |
-| `ollama` (профиль `llm`) | `ollama/ollama` | — | — | `ollamadata`; только закрытый контур |
 
 Особенности:
 
@@ -314,7 +371,11 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
   несколько: `docker compose up -d --scale site-worker=3`.
 - Веса моделей монтируются томом, а не копируются в образ: образ остаётся лёгким, а смена
   модели не требует пересборки.
-- Ни один контейнер не знает пароля от чужой базы: у каждого своя роль и свой DSN.
+- У каждого сервиса своя роль и свой DSN, и роль имеет права только на свою базу. Но пароли
+  чужих ролей контейнер **видит**: общий якорь `service-base` передаёт всем контейнерам весь
+  `.env` (`env_file`). Поэтому граница держится на том, что сервис подключается своим DSN, а не
+  на незнании чужого пароля. Это известное расхождение, оно записано в [board.md](board.md),
+  раздел 9.
 
 ## 10. Публикация и получение образов
 

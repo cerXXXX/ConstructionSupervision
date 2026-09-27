@@ -66,8 +66,8 @@ py -3.12 -m venv .venv; .venv\Scripts\python -m pip install -r tools\requirement
 .venv\Scripts\ruff check --config tools/ruff.toml packages services scripts
 .venv\Scripts\ruff format --check --config tools/ruff.toml packages services scripts
 
-# тесты одного сервиса (unit-тесты core/ работают без Docker)
-cd services/analysis-service; $env:PYTHONPATH='.'; pytest -q; cd ../..
+# тесты: сервис в одноразовом контейнере его образа, база <база>_test (без имени — все)
+.venv\Scripts\python scripts\test.py analysis
 
 # стек (нужен запущенный Docker Desktop)
 docker compose up -d --build
@@ -691,7 +691,13 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
       что: `ml/eval/evaluate.py`; таблица precision / recall / mAP50 по классам и матрица ошибок
       в `docs/metrics.md` с размером выборки и условиями съёмки
       готово, когда: метрики посчитаны на наборе H5; ничего не выдумано
-- [ ] `T37` docs: актуализация к сдаче
+- [x] `T37` docs: актуализация к сдаче — сделано 27.09: runbook §2 — пошаговый первый запуск
+      с нуля (порт gateway, дообученные веса, демо-кадры Лимы, GPU, seed и e2e), §3 и §8
+      правдивы (`backup.py` — заготовка, ручной дамп проверен), §7 — два новых симптома, §9 —
+      фактический состав и `env_file`; `scripts/test.py` — тесты сервисов в контейнерах с базой
+      `<база>_test`; статусы F1–F15 и нефункциональных требований в `traceability.md` по
+      замерам; раздел «Ограничения» в README. На стенде: линт, тесты четырёх сервисов, сборка
+      web, `health.py` 5/5, `seed.py`, `e2e.py` — зелёные. Прогон с `down -v` — в T38
       ждёт: T28, T31
       что: статусы в `traceability.md`; README и runbook сверены с реальным поведением; раздел
       ограничений; линт и тесты всех сервисов зелёные
@@ -775,7 +781,7 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
   `excavator`, хотя экскаваторы на кадрах есть (Screenshot_100: подписаны `tipper truck`).
   Промпты нужно подбирать по размеченному набору H5 вместе с метриками T36, а не вслепую.
   На Лиме подтвердилось и лечится дообучением (T41), а не промптами.
-- Дообученные веса `yolov8s-worldv2-ulima-v3.pt` есть только в `data/models/` стенда:
+- Дообученные веса (с 27.09 — `yolov8s-worldv2-ce-ulima-v1.pt`) есть только в `data/models/` стенда:
   `scripts/fetch_models.py` их не скачивает, в git веса не хранятся. На чистой машине
   vision поднимется на zero-shot. Нужен источник раздачи (например, ассет релиза GitHub) и
   строка в `fetch_models.py`.
@@ -784,7 +790,8 @@ API-тесты с базой требуют `TEST_DB_DSN` и поднятый `p
 - Docker Desktop на демо-стенде ограничен в `%USERPROFILE%\.wslconfig`: `memory=4GB`,
   `processors=2`. Стек с vision на GPU помещается (~1 ГБ у vision), но запас мал: для показа
   лучше поднять лимит (человек, нужен `wsl --shutdown`).
-- Раздел 2 этого файла: `pytest -q` на хосте не работает — нет `lct_common`, `pytest-asyncio`
+- ~~Раздел 2 этого файла: `pytest -q` на хосте не работает.~~ Закрыто в T37:
+  `scripts/test.py`. Было: `pytest -q` на хосте не работает — нет `lct_common`, `pytest-asyncio`
   и зависимостей сервиса. Рабочий способ (T03): одноразовый контейнер из образа сервиса в сети
   `lct_lct` с каталогом сервиса, смонтированным в `/app/services/<сервис>`, `pip install pytest
   pytest-asyncio`, `TEST_DB_DSN` на `postgres:5432`. Стоит записать в §2 или в `scripts/`.

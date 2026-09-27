@@ -8,40 +8,53 @@
 
 | ID | Требование | Сервис | Модуль | Приоритет | Статус |
 | :--- | :--- | :--- | :--- | :--- | :---: |
-| F1 | Загрузка снимков, извлечение времени и камеры | `site-service` | `api/routes/images.py`, `core/timestamp.py` | Must | ~ |
-| F2 | Детекция и классификация техники, mAP50 на своём тесте | `vision-service`, `ml/` | `models/detector.py`, `core/detections.py`, `ml/eval/evaluate.py` | Must | ~ |
-| F3 | Привязка детекций к зонам по точке контакта | `site-service` | `core/zones.py` | Must | ~ |
-| F4 | Статус техники: работает / простой / вне зоны | `analysis-service` (смещение — `site-service`) | `core/equipment_state.py`, site `core/movement.py` | Must | — |
-| F5 | Контроль видимости участков | `site-service`, `analysis-service` | site `core/aggregation.py`, analysis `core/stage_predicates.py` (D10) | Must | ~ |
-| F6 | Классификация стадии объекта по снимку | `vision-service`, `site-service` | `models/stage_classifier.py`, `core/stages.py`, site `core/aggregation.py` | Must | ~ |
-| F7 | Сопоставление сессии с активными вехами графика | `analysis-service` | `core/plan_on_date.py`, `core/rules.py`, `core/run.py` | Must | ~ |
-| F8 | Выявление отклонений D1–D10 с объяснением | `analysis-service` | `core/predicates.py`, `core/explain.py` | Must | ~ |
-| F9 | Прогноз задержки и даты окончания | `analysis-service` | `core/activity.py`, `core/forecast.py` | Must | ~ |
+| F1 | Загрузка снимков, извлечение времени и камеры | `site-service` | `api/routes/images.py`, `core/timestamp.py` | Must | частично |
+| F2 | Детекция и классификация техники, mAP50 на своём тесте | `vision-service`, `ml/` | `models/detector.py`, `core/detections.py`, `ml/eval/evaluate.py` | Must | частично |
+| F3 | Привязка детекций к зонам по точке контакта | `site-service` | `core/zones.py` | Must | ✓ |
+| F4 | Статус техники: работает / простой / вне зоны | `analysis-service` (смещение — `site-service`) | `core/equipment_state.py`, site `core/movement.py` | Must | ✓ |
+| F5 | Контроль видимости участков | `site-service`, `analysis-service` | site `core/aggregation.py`, analysis `core/stage_predicates.py` (D10) | Must | ✓ |
+| F6 | Классификация стадии объекта по снимку | `vision-service`, `site-service` | `models/stage_classifier.py`, `core/stages.py`, site `core/aggregation.py` | Must | частично |
+| F7 | Сопоставление сессии с активными вехами графика | `analysis-service` | `core/plan_on_date.py`, `core/rules.py`, `core/run.py` | Must | ✓ |
+| F8 | Выявление отклонений D1–D10 с объяснением | `analysis-service` | `core/predicates.py`, `core/explain.py` | Must | частично |
+| F9 | Прогноз задержки и даты окончания | `analysis-service` | `core/activity.py`, `core/forecast.py` | Must | ✓ |
 | F10 | Отчёт план-факт: Гант, загрузка техники, лента, PDF | `analysis-service`, `web` | `report/`, web `features/gantt`, `features/deviations` | Must | частично |
-| F11 | Редактирование графика, правил и зон с пересчётом | `plan-service`, `site-service`, `web` | `api/routes/stages.py`, `api/routes/rules.py`, site `api/routes/zones.py`, web `features/zones-editor`, `features/rules-editor` | Should | ~ |
+| F11 | Редактирование графика, правил и зон с пересчётом | `plan-service`, `site-service`, `web` | `api/routes/stages.py`, `api/routes/rules.py`, site `api/routes/zones.py`, web `features/zones-editor`, `features/rules-editor` | Should | частично |
 | F12 | LLM-резюме строго по фактам | `analysis-service` | `report/summary.py`, `services/summary.py`, `clients/llm_client.py` | Should | ✓ |
 | F13 | % готовности объекта по снимку | `analysis-service` | `core/forecast.py` (только по стадии, без этажей) | Could | — |
-| F14 | Опасные зоны | `analysis-service` | `core/equipment_predicates.py` (D6) | Could | ~ |
-| F15 | REST API + Swagger для интеграции | все | `api/`, `gateway` | Must | — |
+| F14 | Опасные зоны | `analysis-service` | `core/equipment_predicates.py` (D6) | Could | частично |
+| F15 | REST API + Swagger для интеграции | все | `api/`, `gateway` | Must | ✓ |
+
+Состояние на 27.09 (T37). Проверено на демо-стенде: тесты всех сервисов (`scripts/test.py`)
+и `scripts/e2e.py` зелёные. `✓` у F3, F4, F5, F7 и F9: работает в конвейере и видно на
+демо-данных. F4 — статусы техники по методике (раздел 6) дают D4 «простой» в сценарии, а
+«работает стоя» снимает ложный простой крана и насоса. F9 — прогноз, перенос по связям и
+статус объекта на дашборде и в Ганте. F15 — у каждого сервиса OpenAPI и Swagger, сводный
+Swagger в gateway (`/docs`), снапшоты в `packages/contracts/openapi/`. `—` у F13: процента
+готовности по снимку нет, прогресс вехи ограничивается только стадией по фото. Оговорки по
+остальным — ниже.
 
 F12 (T35): резюме в PDF и `POST /analysis/summary` пишет локальная Gemma 4 E4B (llama.cpp на
 хосте) по JSON из контекста отчёта; каждое число текста и каждая ссылка на отклонение
 сверяются с фактами, иначе резюме шаблонное. На демо-объекте 5 из 5 текстов прошли проверку.
 
-Статус `~` у F1: пакетная загрузка и импорт папки с временем из EXIF и имени файла, камерой
+Оговорка по F1: пакетная загрузка и импорт папки с временем из EXIF и имени файла, камерой
 из подпапки и частичным успехом, просмотр снимков и ручной ввод времени через API готовы
 (T23); экрана загрузки в интерфейсе ещё нет — T39.
 
-Статус `~` у F2 и F6: `POST /api/v1/vision/analyze` распознаёт технику (YOLO-World, классы из
+Оговорка по F2 и F6: `POST /api/v1/vision/analyze` распознаёт технику (YOLO-World, классы из
 `equipment_classes.yaml`) и стадию (OpenCLIP zero-shot) на GPU и CPU (T24). Детектор дообучен
 на Construction Equipment и датасете Лимы (T41, T42): mAP50 на отложенном тесте Лимы 0,81
 против 0,07 у zero-shot. На 100 снимках организаторов (T36) — 0,11 против 0,16: при
 рабочем пороге находится каждая седьмая машина, буровые не распознаются
-([metrics.md](metrics.md), §2). С T25 распознавание встроено в конвейер site:
+([metrics.md](metrics.md), §2). Качество классификатора стадии (F6) не измерено: размеченной
+по стадиям выборки нет. С T25 распознавание встроено в конвейер site:
 site-worker сам распознаёт загруженные снимки, привязывает рамки к зонам (F3), считает
 смещение (F4, наблюдение) и видимость участков (F5) и шлёт сигнал в analysis.
 
-Статус `~` у F3: привязка по точке контакта, камеры, зоны, участки и импорт разметки готовы
+Оговорка по F8 и F14: D1–D4 и D10 проверены на демо-данных, D5–D9 (в том числе опасная зона
+D6) — только unit-тестами на фикстурах: в демо-сценарии их нет (таблица отклонений ниже).
+
+F3: привязка по точке контакта, камеры, зоны, участки и импорт разметки готовы
 и покрыты тестами (T22), детекции привязываются в конвейере (T25). С T26a факты окон уходят
 в analysis по контракту «факты за период» (`GET /site/objects/{id}/facts`), и прогон анализа
 в стеке доходит до `DONE`. С T26b правка зон пересчитывает факты окон без повторного
@@ -67,11 +80,11 @@ API (T34c, `POST /api/v1/analysis/reports`): восемь разделов, за
 
 | Требование | Как обеспечивается | Замер | Статус |
 | :--- | :--- | :--- | :---: |
-| Снимок ≤ 1–2 с на CPU | `VISION_DEVICE=cpu`, вход 960 | не измерено | — |
-| Снимок ≤ 100 мс на GPU | `VISION_DEVICE=cuda`, YOLO-World `s` | не измерено | — |
-| Предупреждение ≤ 30 мин после снимков | Факт окна пересчитывается после каждого снимка, сигнал сразу запускает прогон | не измерено | — |
-| Запуск одной командой | `docker compose up -d` | — | — |
-| Конфигурация классов, правил и зон — в данных | `equipment_classes.yaml`, `stage_rule`, `deviation_rule`, полигоны зон | — | — |
+| Снимок ≤ 1–2 с на CPU | `VISION_DEVICE=cpu`, вход 960 | медиана 900 мс, p90 985 мс, 30 снимков (T24, vision README §8) | ✓ |
+| Снимок ≤ 100 мс на GPU | `VISION_DEVICE=cuda`, YOLO-World `s`, вход 1280 | медиана 56 мс, p90 76 мс, 100 снимков (T24); через HTTP — медиана 100 мс | ✓ |
+| Предупреждение ≤ 30 мин после снимков | Факт окна пересчитывается после каждого снимка, сигнал сразу запускает прогон | снимок доходит до `ANALYZED` за ~1 с (T25b); отдельно «снимок → предупреждение» не замерялось | частично |
+| Запуск одной командой | `docker compose up -d` | стек поднимается одной командой; до неё — веса и демо-снимки (runbook §2) | ✓ |
+| Конфигурация классов, правил и зон — в данных | `equipment_classes.yaml`, `stage_rule`, `deviation_rule`, полигоны зон | правка правила в интерфейсе меняет ленту без перезапуска (T31, e2e) | ✓ |
 
 ## Отклонения (ТЗ, п. 5.3)
 

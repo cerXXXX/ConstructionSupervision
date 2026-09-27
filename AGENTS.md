@@ -126,7 +126,7 @@ make lint          # ruff: линт и проверка формата
 make fmt           # автоформат
 make dev           # стек с hot-reload (оверлей docker-compose.dev.yml)
 make e2e           # сквозной сценарий на поднятом стеке
-make backup        # дамп баз и зеркало бакетов
+make backup        # дамп баз и зеркало бакетов (не реализовано, runbook §8)
 make contracts     # пересобрать снапшоты OpenAPI и TS-клиент
 make migrate s=plan m="add stage_rule"   # создать миграцию
 make health        # опросить /health всех сервисов
