@@ -117,6 +117,9 @@ erDiagram
 | `total_float_days` | int | Полный резерв времени |
 | `source` | text | `GENERATED` / `IMPORT` / `MANUAL` |
 | `basis` | text null | Откуда длительность: норматив и доля вехи для генератора, «импорт» для файла |
+| `completed_on` | date null | Отметка оператора «веха выполнена»: последний день работ, включительно ([ADR-0015](decisions/0015-stage-completion-mark.md)) |
+| `completed_by` | text null | Кто поставил отметку (`X-Actor`) |
+| `completion_note` | text null | Комментарий к отметке: акт, кто принял |
 
 Индексы: `(object_id, seq)`, `(object_id, plan_start)`. Ограничение: `plan_end >= plan_start`.
 
