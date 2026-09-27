@@ -46,7 +46,7 @@ class SiteClient(ServiceClient):
         return int(page["total"])
 
     async def download(self, url: str) -> bytes:
-        """Файл снимка по presigned-ссылке MinIO — без ключа API: это не запрос к site."""
+        """Файл снимка по presigned-ссылке хранилища — без ключа API: это не запрос к site."""
         try:
             async with httpx.AsyncClient(timeout=self._client.timeout) as client:
                 response = await client.get(url)

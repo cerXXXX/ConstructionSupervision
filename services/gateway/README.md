@@ -41,7 +41,7 @@ flowchart LR
 о сервисах, а не об их эндпоинтах.
 
 Снимки и отчёты через gateway не идут: браузер открывает их по presigned-ссылкам прямо из
-MinIO, подписанным на публичный адрес `S3_PUBLIC_ENDPOINT`
+S3-хранилища, подписанным на публичный адрес `S3_PUBLIC_ENDPOINT`
 ([docs/architecture.md](../../docs/architecture.md), раздел 7.2).
 
 ## 4. Что делает gateway

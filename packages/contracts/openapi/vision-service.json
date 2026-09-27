@@ -382,9 +382,9 @@
               "schema": {
                 "properties": {
                   "image_url": {
-                    "description": "Ссылка на снимок; site-worker передаёт presigned-ссылку MinIO",
+                    "description": "Ссылка на снимок; site-worker передаёт presigned-ссылку S3",
                     "examples": [
-                      "http://minio:9000/images/0f3a/cam-north/2026-10-20/9e41.jpg?X-Amz-Signature=…"
+                      "http://s3:8333/images/0f3a/cam-north/2026-10-20/9e41.jpg?X-Amz-Signature=…"
                     ],
                     "pattern": "^https?://",
                     "title": "Image Url",

@@ -152,7 +152,7 @@ async def test_снимок_распознан_и_факт_окна_посчит
 
     [row] = await fetch(factory, select(Image).where(Image.id == image.id))
     assert (row.status, row.usable, row.usable_reason, row.error) == ("ANALYZED", True, None, None)
-    assert vision.urls == [f"http://minio:9000/images/{image.storage_key}?X-Amz-Signature=test"]
+    assert vision.urls == [f"http://s3:8333/images/{image.storage_key}?X-Amz-Signature=test"]
     [det] = await fetch(factory, select(Detection).where(Detection.image_id == image.id))
     [pit] = await fetch(factory, select(Zone).where(Zone.camera_id == camera.id))
     assert (det.zone_id, det.anchor, det.moved, det.model_version) == (

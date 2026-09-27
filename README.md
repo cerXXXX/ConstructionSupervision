@@ -63,15 +63,15 @@ flowchart LR
     PLAN --- PDB[("plandb")]
     SITE --- SDB[("sitedb")]
     ANL --- ADB[("analysisdb")]
-    SITE --- S3[("MinIO<br/>снимки")]
+    SITE --- S3[("S3 (SeaweedFS)<br/>снимки")]
 ```
 
 | Сервис | Ответственность в одной фразе | Состояние |
 | :--- | :--- | :--- |
 | [`gateway`](services/gateway/README.md) | Единая точка входа, маршрутизация, отдача SPA, сводный Swagger | нет |
 | [`plan-service`](services/plan-service/README.md) | **План:** объекты, справочник работ, график (импорт или генерация по МРР), вехи, правила «веха → техника» | `plandb` |
-| [`site-service`](services/site-service/README.md) | **Факт:** камеры, зоны, снимки, окна наблюдения, детекции, видимость участков — только наблюдения, без оценок | `sitedb` + MinIO |
-| [`analysis-service`](services/analysis-service/README.md) | **Сверка:** статус техники, отклонения D1–D10, прогресс, SPI, прогноз; PDF-отчёт и LLM-резюме | `analysisdb` + MinIO |
+| [`site-service`](services/site-service/README.md) | **Факт:** камеры, зоны, снимки, окна наблюдения, детекции, видимость участков — только наблюдения, без оценок | `sitedb` + S3 |
+| [`analysis-service`](services/analysis-service/README.md) | **Сверка:** статус техники, отклонения D1–D10, прогресс, SPI, прогноз; PDF-отчёт и LLM-резюме | `analysisdb` + S3 |
 | [`vision-service`](services/vision-service/README.md) | Компьютерное зрение: детекция техники, стадия объекта, качество кадра | нет |
 | [`apps/web`](apps/web/README.md) | Дашборд, Гант план-факт, лента предупреждений, просмотр камер, редактор правил, отчёты | нет |
 
@@ -102,7 +102,7 @@ make e2e                      # лента демо-объекта совпад�
 
 - UI — <http://localhost:8080>
 - Сводный Swagger по всем сервисам — <http://localhost:8080/docs>
-- MinIO-консоль — <http://localhost:9001>
+- Веб-интерфейс хранилища SeaweedFS — <http://localhost:23646>
 
 ## 4. Карта репозитория
 
@@ -179,5 +179,3 @@ ConstructionSupervision/
 - Контейнеры сервисов получают весь `.env`, включая пароли чужих баз (runbook, раздел 9).
 - `scripts/backup.py` не реализован; дамп баз — вручную (runbook, раздел 8).
 - Сводный Swagger (`/docs`) грузит Swagger UI с CDN и без интернета не откроется.
-- Образ MinIO, на котором стоит стек, с 27.09 не скачивается из публичных реестров; на новую
-  машину он переносится файлом (runbook, раздел 2, шаг 5).

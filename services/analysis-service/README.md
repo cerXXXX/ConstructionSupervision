@@ -26,7 +26,7 @@ flowchart LR
     ANL -->|"факты за период"| SITE["site-service"]
     ANL -->|"контекст фактов"| LLM["Внешний LLM-API"]
     ANL --- DB[("analysisdb")]
-    ANL --- S3[("MinIO: reports")]
+    ANL --- S3[("S3: reports")]
     WEB["web"] -->|"статус, лента, прогноз, отчёты"| ANL
 ```
 
@@ -97,7 +97,7 @@ flowchart LR
 `PLAN_SERVICE_UNAVAILABLE` (без плана нет названий и дат вех), `VALIDATION_FAILED` (400 — начало
 периода позже конца), `NO_DATA_FOR_PERIOD` (422 — site-service ответил, и за период нет ни одной
 сессии наблюдения), `RENDER_FAILED` (500 — вёрстка PDF упала, подробности в логе),
-`REPORT_NOT_FOUND` (404), `STORAGE_UNAVAILABLE` (503 — MinIO недоступен). Недоступный
+`REPORT_NOT_FOUND` (404), `STORAGE_UNAVAILABLE` (503 — S3-хранилище недоступно). Недоступный
 site-service и пропавшие снимки ошибкой не считаются: отчёт выходит, «Ограничения» называют пробел.
 
 Лента: `DEVIATION_NOT_FOUND` (404), `VALIDATION_FAILED` (400 — значение фильтра не из
@@ -223,7 +223,7 @@ POST /runs {object_id, triggered_by, as_of?}
    содержимое бакета, чужие файлы в нём пропускаются.
 
 WeasyPrint в образе требует Pango и HarfBuzz, кириллицу даёт шрифт DejaVu (`Dockerfile`). Без
-MinIO сервис стартует и считает анализ; `/health/ready` показывает `minio: fail` как
+S3-хранилища сервис стартует и считает анализ; `/health/ready` показывает `s3: fail` как
 деградацию, а не отказ.
 
 **Правила LLM** ([ADR-0008](../../docs/decisions/0008-llm-narrative-only.md)):
@@ -290,8 +290,8 @@ MinIO сервис стартует и считает анализ; `/health/rea
 | `CONFIDENCE_HIGH_DAYS` | `5` | Дней наблюдений для уверенности `HIGH` |
 | `CONFIDENCE_HIGH_VISIBLE` / `CONFIDENCE_MEDIUM_VISIBLE` | `0.8` / `0.5` | Доля видимых сессий для `HIGH` / `MEDIUM` |
 | `UNKNOWN_BLIND_SHARE` | `0.5` | Больше этой доли слепых сессий — статус объекта `UNKNOWN` |
-| `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_BUCKET_REPORTS` | `http://minio:9000`, `http://localhost:9000`, `reports` | Хранилище отчётов; ссылка для браузера подписывается на публичный адрес |
-| `S3_ACCESS_KEY`, `S3_SECRET_KEY` | `minioadmin` / — | Ключи MinIO (в стенде — из `.env`) |
+| `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_BUCKET_REPORTS` | `http://s3:8333`, `http://localhost:8333`, `reports` | Хранилище отчётов; ссылка для браузера подписывается на публичный адрес |
+| `S3_ACCESS_KEY`, `S3_SECRET_KEY` | `s3admin` / — | Ключи S3 (в стенде — из `.env`) |
 | `S3_PRESIGN_TTL_S` | `3600` | Срок жизни ссылки на отчёт |
 | `REPORT_LABELS_FILE` | `data/report_labels.yaml` | Русские названия значений перечислений в отчёте |
 | `REPORT_DEFAULT_DAYS` | `7` | Период отчёта по умолчанию, местных дней по день момента анализа |
@@ -307,7 +307,7 @@ MinIO сервис стартует и считает анализ; `/health/rea
 
 ## 8. Зависимости
 
-PostgreSQL (`analysisdb`), `plan-service`, `site-service`, MinIO; LLM — по желанию.
+PostgreSQL (`analysisdb`), `plan-service`, `site-service`, S3-хранилище; LLM — по желанию.
 Если план или факты недоступны, прогон завершается со статусом `FAILED` и понятным кодом.
 Частичных, «додуманных» выводов не бывает никогда.
 

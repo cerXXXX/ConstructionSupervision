@@ -161,13 +161,13 @@ GET /api/v1/analysis/deviations?object_id=...&severity=HIGH&status=NEW&from=2026
 | Путь | Назначение |
 | :--- | :--- |
 | `GET /health` | Процесс жив. Без авторизации, без обращений к зависимостям, отвечает быстрее 50 мс |
-| `GET /health/ready` | Готов обслуживать: БД отвечает, MinIO доступен, критичные зависимости живы |
+| `GET /health/ready` | Готов обслуживать: БД отвечает, S3 доступен, критичные зависимости живы |
 | `GET /docs`, `GET /redoc`, `GET /openapi.json` | Документация сервиса |
 | `GET /docs` на gateway | Сводный Swagger с выбором сервиса из списка |
 
 ```json
 {"status": "healthy", "service": "site-service", "version": "0.3.1",
- "checks": {"db": "ok", "minio": "ok", "vision": "ok"}}
+ "checks": {"db": "ok", "s3": "ok", "vision": "ok"}}
 ```
 
 ## 10. Контракты как артефакт

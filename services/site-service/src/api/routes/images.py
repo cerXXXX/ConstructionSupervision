@@ -107,7 +107,7 @@ async def list_images(
     summary="Снимок",
     description="Метаданные, ссылка для браузера (`S3_PUBLIC_ENDPOINT`), рамки техники с "
     "точкой контакта и зоной, стадия по снимку. `link=internal` — ссылка на внутренний адрес "
-    "MinIO (`S3_ENDPOINT`) для других сервисов: так снимки берёт отчёт analysis "
+    "хранилища (`S3_ENDPOINT`) для других сервисов: так снимки берёт отчёт analysis "
     "(interservice.md, контракт 6).",
 )
 async def get_image(

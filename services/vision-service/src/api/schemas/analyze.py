@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 class AnalyzeRequest(BaseModel):
     image_url: str = Field(
         pattern=r"^https?://",
-        description="Ссылка на снимок; site-worker передаёт presigned-ссылку MinIO",
-        examples=["http://minio:9000/images/0f3a/cam-north/2026-10-20/9e41.jpg?X-Amz-Signature=…"],
+        description="Ссылка на снимок; site-worker передаёт presigned-ссылку S3",
+        examples=["http://s3:8333/images/0f3a/cam-north/2026-10-20/9e41.jpg?X-Amz-Signature=…"],
     )
 
 

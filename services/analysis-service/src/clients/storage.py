@@ -1,8 +1,8 @@
-"""Хранилище отчётов (MinIO, бакет `reports`). Единственное место с кодом S3 в analysis.
+"""Хранилище отчётов (S3, бакет `reports`). Единственное место с кодом S3 в analysis.
 
 Клиент `minio` синхронный, поэтому вызовы уходят в пул потоков. Ссылка для браузера
 подписывается вторым клиентом на публичный адрес: подпись привязана к хосту, и
-`minio:9000` браузер не откроет (architecture.md, 7.2). Повторяет клиент site-service:
+`s3:8333` браузер не откроет (architecture.md, 7.2). Повторяет клиент site-service:
 импортировать код чужого сервиса нельзя (AGENTS.md, раздел 6).
 """
 
@@ -99,7 +99,7 @@ class ReportStorage:
         return await self._call(stat)
 
     async def presigned_url(self, key: str) -> str:
-        """Ссылка для браузера на публичный адрес MinIO, живёт S3_PRESIGN_TTL_S."""
+        """Ссылка для браузера на публичный адрес хранилища, живёт S3_PRESIGN_TTL_S."""
         return await self._call(
             lambda: self._public.presigned_get_object(self._bucket, key, expires=self._ttl)
         )

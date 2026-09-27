@@ -48,11 +48,11 @@ class Settings(BaseServiceSettings):
     confidence_medium_visible: float = 0.5
     unknown_blind_share: float = 0.5
 
-    # Отчёты (README, раздел 5): бакет в MinIO; ссылка для браузера — на публичный адрес.
-    s3_endpoint: str = "http://minio:9000"
-    s3_public_endpoint: str = "http://localhost:9000"
-    s3_access_key: str = "minioadmin"
-    s3_secret_key: str = "minioadmin"
+    # Отчёты (README, раздел 5): бакет в S3-хранилище; ссылка для браузера — на публичный адрес.
+    s3_endpoint: str = "http://s3:8333"
+    s3_public_endpoint: str = "http://localhost:8333"
+    s3_access_key: str = "s3admin"
+    s3_secret_key: str = "s3admin"
     s3_bucket_reports: str = "reports"
     s3_presign_ttl_s: int = 3600
     report_labels_file: str = "data/report_labels.yaml"

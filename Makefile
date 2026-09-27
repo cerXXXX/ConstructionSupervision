@@ -13,13 +13,17 @@ NAME_analysis := analysis-service
 NAME_vision := vision-service
 NAME_gateway := gateway
 
-.PHONY: help up down dev restart logs ps health seed demo reset test lint fmt contracts migrate models backup e2e pull
+.PHONY: help up down dev restart logs ps health seed demo reset test lint fmt contracts migrate models backup e2e pull third-party
 
 help: ## Показать список команд
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 pull: .env ## Забрать опубликованные образы из ghcr (нужен docker login ghcr.io)
 	$(COMPOSE) pull
+
+third-party: .env ## Сторонние образы (Postgres, S3, Redis) скачиваются и поднимаются — как в CI
+	$(COMPOSE) pull postgres s3 redis
+	$(COMPOSE) up -d --wait --wait-timeout 180 postgres s3 redis
 
 up: .env ## Поднять весь стек
 	$(COMPOSE) up -d --build

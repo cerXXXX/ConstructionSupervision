@@ -45,8 +45,8 @@ async def lifespan(app: FastAPI):
     try:
         await app.state.storage.ensure_bucket()
     except StorageUnavailable:
-        # Сервис всё равно стартует: камеры и зоны без MinIO работают, а /health/ready
-        # покажет minio: fail, пока хранилище не поднимется.
+        # Сервис всё равно стартует: камеры и зоны без хранилища работают, а /health/ready
+        # покажет s3: fail, пока хранилище не поднимется.
         log.warning("storage.unavailable_at_start", endpoint=settings.s3_endpoint)
 
     log.info(
@@ -86,8 +86,8 @@ app.include_router(
         settings.version,
         checks=[
             HealthCheck("db", lambda: make_db_check(app.state.engine)()),
-            # Проверка заодно заводит бакет, если MinIO поднялся позже сервиса.
-            HealthCheck("minio", lambda: app.state.storage.ensure_bucket()),
+            # Проверка заодно заводит бакет, если хранилище поднялось позже сервиса.
+            HealthCheck("s3", lambda: app.state.storage.ensure_bucket()),
             # Без очереди загрузка работает: снимки ждут в PENDING, воркер подберёт их проходом
             # по базе. Это деградация, а не отказ.
             HealthCheck("redis", lambda: app.state.queue.ping(), required=False),

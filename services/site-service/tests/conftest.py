@@ -106,7 +106,7 @@ async def session(engine) -> AsyncIterator:
 
 
 class FakeStorage:
-    """MinIO в тестах: объекты в словаре; `broken` имитирует недоступное хранилище."""
+    """Хранилище в тестах: объекты в словаре; `broken` имитирует недоступное хранилище."""
 
     def __init__(self) -> None:
         self.objects: dict[str, tuple[bytes, str]] = {}
@@ -120,10 +120,10 @@ class FakeStorage:
         self.objects[key] = (content, content_type)
 
     async def presigned_url(self, key: str) -> str:
-        return f"http://localhost:9000/images/{key}?X-Amz-Signature=test"
+        return f"http://localhost:8333/images/{key}?X-Amz-Signature=test"
 
     async def internal_url(self, key: str) -> str:
-        return f"http://minio:9000/images/{key}?X-Amz-Signature=test"
+        return f"http://s3:8333/images/{key}?X-Amz-Signature=test"
 
 
 @pytest.fixture

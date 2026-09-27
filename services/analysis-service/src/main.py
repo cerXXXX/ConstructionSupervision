@@ -87,7 +87,7 @@ async def lifespan(app: FastAPI):
     try:
         await app.state.report_storage.ensure_bucket()
     except StorageUnavailable:
-        # Без MinIO не работают только отчёты: сверка идёт, а /health/ready покажет minio: fail.
+        # Без хранилища не работают только отчёты: сверка идёт, а /health/ready покажет s3: fail.
         log.warning("storage.unavailable_at_start", endpoint=settings.s3_endpoint)
     app.state.llm_client = _llm_client()
 
@@ -131,8 +131,8 @@ app.include_router(
         checks=[
             HealthCheck("db", lambda: make_db_check(app.state.engine)()),
             # Хранилище нужно только отчётам: без него сервис деградирует, а не отказывает.
-            # Проверка заодно заводит бакет, если MinIO поднялся позже сервиса.
-            HealthCheck("minio", lambda: app.state.report_storage.ensure_bucket(), required=False),
+            # Проверка заодно заводит бакет, если хранилище поднялось позже сервиса.
+            HealthCheck("s3", lambda: app.state.report_storage.ensure_bucket(), required=False),
         ],
     )
 )

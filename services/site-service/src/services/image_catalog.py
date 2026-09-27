@@ -59,7 +59,7 @@ class ImageCatalog:
     async def detail(self, image_id: UUID, *, internal: bool = False) -> dict[str, Any]:
         """Карточка: снимок, ссылка, рамки техники и стадия — доказательства вывода.
 
-        Ссылка для браузера подписана на публичный адрес MinIO, для сервиса (отчёт analysis,
+        Ссылка для браузера подписана на публичный адрес хранилища, для сервиса (отчёт analysis,
         interservice.md, контракт 6) — на внутренний: подпись привязана к адресу.
         """
         image = await self.get(image_id)

@@ -26,12 +26,12 @@ class Settings(BaseServiceSettings):
     # Папка для POST /images/import, смонтированная только для чтения: подпапка = код камеры.
     import_dir: str = "/import"
 
-    # MinIO: оригиналы снимков. Внутренний адрес — для загрузки и для vision-service,
-    # публичный — для подписи ссылок, которые открывает браузер.
-    s3_endpoint: str = "http://minio:9000"
-    s3_public_endpoint: str = "http://localhost:9000"
-    s3_access_key: str = "minioadmin"
-    s3_secret_key: str = "minioadmin"
+    # S3-хранилище (ADR-0016): оригиналы снимков. Внутренний адрес — для загрузки и для
+    # vision-service, публичный — для подписи ссылок, которые открывает браузер.
+    s3_endpoint: str = "http://s3:8333"
+    s3_public_endpoint: str = "http://localhost:8333"
+    s3_access_key: str = "s3admin"
+    s3_secret_key: str = "s3admin"
     s3_bucket_images: str = "images"
     s3_presign_ttl_s: int = 3600
 

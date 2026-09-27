@@ -11,7 +11,7 @@
 | ruff | **0.16.8** (как в `requirements-dev.txt`), ставится в `.venv` | Линт. Другая версия ruff проверяет по другим правилам |
 | Node.js | 20+ | Локальная разработка фронтенда |
 | GNU Make + bash | любая | Удобные обёртки. На Windows без bash не работают — раздел 3 |
-| Оперативная память | 8 ГБ минимум, 16+ комфортно | CV-сервис + Postgres + MinIO + воркеры |
+| Оперативная память | 8 ГБ минимум, 16+ комфортно | CV-сервис + Postgres + S3-хранилище + воркеры |
 | Диск | ~20 ГБ | Образ с CUDA весит несколько гигабайт, плюс остальные образы, веса и демо-снимки |
 | GPU | NVIDIA, 4+ ГБ VRAM | Не обязателен, но целевой стенд — с ним |
 
@@ -79,13 +79,24 @@ py -3.12 -m venv .venv
 .venv\Scripts\python scripts\seed_images.py   # 56 кадров → data/seed/images/cam-*/
 ```
 
-**5. Стек.** На машине с картой NVIDIA — с оверлеем GPU (раздел 1). Образ MinIO
-`quay.io/minio/minio:RELEASE.2024-09-22T00-33-43Z` с 27.09 не скачивается ни с quay.io, ни с
-Docker Hub (401 и `denied`). На новую машину он переносится файлом со стенда:
-`docker load -i minio-RELEASE.2024-09-22T00-33-43Z.tar` (файл — `backup/` стенда, 59 МБ), а
-`docker compose pull` запускается с `--ignore-pull-failures`. Сборка образа
-vision-service с CUDA идёт 26 минут (образ 12,4 ГБ); если образы опубликованы, быстрее их
-скачать (`docker compose pull`, раздел 10).
+**5. Стек.** На машине с картой NVIDIA — с оверлеем GPU (раздел 1). Все сторонние образы
+скачиваются из публичных реестров; S3-хранилище — SeaweedFS с Docker Hub
+([ADR-0016](decisions/0016-seaweedfs-instead-of-minio.md)). Сборка образа vision-service
+с CUDA идёт 26 минут (образ 12,4 ГБ); если образы опубликованы, быстрее их скачать
+(`docker compose pull`, раздел 10).
+
+**Переход со стенда на MinIO** (`.env` с `S3_ENDPOINT=http://minio:9000`). Адреса в `.env`
+поменять на `S3_ENDPOINT=http://s3:8333` и `S3_PUBLIC_ENDPOINT=http://localhost:8333`, ключи
+оставить. Снимки и отчёты из старого тома переносятся зеркалом, пока контейнер MinIO ещё
+запущен (`docker compose up -d s3` поднимает новое хранилище рядом):
+
+```powershell
+docker exec lct-minio-1 sh -c 'mc alias set old http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; mc alias set new http://s3:8333 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; for b in images reports; do mc mb --ignore-existing new/$b; mc mirror --quiet old/$b new/$b; done'
+docker compose up -d --remove-orphans      # сервисы на новом адресе, контейнер MinIO удалён
+```
+
+Том `lct_miniodata` после этого не нужен: `docker volume rm lct_miniodata`. Без переноса
+данные загружаются заново `seed.py`.
 
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
@@ -107,7 +118,7 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 | <http://localhost:8080> | Интерфейс |
 | <http://localhost:8080/docs> | Сводный Swagger с выбором сервиса; страница грузит Swagger UI с cdnjs, нужен интернет |
 | <http://localhost:8001/docs> … <http://localhost:8004/docs> | Swagger отдельных сервисов |
-| <http://localhost:9001> | Консоль MinIO |
+| <http://localhost:23646> | Веб-интерфейс SeaweedFS (вход — `S3_ACCESS_KEY` / `S3_SECRET_KEY`) |
 
 ## 3. Команды
 
@@ -119,13 +130,14 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 | :--- | :--- | :--- |
 | `make up` / `make down` | `docker compose up -d --build` / `docker compose down` | Поднять / остановить стек |
 | `make pull` | `docker compose pull` | Забрать опубликованные образы из ghcr вместо локальной сборки |
+| `make third-party` | `docker compose pull postgres s3 redis; docker compose up -d --wait postgres s3 redis` | Сторонние образы скачиваются и поднимаются — та же проверка, что в CI |
 | `make restart s=site` | `docker compose restart site-service` | Перезапустить один сервис |
 | `make logs s=analysis f=1` | `docker compose logs -f --tail=200 analysis-service` | Логи сервиса |
 | `make ps` | `docker compose ps` | Состояние контейнеров |
 | `make health` | `.venv\Scripts\python scripts/health.py` | Опросить `/health/ready` всех сервисов |
 | `make seed` | `.venv\Scripts\python scripts/seed.py` | Загрузить демо-данные и прогнать анализ |
 | `make demo` | `.venv\Scripts\python scripts/demo.py` | Сценарий показа: четыре дня объекта с заложенными отклонениями, ссылки на снимки |
-| `make reset` | `docker compose down -v` | Полная очистка: тома БД, бакеты MinIO, очередь |
+| `make reset` | `docker compose down -v` | Полная очистка: тома БД, бакеты S3, очередь |
 | `make test s=plan` | `.venv\Scripts\python scripts/test.py plan` (без имени — все сервисы) | Тесты сервиса в одноразовом контейнере его образа, с базой `<база>_test` |
 | `make lint` | `.venv\Scripts\ruff check --config tools/ruff.toml packages services scripts; .venv\Scripts\ruff format --check --config tools/ruff.toml packages services scripts` | Линт и проверка формата |
 | `make fmt` | `.venv\Scripts\ruff format --config tools/ruff.toml packages services scripts` | Автоформатирование |
@@ -191,9 +203,9 @@ py -3.12 -m venv .venv
 
 | Переменная | По умолчанию | Смысл |
 | :--- | :--- | :--- |
-| `S3_ENDPOINT` | `http://minio:9000` | MinIO внутри сети Docker |
-| `S3_PUBLIC_ENDPOINT` | `http://localhost:9000` | Адрес MinIO для браузера: на него подписываются ссылки, которые открывает интерфейс |
-| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | задаются в `.env` | |
+| `S3_ENDPOINT` | `http://s3:8333` | S3-хранилище (SeaweedFS) внутри сети Docker |
+| `S3_PUBLIC_ENDPOINT` | `http://localhost:8333` | Адрес хранилища для браузера: на него подписываются ссылки, которые открывает интерфейс |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | задаются в `.env` | Ключи S3 и вход в веб-интерфейс SeaweedFS |
 | `S3_BUCKET_IMAGES` / `S3_BUCKET_REPORTS` | `images` / `reports` | |
 | `S3_PRESIGN_TTL_S` | `3600` | Срок жизни ссылок |
 | `REDIS_URL` | `redis://redis:6379/0` | Очередь задач site-worker |
@@ -321,7 +333,7 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
 | Снимки в статусе `NEEDS_TIME` | Нет EXIF и время не распознано из имени файла | Указать время при загрузке или переименовать по шаблону `YYYYMMDD_HHMMSS.jpg` |
 | Анализ не находит отклонений | Нет активных вех на дату снимков, не размечены зоны или участок невидим | Проверить `GET /api/v1/plan/objects/{id}/plan`, зоны камер и `as_of` прогона |
 | Все участки `BLIND` | Зоны не размечены или кадры непригодны | Проверить `data/seed/cameras.json` и `usable` у снимков |
-| Снимки не открываются в браузере | Ссылка подписана на внутренний адрес MinIO | Проверить `S3_PUBLIC_ENDPOINT` (`http://localhost:9000`) |
+| Снимки не открываются в браузере | Ссылка подписана на внутренний адрес хранилища | Проверить `S3_PUBLIC_ENDPOINT` (`http://localhost:8333`) |
 | Отчёт без LLM-резюме | Нет сети, неверный ключ или таймаут | Проверить `LLM_BASE_URL` и `LLM_API_KEY`; `LLM_ENABLED=false` — резюме станет шаблонным |
 | Распознавание идёт на CPU, хотя есть карта | Docker не видит GPU | `docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`; обновить драйвер NVIDIA; проверить `GET /api/v1/vision/model` |
 | Скрипт (`seed.py`, `e2e.py`) пишет `HTTP 401` или не видит сервисы | Скрипт стучится не в тот порт: `GATEWAY_PORT` не в `.env`, а задан только при `docker compose up` | Записать `GATEWAY_PORT` в `.env`; на стенде 8080 занят AdGuard, отвечает он |
@@ -335,7 +347,7 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
 
 ## 8. Резервное копирование и перенос
 
-- Данные: тома `pgdata` (три базы) и `miniodata`. `docker compose down` их сохраняет,
+- Данные: тома `pgdata` (три базы) и `s3data`. `docker compose down` их сохраняет,
   `docker compose down -v` стирает.
 - `scripts/backup.py` не реализован (заготовка, задачи на него нет). Дамп базы вручную,
   по одной на команду (`plandb`, `sitedb`, `analysisdb`):
@@ -346,7 +358,7 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
   docker compose cp postgres:/tmp/plandb.dump backup\plandb.dump
   ```
 
-  Снимки и отчёты — бакеты `images` и `reports` в MinIO; их зеркало скриптом не сделано.
+  Снимки и отчёты — бакеты `images` и `reports` в S3; их зеркало скриптом не сделано.
 - Перенос к заказчику: те же образы, свой `.env`, свои адреса Postgres и S3.
   Ничего, кроме переменных окружения, менять не требуется.
 
@@ -362,12 +374,12 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
 | Контейнер | Образ / сборка | Команда | Зависит от | Тома |
 | :--- | :--- | :--- | :--- | :--- |
 | `postgres` | `postgres:16-alpine` | — | — | `pgdata`, скрипт инициализации трёх баз и ролей |
-| `minio` | `quay.io/minio/minio` | `server /data --console-address :9001` | — | `miniodata` |
+| `s3` | `chrislusf/seaweedfs` (тег + digest) | `mini -dir=/data` | — | `s3data` |
 | `redis` | `redis:7-alpine` | — | — | — |
 | `plan-service` | `services/plan-service` | `uvicorn src.main:app` | `postgres` | `contracts` |
-| `site-service` | `services/site-service` | `uvicorn src.main:app` | `postgres`, `minio`, `redis` | `contracts` |
+| `site-service` | `services/site-service` | `uvicorn src.main:app` | `postgres`, `s3`, `redis` | `contracts` |
 | `site-worker` | тот же образ, что `site-service` | `arq src.worker.WorkerSettings` | `redis`, `vision-service` | `contracts` |
-| `analysis-service` | `services/analysis-service` | `uvicorn src.main:app` | `postgres`, `minio` | `contracts` |
+| `analysis-service` | `services/analysis-service` | `uvicorn src.main:app` | `postgres`, `s3` | `contracts` |
 | `vision-service` | `services/vision-service` | `uvicorn src.main:app` | — | `data/models` → `/models`, `contracts` |
 | `gateway` | `services/gateway` | nginx | — | собранная статика `apps/web` |
 
@@ -398,7 +410,7 @@ gh workflow run Release                    # то же самое вручную
 
 ```bash
 echo "$GITHUB_TOKEN" | docker login ghcr.io -u <логин> --password-stdin
-docker compose pull --ignore-pull-failures   # MinIO — файлом, раздел 2, шаг 5
+docker compose pull
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --no-build
 ```
 

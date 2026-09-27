@@ -43,8 +43,8 @@ flowchart LR
 | :--- | :--- | :--- | :--- | :--- |
 | `gateway` | Единая точка входа: маршрутизация по префиксу, отдача SPA, `X-Request-Id`, сводный Swagger | nginx | нет | реплики |
 | `plan-service` | **План.** Объекты, справочник работ, календарный график (импорт или генерация по МРР), вехи, правила «веха → техника», рабочий календарь, классы техники из файла | FastAPI | `plandb` | реплики |
-| `site-service` | **Факт.** Камеры, зоны, снимки, сессии, детекции, видимость участков, факты сессий. API и воркер из одного образа | FastAPI + arq-воркер | `sitedb`, MinIO, Redis | реплики API + N воркеров |
-| `analysis-service` | **Сверка.** Рабочее время, статус техники, отклонения D1–D10, прогресс, SPI, прогноз, статус объекта. Отчёт PDF и LLM-резюме | FastAPI + WeasyPrint | `analysisdb`, MinIO | реплики |
+| `site-service` | **Факт.** Камеры, зоны, снимки, сессии, детекции, видимость участков, факты сессий. API и воркер из одного образа | FastAPI + arq-воркер | `sitedb`, S3, Redis | реплики API + N воркеров |
+| `analysis-service` | **Сверка.** Рабочее время, статус техники, отклонения D1–D10, прогресс, SPI, прогноз, статус объекта. Отчёт PDF и LLM-резюме | FastAPI + WeasyPrint | `analysisdb`, S3 | реплики |
 | `vision-service` | Распознавание: детекция техники, стадия объекта по фото, качество кадра | FastAPI + Ultralytics + OpenCLIP | нет | реплики; на демо-стенде — GPU |
 | `web` | SPA: дашборд, Гант план-факт, лента предупреждений, камеры, загрузка, редактор правил, отчёты | React + Vite | нет | статика в образе gateway |
 
@@ -57,7 +57,7 @@ flowchart LR
 | Компонент | Назначение | Замена в проде заказчика |
 | :--- | :--- | :--- |
 | PostgreSQL 16 | Три независимые базы: `plandb`, `sitedb`, `analysisdb` | Три инстанса или управляемый кластер |
-| MinIO | S3-совместимое хранилище: оригиналы снимков и готовые отчёты | Любой S3 |
+| SeaweedFS | S3-совместимое хранилище: оригиналы снимков и готовые отчёты ([ADR-0016](decisions/0016-seaweedfs-instead-of-minio.md)) | Любой S3 |
 | Redis 7 | Очередь задач воркера site-service (arq) | Redis или брокер заказчика |
 | Ollama (профиль `llm`) | Локальная LLM для закрытого контура; по умолчанию не поднимается | Остаётся как есть |
 
@@ -85,7 +85,7 @@ Docker Desktop на WSL2. Видеокарту использует только
 | vision-service | 8004 | `http://vision-service:8000` |
 | web (dev, Vite) | 5173 | — |
 | postgres | 5432 | `postgres:5432` |
-| minio | 9000 / 9001 | `minio:9000` |
+| s3 (SeaweedFS) | 8333 / 23646 (веб-интерфейс) | `s3:8333` |
 | redis | 6379 | `redis:6379` |
 | ollama | 11434 | `ollama:11434` |
 
@@ -151,7 +151,7 @@ sequenceDiagram
 sequenceDiagram
     participant SRC as Камера / загрузка
     participant ST as site-service
-    participant S3 as MinIO
+    participant S3 as S3
     participant Q as Redis (arq)
     participant W as site-worker
     participant VS as vision-service
@@ -217,7 +217,7 @@ sequenceDiagram
     participant PL as plan-service
     participant ST as site-service
     participant LLM as Внешний LLM-API
-    participant S3 as MinIO
+    participant S3 as S3
 
     U->>AN: POST /api/v1/analysis/reports {object_id, period_from, period_to}
     AN->>AN: статус, прогресс, отклонения, загрузка техники — из своей базы
@@ -303,7 +303,7 @@ sequenceDiagram
 а не географические объекты. Они хранятся в `jsonb`, а проверка «точка в полигоне» делается
 через `shapely` в памяти ([ADR-0006](decisions/0006-zones-in-image-space.md)).
 
-### 7.2. MinIO: объектное хранилище
+### 7.2. S3: объектное хранилище
 
 | Бакет | Что | Жизненный цикл |
 | :--- | :--- | :--- |
@@ -312,9 +312,9 @@ sequenceDiagram
 
 Снимки наружу отдаются **presigned-ссылками** с ограниченным сроком жизни: ни один сервис
 не проксирует байты изображений через себя. Для браузера ссылка подписывается на публичный
-адрес `S3_PUBLIC_ENDPOINT` (на стенде — `http://localhost:9000`). Для сервисов внутри сети
-подпись делается на `S3_ENDPOINT` (`http://minio:9000`). Подпись привязана к адресу, поэтому
-ссылка на `minio:9000` в браузере не откроется.
+адрес `S3_PUBLIC_ENDPOINT` (на стенде — `http://localhost:8333`). Для сервисов внутри сети
+подпись делается на `S3_ENDPOINT` (`http://s3:8333`). Подпись привязана к адресу, поэтому
+ссылка на `s3:8333` в браузере не откроется.
 
 Рамки детекций на снимке рисуются поверх изображения: интерфейс делает это через SVG, отчёт —
 в HTML-шаблоне. Отдельные «кадры с рамками» не генерируются и не хранятся.
@@ -340,7 +340,7 @@ UPDATE возвращает снимки объекта в `PENDING`, и дал�
 | **Трассировка** | `X-Request-Id` создаётся в gateway, пробрасывается во все вызовы, попадает в каждую строку лога и в тело ошибки |
 | **Логи** | JSON в stdout: `ts, level, service, request_id, event, duration_ms, …`. Никаких `print` |
 | **Конфигурация** | 12-factor: переменные окружения, один `.env` на весь compose, `Settings` на pydantic-settings в каждом сервисе. Справочные файлы монтируются из `packages/contracts` в `CONTRACTS_DIR` |
-| **Здоровье** | `/health` — процесс жив; `/health/ready` — БД, MinIO и зависимости отвечают. Compose использует `/health/ready` в `depends_on: condition: service_healthy` |
+| **Здоровье** | `/health` — процесс жив; `/health/ready` — БД, S3 и зависимости отвечают. Compose использует `/health/ready` в `depends_on: condition: service_healthy` |
 | **Время** | Хранение и обмен — UTC (`timestamptz`), отображение — `Europe/Moscow`. Рабочий календарь (выходные, праздники, рабочие часы) хранится в `plandb` и приходит в контракте «весь план» |
 | **Ошибки** | Единый конверт `{"error": {...}}`, стабильные коды, русские сообщения |
 | **Документация API** | Swagger каждого сервиса на `/docs`, сводная страница с выбором сервиса — `gateway:/docs` |

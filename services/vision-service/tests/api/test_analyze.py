@@ -110,7 +110,7 @@ async def test_ссылка_скачивается_и_распознаётся(c
         return image_bytes((64, 48), "PNG")
 
     monkeypatch.setattr("src.services.analyze.fetch_image", fake_fetch)
-    url = "http://minio:9000/images/a/b.jpg?X-Amz-Signature=abc"
+    url = "http://s3:8333/images/a/b.jpg?X-Amz-Signature=abc"
 
     response = await client.post(URL, json={"image_url": url})
 

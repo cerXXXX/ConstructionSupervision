@@ -44,19 +44,25 @@ services:
       retries: 20
     networks: [lct]
 
-  minio:
-    # Официальный реестр MinIO: репозитория minio/minio на Docker Hub больше нет.
-    image: quay.io/minio/minio:RELEASE.2024-09-22T00-33-43Z
+  # S3-хранилище снимков и отчётов (ADR-0016): SeaweedFS, всё в одном контейнере. Digest рядом
+  # с тегом — на любой машине скачаются те же байты, даже если тег перевыпустят.
+  s3:
+    image: chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882
     restart: unless-stopped
-    command: server /data --console-address ":9001"
+    # WebDAV, Iceberg и Lance стеку не нужны: не открываем лишние порты.
+    command: >-
+      mini -dir=/data -webdav=false -s3.port.iceberg=0 -s3.port.lance=0
+      -admin.user=${S3_ACCESS_KEY} -admin.password=${S3_SECRET_KEY}
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}
+      # С ключами SeaweedFS проверяет подпись каждого запроса; без них пускал бы всех.
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
     volumes:
-      - miniodata:/data
-    ports: ["9000:9000", "9001:9001"]
+      - s3data:/data
+    # 8333 — S3 (на него подписываются ссылки для браузера), 23646 — веб-интерфейс администратора.
+    ports: ["8333:8333", "23646:23646"]
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8333/healthz"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -113,7 +119,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
+      s3:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -164,7 +170,7 @@ services:
       postgres:
         condition: service_healthy
       # Бакет `reports` для PDF-отчётов (README analysis-service, раздел 5).
-      minio:
+      s3:
         condition: service_healthy
     # Локальная LLM на хосте (llama-server, runbook §4): Docker Desktop знает это имя сам,
     # на Linux его даёт host-gateway.
@@ -219,7 +225,7 @@ services:
 
 volumes:
   pgdata:
-  miniodata:
+  s3data:
 
 networks:
   lct:

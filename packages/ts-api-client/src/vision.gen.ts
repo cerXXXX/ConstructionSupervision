@@ -267,8 +267,8 @@ export interface operations {
                 "application/json": {
                     /**
                      * Image Url
-                     * @description Ссылка на снимок; site-worker передаёт presigned-ссылку MinIO
-                     * @example http://minio:9000/images/0f3a/cam-north/2026-10-20/9e41.jpg?X-Amz-Signature=…
+                     * @description Ссылка на снимок; site-worker передаёт presigned-ссылку S3
+                     * @example http://s3:8333/images/0f3a/cam-north/2026-10-20/9e41.jpg?X-Amz-Signature=…
                      */
                     image_url: string;
                 };

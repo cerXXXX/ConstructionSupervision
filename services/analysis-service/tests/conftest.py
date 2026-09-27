@@ -161,7 +161,7 @@ class StubSiteClient:
             raise error
         return {
             "id": str(image_id),
-            "url": f"http://minio:9000/images/{image_id}.jpg",
+            "url": f"http://s3:8333/images/{image_id}.jpg",
             "captured_at": "2026-10-20T09:00:00Z",
             "width": 64,
             "height": 48,
@@ -227,7 +227,7 @@ class StubStorage:
         return found[0] if found else None
 
     async def presigned_url(self, key):
-        return f"http://localhost:9000/reports/{key}?X-Amz-Signature=stub"
+        return f"http://localhost:8333/reports/{key}?X-Amz-Signature=stub"
 
 
 @pytest.fixture
