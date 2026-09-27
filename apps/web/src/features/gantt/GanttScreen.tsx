@@ -6,15 +6,9 @@ import { formatDelay, formatMoment, formatPlanDate, formatSpi } from "@/entities
 import { stageStatusTone } from "@/entities/status";
 import { GanttChart, type Draft, type Zoom } from "@/features/gantt/GanttChart";
 import { dayNumber, isoDate } from "@/features/gantt/layout";
-import {
-  useGantt,
-  useSaveDates,
-  useSelectedRow,
-  type DatesSaveResult,
-  type GanttRow,
-  type Plan,
-  type PlanStage,
-} from "@/features/gantt/useGantt";
+import { SaveSummary } from "@/features/gantt/SaveSummary";
+import { StageCompletion } from "@/features/gantt/StageCompletion";
+import { useGantt, useSaveStage, useSelectedRow, type GanttRow, type Plan, type PlanStage } from "@/features/gantt/useGantt";
 import { isWorkday, workdaysIn, type Dates } from "@/features/gantt/workdays";
 import { PlanSetupDialog, type PlanMode } from "@/features/objects/PlanSetupDialog";
 import { objectQuery } from "@/shared/api/queries";
@@ -26,6 +20,9 @@ import { Icon } from "@/shared/ui/Icon";
 import { PageHeader, Segmented } from "@/shared/ui/Page";
 import { Empty, ErrorBox, Loading } from "@/shared/ui/QueryState";
 import { useToast } from "@/shared/ui/Toast";
+
+// Веха закрыта отметкой оператора (stage_fact.facts.basis, methodology.md, 10.3b).
+const OPERATOR = "OPERATOR";
 
 const ZOOMS: { label: string; value: Zoom }[] = [
   { label: "Весь график", value: "fit" },
@@ -137,6 +134,7 @@ export function GanttScreen() {
                 draft={activeDraft}
                 onDraft={setDraft}
               />
+              <StageCompletion key={`done-${selected.stage.id}`} objectId={objectId} stage={selected.stage} asOfDay={asOfDay} />
             </StagePanel>
           ) : (
             <p className="flex items-center gap-2 text-sm text-muted">
@@ -281,7 +279,8 @@ function StagePanel({
                     </b>
                   )}
                   <span className="block text-xs text-muted">
-                    при сохранении текущего темпа · уверенность {label(ru.confidence, progress.confidence)}
+                    {facts.basis === OPERATOR ? "по отметке оператора" : "при сохранении текущего темпа"} · уверенность{" "}
+                    {label(ru.confidence, progress.confidence)}
                   </span>
                 </dd>
               </dl>
@@ -289,7 +288,7 @@ function StagePanel({
             </>
           )}
         </div>
-        <div className="lg:col-span-2">{children}</div>
+        <div className="space-y-4 lg:col-span-2">{children}</div>
       </div>
     </article>
   );
@@ -312,7 +311,7 @@ function DatesEditor({
   draft: Draft | null;
   onDraft: (draft: Draft | null) => void;
 }) {
-  const save = useSaveDates(objectId);
+  const save = useSaveStage(objectId);
   const toast = useToast();
   const dates = draft?.dates ?? { start: row.start, end: row.end };
   const set = (edge: keyof Dates, value: string) => {
@@ -356,7 +355,7 @@ function DatesEditor({
             loading={save.isPending}
             onClick={() =>
               save.mutate(
-                { stageId: row.stage.id, dates },
+                { stageId: row.stage.id, patch: { plan_start: isoDate(dates.start), plan_end: isoDate(dates.end) } },
                 {
                   onSuccess: () => {
                     onDraft(null);
@@ -382,29 +381,13 @@ function DatesEditor({
   );
 }
 
-function SaveSummary({ result }: { result: DatesSaveResult }) {
-  const { before, after } = result;
-  const change = (was: string, now: string) => (was === now ? `${now} (без изменений)` : `${was} → ${now}`);
-  const objectDelay = (s: DatesSaveResult["after"]) =>
-    s.status ? `${label(ru.objectStatus, s.status.status)}, ${formatDelay(s.status.delay_days)} ${ru.units.workDays}` : "—";
-  const critical = (value: boolean | null) => (value == null ? "—" : value ? "да" : "нет");
-  return (
-    <div className="rounded-xl bg-emerald-50 p-4 text-emerald-950 ring-1 ring-emerald-200">
-      <p className="mb-1 font-medium">Сохранено, анализ пересчитан на {formatMoment(result.run.as_of)}:</p>
-      <ul className="space-y-0.5">
-        <li>прогноз окончания вехи: {change(formatPlanDate(before.stage?.forecast_end), formatPlanDate(after.stage?.forecast_end))}</li>
-        <li>
-          отставание вехи: {change(formatDelay(before.stage?.delay_days), formatDelay(after.stage?.delay_days))} {ru.units.workDays}
-        </li>
-        <li>на критическом пути: {change(critical(before.critical), critical(after.critical))}</li>
-        <li>объект: {change(objectDelay(before), objectDelay(after))}</li>
-      </ul>
-    </div>
-  );
-}
-
-/** Откуда прогресс вехи: по плану (и почему) или по наблюдениям (сколько дней). */
+/** Откуда прогресс вехи: отметка оператора, план (и почему) или наблюдения (сколько дней). */
 function basis(facts: Record<string, unknown>): string {
+  if (facts.basis === OPERATOR) {
+    const on = typeof facts.completed_on === "string" ? formatPlanDate(facts.completed_on) : "—";
+    const by = typeof facts.completed_by === "string" ? `, отметил ${facts.completed_by}` : "";
+    return `Выполнена по отметке оператора: последний день работ ${on}${by}. Окончание подтвердил человек, а не снимки.`;
+  }
   if (typeof facts.basis_reason === "string") return `Прогресс по плану: ${facts.basis_reason}.`;
   if (facts.basis === "OBSERVED") {
     const days = typeof facts.observed_days === "number" ? facts.observed_days : "—";

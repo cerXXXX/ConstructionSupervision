@@ -1,8 +1,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 
-import { dayNumber, isoDate, moscowDay } from "@/features/gantt/layout";
-import type { Dates } from "@/features/gantt/workdays";
+import { dayNumber, moscowDay } from "@/features/gantt/layout";
 import { ApiError, apiGet, apiPatch, apiPost } from "@/shared/api/client";
 import { fetchStatus, type ObjectStatus } from "@/shared/api/queries";
 import type { AnalysisSchema, PlanSchema } from "@/shared/api/schemas";
@@ -72,8 +71,8 @@ export function rowDays(rows: GanttRow[], asOfDay: number | null): number[] {
   return [...days, asOfDay].filter((d): d is number => d != null);
 }
 
-/** Что показать после сохранения дат: прогноз вехи и отставание объекта до и после. */
-export type DatesSaveResult = {
+/** Что показать после правки вехи: прогноз вехи и отставание объекта до и после. */
+export type StageSaveResult = {
   before: Snapshot;
   after: Snapshot;
   run: AnalysisSchema<"RunRead">;
@@ -85,20 +84,20 @@ type Snapshot = {
   critical: boolean | null;
 };
 
+export type StageUpdate = PlanSchema<"StageUpdate">;
+
 /**
- * Сохранение дат вехи и пересчёт (T32b). plan-service пересчитывает критический путь и сам
- * шлёт анализу сигнал; прогон с ожиданием схлопывается с ним и возвращается, когда прогноз
- * посчитан уже по новым датам, — как на экране правил (T31).
+ * Правка вехи и пересчёт: плановые даты (T32b) или отметка «веха выполнена» (T46, ADR-0015).
+ * plan-service пересчитывает критический путь и сам шлёт анализу сигнал; прогон с ожиданием
+ * схлопывается с ним и возвращается, когда прогноз посчитан уже по новой вехе, — как на
+ * экране правил (T31).
  */
-export function useSaveDates(objectId: string) {
+export function useSaveStage(objectId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ stageId, dates }: { stageId: string; dates: Dates }): Promise<DatesSaveResult> => {
+    mutationFn: async ({ stageId, patch }: { stageId: string; patch: StageUpdate }): Promise<StageSaveResult> => {
       const before = await snapshot(objectId, stageId);
-      await apiPatch<PlanSchema<"StageRead">>(`/plan/stages/${stageId}`, {
-        plan_start: isoDate(dates.start),
-        plan_end: isoDate(dates.end),
-      });
+      await apiPatch<PlanSchema<"StageRead">>(`/plan/stages/${stageId}`, patch);
       const run = await apiPost<AnalysisSchema<"RunRead">>("/analysis/runs?wait=true", {
         object_id: objectId,
         triggered_by: "MANUAL",

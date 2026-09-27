@@ -21,6 +21,7 @@ import {
 import { rowDays, type GanttRow } from "@/features/gantt/useGantt";
 import { dragDates, type Dates, type DragMode, type WorkCalendar } from "@/features/gantt/workdays";
 import { label, ru } from "@/shared/locale/ru";
+import { Icon } from "@/shared/ui/Icon";
 
 /** Масштаб: «весь график» подгоняется под ширину экрана, остальные — пикселей на день. */
 export type Zoom = "fit" | number;
@@ -104,6 +105,12 @@ export function GanttChart(props: Props) {
                 {r.stage.code}
               </span>
               <span className="truncate">{r.stage.name}</span>
+              {r.stage.completed_on && (
+                <span className="ml-auto text-emerald-700" title="Выполнена по отметке оператора">
+                  <Icon name="check" size={14} />
+                  <span className="sr-only">выполнена по отметке</span>
+                </span>
+              )}
             </button>
           </li>
         ))}
@@ -321,6 +328,10 @@ function tooltip({ stage, progress }: GanttRow): string {
     `План: ${formatPlanDate(stage.plan_start)} — ${formatPlanDate(stage.plan_end)}`,
     stage.is_critical ? "Критический путь" : `Резерв: ${stage.total_float_days} ${ru.units.workDays}`,
   ];
+  if (stage.completed_on) {
+    const by = stage.completed_by ? `, ${stage.completed_by}` : "";
+    lines.push(`Выполнена по отметке: ${formatPlanDate(stage.completed_on)}${by}`);
+  }
   if (progress) {
     lines.push(
       `${label(ru.stageStatus, progress.status)}, прогресс ${Math.round(progress.progress * 100)} % при плане ${Math.round(progress.planned_progress * 100)} %`,
