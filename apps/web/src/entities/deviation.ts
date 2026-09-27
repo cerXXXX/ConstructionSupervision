@@ -87,6 +87,21 @@ export function factLines(facts: Facts): FactLine[] {
   return lines;
 }
 
+/** Кусок текста резюме: обычный текст или ссылка на отклонение по первым восьми знакам ID. */
+export type SummaryPart = { text: string; ref: boolean };
+
+// Как ссылается резюме analysis-service (report/summary.py, DEVIATION_REF): восемь hex-знаков.
+const DEVIATION_REF = /\b([0-9a-f]{8})\b/;
+
+/** Резюме на куски: ссылки на отклонения отдельно, чтобы экран сделал их ссылками. */
+export function splitRefs(text: string): SummaryPart[] {
+  // split с группой кладёт найденное на нечётные места.
+  return text
+    .split(DEVIATION_REF)
+    .map((part, i) => ({ text: part, ref: i % 2 === 1 }))
+    .filter((part) => part.text !== "");
+}
+
 /** Строка таблицы проверенных сессий: время, видимость участка, техника на нём. */
 export type SessionRow = {
   id: string;

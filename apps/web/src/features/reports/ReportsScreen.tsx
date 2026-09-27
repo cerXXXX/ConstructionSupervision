@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
+import { splitRefs } from "@/entities/deviation";
 import { formatMoment, formatPlanDate, formatSize } from "@/entities/format";
 import {
   PERIOD_PRESETS,
@@ -9,6 +10,7 @@ import {
   defaultPeriod,
   periodProblem,
   useCreateReport,
+  useDeviationRefs,
   useReports,
   useSummary,
 } from "@/features/reports/useReports";
@@ -149,13 +151,37 @@ function CreateForm({ objectId, asOf }: { objectId: string; asOf: string }) {
             Резюме за {formatPlanDate(summary.data.period_from)} — {formatPlanDate(summary.data.period_to)} ·
             источник: {label(ru.summarySource, summary.data.generated_by)}
           </p>
-          <p className="whitespace-pre-line leading-relaxed">{summary.data.text}</p>
+          <SummaryText objectId={objectId} text={summary.data.text} />
           {summary.data.llm_rejected.length > 0 && (
             <p className="text-xs text-muted">Текст нейросети отброшен: {summary.data.llm_rejected.join("; ")}</p>
           )}
         </div>
       )}
     </Panel>
+  );
+}
+
+/** Текст резюме: ссылки на отклонения (`[bac02fc0]`) открывают их карточки в ленте. */
+function SummaryText({ objectId, text }: { objectId: string; text: string }) {
+  const refs = useDeviationRefs(objectId);
+  return (
+    <p className="whitespace-pre-line leading-relaxed">
+      {splitRefs(text).map((part, i) => {
+        const id = part.ref ? refs.get(part.text) : undefined;
+        return id ? (
+          <Link
+            key={i}
+            to={`/objects/${objectId}/deviations?status=all&id=${id}`}
+            title="Открыть карточку отклонения"
+            className="font-medium text-accent underline decoration-accent/40 underline-offset-2 hover:decoration-accent"
+          >
+            {part.text}
+          </Link>
+        ) : (
+          <span key={i}>{part.text}</span>
+        );
+      })}
+    </p>
   );
 }
 

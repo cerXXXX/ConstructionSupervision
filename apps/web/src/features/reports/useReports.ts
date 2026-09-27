@@ -2,7 +2,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/r
 
 import { moscowIsoDay, shiftIsoDay } from "@/entities/format";
 import { apiGet, apiPost } from "@/shared/api/client";
-import { objectQuery, statusQuery } from "@/shared/api/queries";
+import { deviationsQuery, objectQuery, statusQuery, type DeviationFilter } from "@/shared/api/queries";
 import type { AnalysisSchema } from "@/shared/api/schemas";
 
 export type ReportRead = AnalysisSchema<"ReportRead">;
@@ -74,6 +74,24 @@ export function useSummary(objectId: string) {
         period_to: period.to,
       }),
   });
+}
+
+const ALL_DEVIATIONS: DeviationFilter = {
+  codes: [],
+  severities: [],
+  statuses: [],
+  verdicts: [],
+  from: null,
+  to: null,
+};
+
+/**
+ * Полный ID отклонения по первым восьми знакам — так на отклонения ссылается резюме. Лента —
+ * одна страница в 200 строк: ссылка на более старое останется текстом.
+ */
+export function useDeviationRefs(objectId: string): Map<string, string> {
+  const feed = useQuery(deviationsQuery(objectId, ALL_DEVIATIONS));
+  return new Map((feed.data?.items ?? []).map((d) => [d.id.slice(0, 8), d.id]));
 }
 
 /** Формирование PDF: синхронный ответ с готовой ссылкой, затем свежий список. */
