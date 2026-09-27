@@ -374,6 +374,42 @@ python ml/eval/evaluate.py --weights data/models/yolov8s-worldv2-ulima-v3.pt --d
 **Не измерено — так и пишем «не измерено».** Придуманная метрика в презентации — это
 провал на первом же вопросе жюри.
 
+## Конвейеры без нового обучения детектора (T43, 27.09)
+
+`evaluate.py` оценивает только модель Ultralytics целиком и считает как валидация Ultralytics:
+рамка может прийти сразу несколькими классами. В сервисе у рамки один класс. Поэтому для
+сравнения конвейеров предсказание и оценка разделены:
+
+| Скрипт | Что делает |
+| :--- | :--- |
+| `eval/predict.py` | Рамки детектора (YOLO-World или YOLOE) на выборке → JSON; словарь `first` или `all`, как в сервисе |
+| `eval/cascade.py` | Каскад «найти → назвать»: рамки детектора, класс — CLIP по вырезке; `--trusted` — гибрид с дообученным детектором |
+| `eval/score.py` | mAP50, ошибки при пороге, «верно при ≤ N ложных» по любому JSON; `--merge 0.5` — склейка, как в сервисе |
+| `eval/speed.py` | Время конвейера на снимок в одном процессе на GPU, как `inference_ms` сервиса |
+| `training/interpolate.py` | Смесь весов zero-shot и дообученной модели (WiSE-FT) |
+| `training/probe.py` | Линейная голова CLIP по вырезкам открытых наборов, стартует с zero-shot весов |
+| `eval/crop_prompts.yaml` | Описания классов и «не техники» для CLIP |
+
+Всё запускается в образе vision-service, как обучение (раздел выше). Порядок:
+
+```bash
+python ml/eval/predict.py --weights /models/yoloe-26s-seg.pt --data ml/datasets/external/lct-test --prompts all
+python ml/eval/predict.py --weights /models/yolov8s-worldv2-ce-ulima-v1.pt --data ml/datasets/external/lct-test
+python ml/eval/cascade.py ml/runs/pred/yoloe-26s-seg-all-lct-test-test.json --data ml/datasets/external/lct-test \
+  --clip ViT-B-32 --trusted ml/runs/pred/yolov8s-worldv2-ce-ulima-v1-first-lct-test-test.json
+python ml/eval/score.py ml/runs/pred/*.json --data ml/datasets/external/lct-test --summary --merge 0.5
+```
+
+Веса для этих опытов, кроме уже описанных: `yolov8{m,l,x}-worldv2.pt`, `yoloe-26{l,x}-seg.pt`
+(github.com/ultralytics/assets), OpenCLIP ViT-L-14 laion2B (`data/models/openclip-vit-l14-laion2b/`,
+Hugging Face `laion/CLIP-ViT-L-14-laion2B-s32B-b82K`). `fetch_models.py` их не скачивает.
+
+**Почему «верно при ≤ N ложных».** У каскада уверенность — другая шкала, чем у детектора, и
+один рабочий порог 0,35 сравнивал бы разные вещи. Число верно найденных машин при одном и том
+же числе ложных рамок от шкалы не зависит. На 100 снимках 20 ложных — одна на пять снимков.
+
+Результаты и выводы — [docs/metrics.md](../docs/metrics.md), §4.
+
 ## Экспорт весов
 
 Экспорт в ONNX не делается: у YOLO-World при экспорте словарь запекается внутрь весов,
