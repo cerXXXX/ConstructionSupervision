@@ -171,7 +171,55 @@ function Legend() {
     <div className="flex flex-wrap gap-x-5 gap-y-1.5 rounded-xl bg-white/60 px-4 py-2.5 text-[13px] text-muted ring-1 ring-ink/[0.06]">
       {item(<rect x="1" y="1" width="20" height="10" rx="2" className="fill-stone-200 stroke-stone-400" />, "плановое окно")}
       {item(<rect x="1" y="1" width="20" height="10" rx="2" className="fill-accent/20 stroke-accent" />, "критический путь")}
-      {item(<rect x="1" y="3" width="14" height="6" className="fill-amber-500" />, "выполнено (цвет — статус)")}
+      <div className="group relative inline-flex items-center gap-1.5 cursor-help">
+        <svg width="26" height="12" className="shrink-0">
+          <defs>
+            <clipPath id="legend-status-clip">
+              <rect x="1" y="3" width="24" height="6" rx="2" />
+            </clipPath>
+          </defs>
+          <g clipPath="url(#legend-status-clip)">
+            <rect x="1" y="3" width="6" height="6" className="fill-emerald-600" />
+            <rect x="7" y="3" width="6" height="6" className="fill-amber-500" />
+            <rect x="13" y="3" width="6" height="6" className="fill-red-600" />
+            <rect x="19" y="3" width="6" height="6" className="fill-sky-600" />
+          </g>
+        </svg>
+        <span className="border-b border-dotted border-muted/50 group-hover:border-ink/70">статус</span>
+        <Icon name="info" size={13} className="text-muted/70 transition-colors group-hover:text-ink" />
+
+        {/* Всплывающая подсказка с расшифровкой цветов */}
+        <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-64 -translate-x-1/2 rounded-xl bg-ink/95 p-3 text-xs text-white shadow-xl backdrop-blur-sm ring-1 ring-white/10 group-hover:block">
+          <div className="mb-2 flex items-center justify-between border-b border-white/10 pb-1.5 font-medium text-white/90">
+            <span>Цвета статуса этапа</span>
+            <span className="text-[11px] font-normal text-white/50">доля 0–100 %</span>
+          </div>
+          <div className="space-y-1.5 text-[12px]">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-emerald-600" />
+              <span className="font-medium text-white">Завершён</span>
+              <span className="ml-auto text-[11px] text-white/60">100 %</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-amber-500" />
+              <span className="font-medium text-white">В работе</span>
+              <span className="ml-auto text-[11px] text-white/60">в графике</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-red-600" />
+              <span className="font-medium text-white">С опозданием</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-sm bg-sky-600" />
+              <span className="font-medium text-white">С опережением</span>
+            </div>
+          </div>
+          <div className="mt-2 border-t border-white/10 pt-1.5 text-[11px] leading-tight text-white/60">
+            Длина полосы показывает физический прогресс (выполненную долю).
+          </div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-ink/95" />
+        </div>
+      </div>
       {item(<path d="M6 1 h10 l-5 7 z" className="fill-ink" />, "фактический старт")}
       {item(<rect x="1" y="2" width="20" height="8" className="fill-red-100 stroke-red-600" strokeDasharray="3 2" />, "прогноз позже плана")}
       {item(<line x1="11" x2="11" y1="0" y2="12" className="stroke-sky-600" strokeWidth="2" />, "прогноз раньше плана")}
