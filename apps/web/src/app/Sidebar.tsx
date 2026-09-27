@@ -14,16 +14,17 @@ import { Icon, type IconName } from "@/shared/ui/Icon";
  */
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const match = useMatch("/objects/:objectId/*");
-  // Последний открытый объект остаётся в меню и на экранах справочников: из порогов
-  // D1–D10 обратно в ленту объекта — один щелчок, без списка объектов.
+  const onList = useMatch("/objects") != null;
+  // Объект открыт, пока человек не вернулся к списку: из объекта в справочник и обратно —
+  // один щелчок. Вернулся к списку — выбора больше нет, и справочник открывается без объекта,
+  // иначе меню показывало бы объект, который человек сейчас не выбирал.
   const [lastId, setLastId] = useState<string | null>(null);
   const current = match?.params.objectId ?? null;
   useEffect(() => {
     if (current) setLastId(current);
-  }, [current]);
-  // На списке объектов объект выбирают заново — прежний там только мешает.
-  const onList = useMatch("/objects") != null;
-  const objectId = current ?? (onList ? null : lastId);
+    else if (onList) setLastId(null);
+  }, [current, onList]);
+  const objectId = current ?? lastId;
 
   return (
     <>
