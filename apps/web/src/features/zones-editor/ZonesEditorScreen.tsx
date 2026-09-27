@@ -1,21 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
-import { selfIntersects, type Point } from "@/entities/polygon";
-import { ZONE_TYPES, areaKey, isZoneType, zoneColor } from "@/entities/zones";
-import {
-  countByClass,
-  useCameraAnchors,
-  useImage,
-  useSelectedCamera,
-} from "@/features/cameras/useCameras";
-import type { Action, DraftZone } from "@/features/zones-editor/draft";
+import type { Point } from "@/entities/polygon";
+import { countByClass, useCameraAnchors, useImage, useSelectedCamera } from "@/features/cameras/useCameras";
 import { EditorCanvas } from "@/features/zones-editor/EditorCanvas";
-import { saveErrorText, useZonesEditor } from "@/features/zones-editor/useZonesEditor";
-import { areasQuery, equipmentClassesQuery, type CameraRead } from "@/shared/api/queries";
-import { ru, type ZoneType } from "@/shared/locale/ru";
+import { SavePanel, Toolbar, ZoneList, ZoneProperties } from "@/features/zones-editor/ZonePanels";
+import { useZonesEditor } from "@/features/zones-editor/useZonesEditor";
+import { equipmentClassesQuery, type CameraRead } from "@/shared/api/queries";
+import type { ZoneType } from "@/shared/locale/ru";
+import { ButtonLink } from "@/shared/ui/Button";
 import { CameraTabs } from "@/shared/ui/CameraTabs";
+import { Icon } from "@/shared/ui/Icon";
+import { useConfirm } from "@/shared/ui/Modal";
+import { PageHeader } from "@/shared/ui/Page";
 import { Empty, ErrorBox, Loading } from "@/shared/ui/QueryState";
 
 /**
@@ -27,39 +25,58 @@ export function ZonesEditorScreen() {
   const { objectId = "" } = useParams();
   const { cameras, items, camera, select } = useSelectedCamera(objectId);
   const [dirty, setDirty] = useState(false);
+  const confirm = useConfirm();
 
-  const switchCamera = (next: CameraRead) => {
-    if (dirty && !window.confirm("Есть несохранённые правки зон. Перейти к другой камере без них?")) {
-      return;
+  const switchCamera = async (next: CameraRead) => {
+    if (next.id === camera?.id) return;
+    if (dirty) {
+      const ok = await confirm({
+        title: "Уйти без сохранения?",
+        message: "На этой камере есть несохранённые правки зон. При переходе к другой камере они пропадут.",
+        confirmLabel: "Перейти без сохранения",
+        tone: "danger",
+      });
+      if (!ok) return;
     }
     select(next);
   };
 
   return (
-    <section className="space-y-4">
-      <div>
-        <Link to={`/objects/${objectId}/cameras`} className="text-sm text-muted hover:text-ink">
-          ← Камеры
-        </Link>
-        <h2 className="text-xl font-semibold">Редактор зон</h2>
-        <p className="text-sm text-muted">
-          Участок — это тип и название. Одинаковые тип и название на разных камерах — один
-          участок: техника на нём считается по всем камерам, а видимым он остаётся, пока его
-          видит хоть одна.
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        title="Зоны на камерах"
+        description="Участок — это тип и название. Одинаковые тип и название на разных камерах — один участок: техника на нём считается по всем камерам, а видимым он остаётся, пока его видит хоть одна."
+        actions={
+          camera && (
+            <ButtonLink to={`/objects/${objectId}/cameras?camera=${camera.code}`} size="sm" icon="camera">
+              Снимки камеры
+            </ButtonLink>
+          )
+        }
+      />
       {cameras.isPending && <Loading />}
       {cameras.isError && <ErrorBox error={cameras.error} onRetry={() => cameras.refetch()} />}
       {cameras.isSuccess && items.length === 0 && (
-        <Empty>У объекта нет камер: они появляются при загрузке снимков. Размечать пока не на чем.</Empty>
+        <Empty
+          icon="zones"
+          title="Размечать пока не на чем"
+          action={
+            <ButtonLink to={`/objects/${objectId}/upload`} variant="primary" icon="upload">
+              Загрузить снимки
+            </ButtonLink>
+          }
+        >
+          У объекта нет камер: они появляются при загрузке снимков, а первый снимок становится
+          эталонным кадром для разметки.
+        </Empty>
       )}
       {camera && (
-        <>
+        <div className="space-y-4">
           <CameraTabs cameras={items} current={camera} onSelect={switchCamera} />
           <CameraEditor key={camera.id} camera={camera} objectId={objectId} onDirty={setDirty} />
-        </>
+        </div>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -108,9 +125,16 @@ function CameraEditor({
 
   if (camera.reference_image_id == null) {
     return (
-      <Empty>
-        У камеры нет эталонного кадра: он появляется с первым загруженным снимком. Выбрать другой
-        кадр можно на экране <Link to={`/objects/${objectId}/cameras?camera=${camera.code}`} className="underline">камер</Link>.
+      <Empty
+        icon="image"
+        title="У камеры нет эталонного кадра"
+        action={
+          <ButtonLink to={`/objects/${objectId}/cameras?camera=${camera.code}`} icon="camera">
+            Выбрать кадр на экране камер
+          </ButtonLink>
+        }
+      >
+        Эталонный кадр появляется с первым загруженным снимком — на нём и размечают зоны.
       </Empty>
     );
   }
@@ -135,8 +159,8 @@ function CameraEditor({
     });
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
-      <div className="space-y-2">
+    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="space-y-3">
         <Toolbar
           drawing={drawing}
           newType={newType}
@@ -158,15 +182,15 @@ function CameraEditor({
           onDraw={(next, finished) => (finished && next ? finishDrawing(next) : setDrawing(next))}
           dispatch={editor.dispatch}
         />
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-          <label className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+          <label className="flex items-center gap-2">
             <input type="checkbox" checked={showAnchors} onChange={(e) => setShowAnchors(e.target.checked)} />
             где стояла техника на всех снимках камеры
           </label>
           {showAnchors && anchors.isPending && <span className="text-muted">загружаем снимки…</span>}
           {showAnchors &&
             [...counts].map(([code, count]) => (
-              <label key={code} className="flex items-center gap-1">
+              <label key={code} className="flex items-center gap-1.5">
                 <input type="checkbox" checked={!hidden.has(code)} onChange={() => toggle(code)} />
                 <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color.get(code) }} />
                 {classes.data?.get(code) ?? code}: {count}
@@ -174,13 +198,14 @@ function CameraEditor({
             ))}
         </div>
         {showAnchors && anchors.error != null && <ErrorBox error={anchors.error} />}
-        <p className="text-xs text-muted">
+        <p className="flex gap-2 text-xs text-muted">
+          <Icon name="info" size={14} className="mt-px shrink-0" />
           Вершину тяните мышью, «+» на ребре добавляет вершину, двойной щелчок по вершине удаляет
           её. Зону целиком двигают за её внутреннюю часть. Машина относится к зоне по нижней
           середине своей рамки — к точке, где она стоит на земле; размечайте с запасом.
         </p>
       </div>
-      <aside className="space-y-4 text-sm">
+      <aside className="space-y-4 lg:sticky lg:top-20">
         <SavePanel editor={editor} />
         {selected ? (
           <ZoneProperties
@@ -191,7 +216,9 @@ function CameraEditor({
             dispatch={editor.dispatch}
           />
         ) : (
-          <p className="text-muted">Выберите зону на кадре или в списке, чтобы изменить её.</p>
+          <p className="rounded-2xl border border-dashed border-ink/15 px-4 py-3 text-sm text-muted">
+            Выберите зону на кадре или в списке, чтобы изменить её.
+          </p>
         )}
         <ZoneList zones={editor.draft.zones} selected={editor.draft.selected} errors={editor.errors} dispatch={editor.dispatch} />
       </aside>
@@ -204,204 +231,4 @@ const ANCHOR_PALETTE = ["#e11d48", "#f59e0b", "#10b981", "#06b6d4", "#8b5cf6", "
 
 function anchorColors(codes: string[]): Map<string, string> {
   return new Map(codes.map((code, i) => [code, ANCHOR_PALETTE[i % ANCHOR_PALETTE.length] ?? "#c2451a"]));
-}
-
-function Toolbar({
-  drawing,
-  newType,
-  onNewType,
-  onStart,
-  onFinish,
-  onCancel,
-}: {
-  drawing: Point[] | null;
-  newType: ZoneType;
-  onNewType: (t: ZoneType) => void;
-  onStart: () => void;
-  onFinish: () => void;
-  onCancel: () => void;
-}) {
-  if (!drawing) {
-    return (
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <select
-          value={newType}
-          onChange={(e) => isZoneType(e.target.value) && onNewType(e.target.value)}
-          className="rounded border border-ink/20 bg-white px-2 py-1"
-        >
-          {ZONE_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {ru.zoneType[t]}
-            </option>
-          ))}
-        </select>
-        <button type="button" onClick={onStart} className="rounded bg-ink px-3 py-1 text-white">
-          Нарисовать зону
-        </button>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded bg-accent/10 px-3 py-2 text-sm">
-      <span>
-        Новая зона «{ru.zoneType[newType]}»: щёлкайте по углам участка. Замкнуть — щелчок по первой
-        точке или Enter; Backspace убирает последнюю точку, Esc — отмена.
-      </span>
-      <button type="button" onClick={onFinish} disabled={drawing.length < 3} className="rounded bg-ink px-3 py-1 text-white disabled:opacity-40">
-        Готово
-      </button>
-      <button type="button" onClick={onCancel} className="underline">
-        Отмена
-      </button>
-    </div>
-  );
-}
-
-function SavePanel({ editor }: { editor: ReturnType<typeof useZonesEditor> }) {
-  const count = editor.pending.length;
-  const invalid = editor.draft.zones.some((z) => !z.deleted && selfIntersects(z.polygon));
-  return (
-    <div className="space-y-2 rounded-lg border border-ink/10 bg-white/60 p-3">
-      <p>{count === 0 ? "Все правки сохранены." : `Несохранённых изменений: ${count}`}</p>
-      {invalid && <p className="text-red-800">Есть зона с пересекающимися сторонами — такую сервис не примет.</p>}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => editor.save.mutate()}
-          disabled={count === 0 || invalid || editor.save.isPending}
-          className="rounded bg-accent px-3 py-1 text-white disabled:opacity-40"
-        >
-          {editor.save.isPending ? "Сохраняем…" : "Сохранить"}
-        </button>
-        <button type="button" onClick={editor.discard} disabled={count === 0 || editor.save.isPending} className="underline disabled:opacity-40">
-          Отменить правки
-        </button>
-      </div>
-      {editor.save.isSuccess && editor.errors.size === 0 && count === 0 && (
-        <p className="text-muted">
-          Сохранено. Факты окон и выводы анализа пересчитаются в фоне, повторного распознавания не
-          нужно.
-        </p>
-      )}
-      {editor.errors.size > 0 && (
-        <p className="text-red-800">Не сохранено зон: {editor.errors.size}. Причина — у зоны в списке.</p>
-      )}
-    </div>
-  );
-}
-
-function ZoneProperties({
-  zone,
-  objectId,
-  camera,
-  error,
-  dispatch,
-}: {
-  zone: DraftZone;
-  objectId: string;
-  camera: CameraRead;
-  error: unknown;
-  dispatch: (action: Action) => void;
-}) {
-  const areas = useQuery(areasQuery(objectId));
-  const key = areaKey(zone.zoneType, zone.name);
-  const sameType = (areas.data?.areas ?? []).filter((a) => a.zone_type === zone.zoneType);
-  const shared = sameType
-    .find((a) => a.area === key)
-    ?.cameras.filter((c) => c.camera_id !== camera.id)
-    .map((c) => c.camera_code);
-
-  return (
-    <div className="space-y-3 rounded-lg border border-ink/10 bg-white/60 p-3">
-      <label className="block space-y-1">
-        <span className="text-muted">Тип участка</span>
-        <select
-          value={zone.zoneType}
-          onChange={(e) => isZoneType(e.target.value) && dispatch({ type: "setType", key: zone.key, zoneType: e.target.value })}
-          className="w-full rounded border border-ink/20 bg-white px-2 py-1"
-        >
-          {ZONE_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {ru.zoneType[t]}
-            </option>
-          ))}
-        </select>
-        <span className="block text-xs text-muted">Роль: {ru.zoneRole[zone.zoneType]}</span>
-      </label>
-      <label className="block space-y-1">
-        <span className="text-muted">Название участка</span>
-        <input
-          value={zone.name}
-          onChange={(e) => dispatch({ type: "setName", key: zone.key, name: e.target.value })}
-          placeholder={ru.zoneType[zone.zoneType]}
-          list="area-names"
-          className="w-full rounded border border-ink/20 bg-white px-2 py-1"
-        />
-        <datalist id="area-names">
-          {sameType.map((a) => (
-            <option key={a.area} value={a.name} />
-          ))}
-        </datalist>
-        <span className="block text-xs text-muted">
-          Участок: {key}
-          {shared && shared.length > 0
-            ? ` — тот же участок, что на ${shared.join(", ")}`
-            : " — на других камерах такого участка нет"}
-        </span>
-      </label>
-      <p className="text-xs text-muted">Вершин: {zone.polygon.length}</p>
-      {error != null && <p className="text-red-800">Не сохранено: {saveErrorText(error)}</p>}
-      <button
-        type="button"
-        onClick={() => dispatch({ type: "delete", key: zone.key })}
-        className="text-red-800 underline"
-      >
-        Удалить зону
-      </button>
-    </div>
-  );
-}
-
-function ZoneList({
-  zones,
-  selected,
-  errors,
-  dispatch,
-}: {
-  zones: DraftZone[];
-  selected: string | null;
-  errors: Map<string, unknown>;
-  dispatch: (action: Action) => void;
-}) {
-  if (zones.length === 0) {
-    return <Empty>Зон на этой камере нет. Выберите тип и нажмите «Нарисовать зону».</Empty>;
-  }
-  return (
-    <ul className="space-y-1">
-      {zones.map((zone) => (
-        <li key={zone.key} className="flex items-center gap-2">
-          <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: zoneColor(zone.zoneType) }} />
-          {zone.deleted ? (
-            <>
-              <span className="text-muted line-through">{zone.name || ru.zoneType[zone.zoneType]}</span>
-              <button type="button" onClick={() => dispatch({ type: "restore", key: zone.key })} className="text-xs underline">
-                вернуть
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "select", key: zone.key })}
-              className={`text-left ${zone.key === selected ? "font-semibold" : ""}`}
-            >
-              {zone.name || ru.zoneType[zone.zoneType]}
-              <span className="text-muted"> · {ru.zoneType[zone.zoneType]}</span>
-              {zone.saved == null && <span className="text-accent"> · новая</span>}
-              {errors.has(zone.key) && <span className="text-red-800"> · не сохранена</span>}
-            </button>
-          )}
-        </li>
-      ))}
-    </ul>
-  );
 }

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { formatMoment } from "@/entities/format";
 import type { Point } from "@/entities/polygon";
-import { apiGet, apiPatch } from "@/shared/api/client";
+import { apiGet, apiPatch, apiPost } from "@/shared/api/client";
 import {
   camerasQuery,
   imageQuery,
@@ -158,5 +158,32 @@ export function useSetReference(camera: CameraRead) {
     mutationFn: (imageId: string) =>
       apiPatch<CameraRead>(`/site/cameras/${camera.id}`, { reference_image_id: imageId }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["site", "cameras"] }),
+  });
+}
+
+/** Завести камеру заранее, до снимков: код — он же имя папки при загрузке. */
+export function useCreateCamera(objectId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ code, name }: { code: string; name: string }) =>
+      apiPost<CameraRead>("/site/cameras", { object_id: objectId, code, name: name.trim() || null }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["site", "cameras"] }),
+  });
+}
+
+/**
+ * Название и активность камеры. Выключение гасит и её зоны, а факты окон объекта
+ * пересчитываются в фоне: участок, который видела только она, станет слепым.
+ */
+export function useUpdateCamera(camera: CameraRead) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (fields: { name?: string; is_active?: boolean }) =>
+      apiPatch<CameraRead>(`/site/cameras/${camera.id}`, fields),
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: ["site"] }),
+        client.invalidateQueries({ queryKey: ["analysis"] }),
+      ]),
   });
 }

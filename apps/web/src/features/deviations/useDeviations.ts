@@ -28,10 +28,13 @@ const isPreset = (value: string | null): value is StatusPreset =>
 /**
  * Фильтры и выбранное отклонение живут в адресе (`?code=&severity=&status=&from=&to=&id=`):
  * ссылку на карточку можно переслать, а «назад» в браузере возвращает прежний фильтр.
+ * Без `status` лента показывает открытые: оператор приходит разбирать то, что ждёт решения.
  */
+export const DEFAULT_PRESET: StatusPreset = "open";
+
 export function useDeviationFilter() {
   const [params, setParams] = useSearchParams();
-  const preset: StatusPreset = isPreset(params.get("status")) ? (params.get("status") as StatusPreset) : "all";
+  const preset: StatusPreset = isPreset(params.get("status")) ? (params.get("status") as StatusPreset) : DEFAULT_PRESET;
   const filter: DeviationFilter = {
     codes: params.get("code") ? [params.get("code")!] : [],
     severities: params.get("severity") ? [params.get("severity")!] : [],
@@ -61,6 +64,16 @@ export function useDeviations(objectId: string, filter: DeviationFilter, selecte
   // Без выбора — первая карточка ленты: пустая правая половина экрана ничего не объясняет.
   const selected = items.find((d) => d.id === selectedId) ?? items[0] ?? null;
   return { feed, items, selected };
+}
+
+/**
+ * Соседняя карточка ленты: для листания стрелками и перехода к следующей после вердикта.
+ * На краю ленты — `null`.
+ */
+export function neighbour(items: DeviationRead[], current: DeviationRead | null, step: 1 | -1): DeviationRead | null {
+  if (!current) return items[0] ?? null;
+  const index = items.findIndex((d) => d.id === current.id);
+  return items[index + step] ?? null;
 }
 
 export function useExplain(deviationId: string) {

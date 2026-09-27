@@ -64,6 +64,23 @@ export function areasQuery(objectId: string) {
   });
 }
 
+/**
+ * Сколько снимков объекта в статусе — `total` страницы из одного элемента. Нужен счётчикам:
+ * очередь распознавания, снимки без времени.
+ */
+export function imageCountQuery(objectId: string, status?: string) {
+  const filter = status ? `&status=${status}` : "";
+  return queryOptions({
+    queryKey: ["site", "images", objectId, "count", status ?? "ALL"],
+    queryFn: ({ signal }) =>
+      apiGet<SiteSchema<"Page_ImageRead_">>(
+        `/site/images?object_id=${objectId}${filter}&limit=1`,
+        signal,
+      ),
+    select: (page) => page.total,
+  });
+}
+
 /** Карточка снимка: presigned-ссылка, размер кадра, рамки детекций. */
 export function imageQuery(imageId: string) {
   return queryOptions({

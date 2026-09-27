@@ -19,10 +19,17 @@ const DEFAULT_DAYS = 7;
  * Период по умолчанию: неделя по день момента анализа. Отчёт оформляет посчитанные выводы,
  * поэтому «сегодня» здесь ни при чём — демо-хронология датирована графиком (октябрь 2026).
  */
-export function defaultPeriod(asOf: string): Period {
+export function defaultPeriod(asOf: string, days = DEFAULT_DAYS): Period {
   const to = moscowIsoDay(asOf);
-  return { from: shiftIsoDay(to, -(DEFAULT_DAYS - 1)), to };
+  return { from: shiftIsoDay(to, -(days - 1)), to };
 }
+
+/** Быстрые периоды формы: сколько дней по день момента анализа. */
+export const PERIOD_PRESETS = [
+  { label: "Неделя", days: DEFAULT_DAYS },
+  { label: "2 недели", days: 14 },
+  { label: "Месяц", days: 30 },
+] as const;
 
 /** Почему период нельзя отправить; `null` — можно. */
 export function periodProblem(period: Period): string | null {
@@ -52,6 +59,21 @@ export function useReports(objectId: string) {
   const status = useQuery(statusQuery(objectId));
   const reports = useQuery(reportsQuery(objectId));
   return { object, status, reports };
+}
+
+/**
+ * Резюме за период без PDF: тот же контекст, что у отчёта. Текст нейросети проходит сверку
+ * чисел с фактами, иначе резюме шаблонное — источник показывается всегда (ADR-0008).
+ */
+export function useSummary(objectId: string) {
+  return useMutation({
+    mutationFn: (period: Period) =>
+      apiPost<AnalysisSchema<"SummaryRead">>("/analysis/summary", {
+        object_id: objectId,
+        period_from: period.from,
+        period_to: period.to,
+      }),
+  });
 }
 
 /** Формирование PDF: синхронный ответ с готовой ссылкой, затем свежий список. */

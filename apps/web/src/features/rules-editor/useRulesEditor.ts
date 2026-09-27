@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 
 import { toBody, type RuleDraft } from "@/features/rules-editor/draft";
-import { apiGet, apiPatch, apiPost } from "@/shared/api/client";
+import { apiDelete, apiGet, apiPatch, apiPost } from "@/shared/api/client";
 import {
   stagesQuery,
   type DeviationRead,
@@ -51,6 +51,28 @@ export function useSaveRule(objectId: string, stage: StageRead) {
         triggered_by: "MANUAL",
       });
       return { rule, run, ...feedDiff(before, await feedCodes(objectId)) };
+    },
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: ["plan"] }),
+        client.invalidateQueries({ queryKey: ["analysis"] }),
+      ]),
+  });
+}
+
+/**
+ * Удаление правила вехи: по ней перестают проверяться D1, D2, D8, D9, прогресс идёт по
+ * плану. Как и сохранение — с прогоном анализа и сравнением ленты до и после.
+ */
+export function useDeleteRule(objectId: string, stage: StageRead) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!stage.rule) throw new Error("У вехи нет правила");
+      const before = await feedCodes(objectId);
+      await apiDelete(`/plan/rules/${stage.rule.id}`);
+      await apiPost<RunRead>("/analysis/runs?wait=true", { object_id: objectId, triggered_by: "MANUAL" });
+      return feedDiff(before, await feedCodes(objectId));
     },
     onSuccess: () =>
       Promise.all([

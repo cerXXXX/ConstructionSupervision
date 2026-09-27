@@ -1,11 +1,23 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { severityRank } from "@/entities/status";
+import { planQuery, progressQuery } from "@/features/gantt/useGantt";
 import { apiGet, apiPost } from "@/shared/api/client";
-import { objectQuery, statusQuery } from "@/shared/api/queries";
-import type { AnalysisSchema, SiteSchema } from "@/shared/api/schemas";
+import {
+  areasQuery,
+  deviationsQuery,
+  imageCountQuery,
+  objectQuery,
+  statusQuery,
+  type DeviationFilter,
+  type DeviationRead,
+} from "@/shared/api/queries";
+import type { AnalysisSchema, PlanSchema, SiteSchema } from "@/shared/api/schemas";
 
-/** Сколько последних снимков показывать на дашборде. */
+/** Сколько последних снимков показывать на обзоре. */
 const LATEST_IMAGES = 4;
+/** Сколько открытых отклонений показывать в «требует внимания». */
+const TOP_DEVIATIONS = 5;
 
 export type StageAtRisk = {
   stageId: string;
@@ -35,6 +47,64 @@ export function useDashboard(objectId: string) {
   const object = useQuery(objectQuery(objectId));
   const status = useQuery(statusQuery(objectId));
   return { object, status };
+}
+
+/** Открытые — то, что ждёт решения оператора; тот же ключ кэша, что у ленты с этим фильтром. */
+export const OPEN_FILTER: DeviationFilter = {
+  codes: [],
+  severities: [],
+  statuses: ["NEW", "CONFIRMED"],
+  verdicts: [],
+  from: null,
+  to: null,
+};
+
+/** Самые важные открытые отклонения: по серьёзности, внутри — свежие сверху. */
+export function useTopDeviations(objectId: string) {
+  const feed = useQuery(deviationsQuery(objectId, OPEN_FILTER));
+  const items = [...(feed.data?.items ?? [])].sort(
+    (a: DeviationRead, b: DeviationRead) =>
+      severityRank(a.severity) - severityRank(b.severity) || b.last_seen_at.localeCompare(a.last_seen_at),
+  );
+  return { feed, items: items.slice(0, TOP_DEVIATIONS), total: feed.data?.total ?? 0 };
+}
+
+export type SetupStep = { key: "plan" | "images" | "zones" | "analysis"; done: boolean };
+
+/**
+ * Готов ли объект к работе: график, снимки, зоны, первый анализ. Пока хоть одного шага нет,
+ * обзор показывает чек-лист с кнопкой на каждый шаг — новый объект не остаётся «пустым».
+ */
+export function useSetupSteps(objectId: string) {
+  const plan = useQuery(planQuery(objectId));
+  const images = useQuery(imageCountQuery(objectId));
+  const areas = useQuery(areasQuery(objectId));
+  const status = useQuery(statusQuery(objectId));
+  const loaded = plan.isSuccess && images.isSuccess && areas.isSuccess && status.isSuccess;
+  const steps: SetupStep[] = [
+    { key: "plan", done: (plan.data?.stages.length ?? 0) > 0 },
+    { key: "images", done: (images.data ?? 0) > 0 },
+    { key: "zones", done: (areas.data?.areas.length ?? 0) > 0 },
+    { key: "analysis", done: status.data != null },
+  ];
+  return { loaded, steps, stages: plan.data?.stages.length ?? 0 };
+}
+
+export type ActiveStage = {
+  stage: PlanSchema<"PlanStage">;
+  progress: AnalysisSchema<"StageProgress">;
+};
+
+/** Вехи, которые идут сейчас: в работе или с опозданием, — ход работ на обзоре. */
+export function useActiveStages(objectId: string) {
+  const plan = useQuery(planQuery(objectId));
+  const progress = useQuery(progressQuery(objectId));
+  const byStage = new Map((progress.data?.stages ?? []).map((p) => [p.stage_id, p]));
+  const active: ActiveStage[] = (plan.data?.stages ?? []).flatMap((stage) => {
+    const fact = byStage.get(stage.id);
+    return fact && (fact.status === "IN_PROGRESS" || fact.status === "LATE") ? [{ stage, progress: fact }] : [];
+  });
+  return { isPending: plan.isPending || progress.isPending, active };
 }
 
 /**

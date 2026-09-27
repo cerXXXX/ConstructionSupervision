@@ -18,9 +18,13 @@ import {
 } from "@/shared/api/queries";
 import { label, ru } from "@/shared/locale/ru";
 import { Badge } from "@/shared/ui/Badge";
+import { Button } from "@/shared/ui/Button";
+import { textareaClass } from "@/shared/ui/Field";
 import { Frame } from "@/shared/ui/Frame";
+import { Icon } from "@/shared/ui/Icon";
 import { DetectionBox, ZoneOutline } from "@/shared/ui/overlays";
 import { ErrorBox, Loading } from "@/shared/ui/QueryState";
+import { useToast } from "@/shared/ui/Toast";
 
 const EVIDENCE_COLOR = "#c2451a";
 
@@ -28,7 +32,16 @@ const EVIDENCE_COLOR = "#c2451a";
  * Карточка отклонения: что система решила, на каких числах, по какому правилу и на каком
  * снимке. Оператор должен за десять секунд понять, согласен ли он (methodology.md, раздел 12).
  */
-export function DeviationCard({ objectId, deviation }: { objectId: string; deviation: DeviationRead }) {
+export function DeviationCard({
+  objectId,
+  deviation,
+  onVerdict,
+}: {
+  objectId: string;
+  deviation: DeviationRead;
+  /** Вердикт сохранён: экран переходит к следующей карточке. */
+  onVerdict?: () => void;
+}) {
   const explain = useExplain(deviation.id);
   const classes = useQuery(equipmentClassesQuery);
   const names = (code: string) => classes.data?.get(code) ?? code;
@@ -37,126 +50,147 @@ export function DeviationCard({ objectId, deviation }: { objectId: string; devia
   const lines = factLines(facts);
 
   return (
-    <article className="space-y-5 rounded-lg border border-ink/10 bg-white p-5">
-      <header className="space-y-2">
+    <article className="animate-fade-in overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-ink/[0.07]">
+      <header className="space-y-2.5 border-b border-ink/[0.07] p-6">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone={severityTone(deviation.severity)}>
             {deviation.code} · {label(ru.severity, deviation.severity)}
           </Badge>
-          <Badge tone={deviationStatusTone(deviation.status)}>
-            {label(ru.deviationStatus, deviation.status)}
-          </Badge>
+          <Badge tone={deviationStatusTone(deviation.status)}>{label(ru.deviationStatus, deviation.status)}</Badge>
           <span className="text-sm text-muted">{label(ru.deviationCode, deviation.code)}</span>
         </div>
-        <h3 className="text-lg font-semibold">{deviation.title}</h3>
-        <p>{deviation.message}</p>
-        <p className="text-sm text-muted">
-          Эпизод: {formatMoment(deviation.first_seen_at)} — {formatMoment(deviation.last_seen_at)},
-          рабочих сессий: {deviation.occurrences}
+        <h2 className="text-xl font-semibold leading-snug">{deviation.title}</h2>
+        <p className="text-[15px] leading-relaxed text-ink/85">{deviation.message}</p>
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+          <span className="flex items-center gap-1.5">
+            <Icon name="clock" size={14} />
+            {formatMoment(deviation.first_seen_at)} — {formatMoment(deviation.last_seen_at)}
+          </span>
+          <span>рабочих сессий: {deviation.occurrences}</span>
         </p>
       </header>
 
-      <Verdict deviation={deviation} />
+      <Verdict deviation={deviation} onDone={onVerdict} />
 
-      {(groups.length > 0 || lines.length > 0) && (
-        <Section title="Числа">
-          {groups.length > 0 && (
-            <table className="mb-3 w-full border-collapse text-left text-sm">
-              <thead className="text-muted">
-                <tr className="border-b border-ink/10">
-                  <th className="py-1.5 pr-4 font-normal">Обязательная техника</th>
-                  <th className="py-1.5 pr-4 font-normal">Норма</th>
-                  <th className="py-1.5 font-normal">Было</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groups.map((g) => (
-                  <tr key={g.classes} className="border-b border-ink/10">
-                    <td className="py-1.5 pr-4">{g.classes}</td>
-                    <td className="py-1.5 pr-4">не меньше {g.min}</td>
-                    <td className={`py-1.5 font-medium ${g.ok ? "text-emerald-700" : "text-red-700"}`}>
-                      {g.observed} {g.ok ? "✓" : "✗"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-            {lines.map((line) => (
-              <div key={line.label} className="contents">
-                <dt className="text-muted">{line.label}</dt>
-                <dd>{line.value}</dd>
+      <div className="space-y-7 p-6">
+        {(groups.length > 0 || lines.length > 0) && (
+          <Section title="Числа" icon="gauge">
+            {groups.length > 0 && (
+              <div className="mb-4 overflow-hidden rounded-xl ring-1 ring-ink/[0.08]">
+                <table className="w-full border-collapse text-left text-sm">
+                  <thead className="bg-stone-50 text-xs text-muted">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Обязательная техника</th>
+                      <th className="px-3 py-2 font-medium">Норма</th>
+                      <th className="px-3 py-2 font-medium">Было</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groups.map((g) => (
+                      <tr key={g.classes} className="border-t border-ink/[0.06]">
+                        <td className="px-3 py-2">{g.classes}</td>
+                        <td className="px-3 py-2 tabular-nums">не меньше {g.min}</td>
+                        <td className={`px-3 py-2 font-semibold tabular-nums ${g.ok ? "text-emerald-700" : "text-red-700"}`}>
+                          <span className="inline-flex items-center gap-1">
+                            {g.observed}
+                            <Icon name={g.ok ? "check" : "x"} size={14} />
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
-          </dl>
-        </Section>
-      )}
+            )}
+            <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
+              {lines.map((line) => (
+                <div key={line.label} className="contents">
+                  <dt className="text-muted">{line.label}</dt>
+                  <dd>{line.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </Section>
+        )}
 
-      {explain.isPending && <Loading />}
-      {explain.isError && <ErrorBox error={explain.error} onRetry={() => explain.refetch()} />}
-      {explain.data && (
-        <>
-          <RuleSection explain={explain.data} facts={facts} />
-          <EvidenceSection objectId={objectId} deviation={deviation} explain={explain.data} />
-          <SessionsSection deviation={deviation} explain={explain.data} names={names} />
-        </>
-      )}
+        {explain.isPending && <Loading />}
+        {explain.isError && <ErrorBox error={explain.error} onRetry={() => explain.refetch()} />}
+        {explain.data && (
+          <>
+            <EvidenceSection objectId={objectId} deviation={deviation} explain={explain.data} />
+            <RuleSection objectId={objectId} explain={explain.data} facts={facts} />
+            <SessionsSection deviation={deviation} explain={explain.data} names={names} />
+          </>
+        )}
+      </div>
     </article>
   );
 }
 
-function Verdict({ deviation }: { deviation: DeviationRead }) {
+function Verdict({ deviation, onDone }: { deviation: DeviationRead; onDone?: () => void }) {
   const verdict = useVerdict(deviation);
+  const toast = useToast();
   const [comment, setComment] = useState(deviation.verdict_comment ?? "");
-  const recorded =
-    deviation.verdict_at != null
-      ? `${label(ru.verdict, deviation.verdict)}: ${deviation.verdict_by ?? "оператор"}, ${formatMoment(deviation.verdict_at)}${
-          deviation.verdict_comment ? ` — «${deviation.verdict_comment}»` : ""
-        }`
-      : null;
+  const [commenting, setCommenting] = useState(Boolean(deviation.verdict_comment));
+
+  const send = (status: "CONFIRMED" | "REJECTED") =>
+    verdict.mutate(
+      { status, comment },
+      {
+        onSuccess: () => {
+          toast.success(status === "CONFIRMED" ? "Нарушение подтверждено" : "Отмечено как ложное", deviation.title);
+          onDone?.();
+        },
+        onError: (error) => toast.error(error, "Вердикт не сохранён"),
+      },
+    );
 
   return (
-    <div className="space-y-2 rounded bg-ink/5 p-3 text-sm">
-      {recorded && <p className="font-medium">{recorded}</p>}
+    <div className="space-y-3 bg-canvas/50 px-6 py-4">
+      {deviation.verdict_at != null && (
+        <p className="flex flex-wrap items-center gap-2 text-sm">
+          <Badge tone={deviationStatusTone(deviation.verdict ?? "RESOLVED")}>{label(ru.verdict, deviation.verdict)}</Badge>
+          <span className="text-muted">
+            {deviation.verdict_by ?? "оператор"}, {formatMoment(deviation.verdict_at)}
+            {deviation.verdict_comment && ` — «${deviation.verdict_comment}»`}
+          </span>
+        </p>
+      )}
       {deviation.status === "RESOLVED" && (
-        <p className="text-muted">
+        <p className="text-sm text-muted">
           Отклонение закрыто: условие уже не выполняется. Вердикт останется в истории — «да, это
           было» или «ложное срабатывание».
         </p>
       )}
-      <textarea
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-        placeholder="Комментарий к вердикту (необязательно)"
-        maxLength={2000}
-        rows={2}
-        className="w-full rounded border border-ink/20 bg-white p-2"
-      />
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={verdict.isPending}
-          onClick={() => verdict.mutate({ status: "CONFIRMED", comment })}
-          className="rounded bg-red-700 px-3 py-1.5 text-white disabled:opacity-50"
-        >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-sm font-medium">Ваш вердикт:</span>
+        <Button variant="danger" icon="check" loading={verdict.isPending && verdict.variables?.status === "CONFIRMED"} disabled={verdict.isPending} onClick={() => send("CONFIRMED")}>
           Подтвердить
-        </button>
-        <button
-          type="button"
-          disabled={verdict.isPending}
-          onClick={() => verdict.mutate({ status: "REJECTED", comment })}
-          className="rounded border border-ink/20 bg-white px-3 py-1.5 disabled:opacity-50"
-        >
+        </Button>
+        <Button icon="x" loading={verdict.isPending && verdict.variables?.status === "REJECTED"} disabled={verdict.isPending} onClick={() => send("REJECTED")}>
           Ложное срабатывание
-        </button>
+        </Button>
+        {!commenting && (
+          <Button variant="ghost" size="sm" icon="edit" onClick={() => setCommenting(true)}>
+            Комментарий
+          </Button>
+        )}
       </div>
-      {verdict.isError && <ErrorBox error={verdict.error} />}
+      {commenting && (
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Комментарий к вердикту: что видно на площадке, кто проверил"
+          maxLength={2000}
+          rows={2}
+          className={textareaClass}
+        />
+      )}
     </div>
   );
 }
 
-function RuleSection({ explain, facts }: { explain: ExplainRead; facts: Record<string, unknown> }) {
+function RuleSection({ objectId, explain, facts }: { objectId: string; explain: ExplainRead; facts: Record<string, unknown> }) {
   const rule = explain.rule;
   const stageVersion = typeof facts.stage_rule_version === "number" ? facts.stage_rule_version : null;
   // Пороги — числа и флаги; вложенные словари (шаблоны текстов, названия причин) оператору
@@ -165,25 +199,42 @@ function RuleSection({ explain, facts }: { explain: ExplainRead; facts: Record<s
     ([, value]) => value === null || typeof value !== "object",
   );
   return (
-    <Section title="Правило">
+    <Section
+      title="Правило"
+      icon="rules"
+      actions={
+        <div className="flex gap-1">
+          {stageVersion != null && explain.deviation.stage_id && (
+            <Link to={`/objects/${objectId}/settings/rules?stage=${explain.deviation.stage_id}`} className="text-xs font-medium text-accent hover:underline">
+              правило вехи →
+            </Link>
+          )}
+          <Link to="/settings/deviation-rules" className="ml-3 text-xs font-medium text-accent hover:underline">
+            пороги {rule?.code ?? ""} →
+          </Link>
+        </div>
+      }
+    >
       {rule == null ? (
         <p className="text-sm text-muted">Настройки правила не найдены.</p>
       ) : (
-        <div className="space-y-1 text-sm">
+        <div className="space-y-2 text-sm">
           <p>
             {rule.code} «{label(ru.deviationCode, rule.code)}» · базовая серьёзность{" "}
             {label(ru.severity, rule.severity).toLowerCase()}
             {!rule.enabled && " · правило выключено"}
           </p>
           {params.length > 0 && (
-            <p className="text-muted">
-              Параметры: {params.map(([key, value]) => `${key} = ${JSON.stringify(value)}`).join(", ")}
-            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {params.map(([key, value]) => (
+                <span key={key} className="rounded-md bg-ink/[0.05] px-2 py-0.5 text-xs">
+                  {label(ru.ruleParam, key)}: <b className="tabular-nums">{String(value)}</b>
+                </span>
+              ))}
+            </div>
           )}
           {stageVersion != null && (
-            <p className="text-muted">
-              Правило вехи «веха → техника», версия {stageVersion}: на нём построены нормы выше.
-            </p>
+            <p className="text-muted">Правило вехи «веха → техника», версия {stageVersion}: на нём построены нормы выше.</p>
           )}
         </div>
       )}
@@ -207,8 +258,8 @@ function EvidenceSection({
   if (!current) {
     const reason = (deviation.facts as Record<string, unknown>).evidence_absent_reason;
     return (
-      <Section title="Снимок">
-        <p className="text-sm text-muted">
+      <Section title="Снимок" icon="image">
+        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
           Снимков нет{typeof reason === "string" ? `: ${reason}` : ""}. Участок не был виден — вывод
           «проверить вручную», а не «пусто».
         </p>
@@ -216,21 +267,26 @@ function EvidenceSection({
     );
   }
   return (
-    <Section title={`Снимок${evidence.length > 1 ? ` ${index + 1} из ${evidence.length}` : ""}`}>
-      {evidence.length > 1 && (
-        <div className="mb-2 flex gap-1 text-sm">
-          {evidence.map((e, i) => (
-            <button
-              key={e.image_id}
-              type="button"
-              onClick={() => setIndex(i)}
-              className={`rounded px-2 py-0.5 ${i === index ? "bg-ink text-white" : "hover:bg-ink/10"}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-      )}
+    <Section
+      title={`Снимок-доказательство${evidence.length > 1 ? ` · ${index + 1} из ${evidence.length}` : ""}`}
+      icon="image"
+      actions={
+        evidence.length > 1 && (
+          <div className="flex items-center gap-1">
+            {evidence.map((e, i) => (
+              <button
+                key={e.image_id}
+                type="button"
+                onClick={() => setIndex(i)}
+                className={`h-7 min-w-7 rounded-md px-2 text-xs font-medium ${i === index ? "bg-ink text-white" : "text-ink/70 hover:bg-ink/[0.06]"}`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )
+      }
+    >
       <EvidenceFrame
         key={current.image_id}
         objectId={objectId}
@@ -293,17 +349,19 @@ function EvidenceFrame({
           />
         ))}
       </Frame>
-      <p className="text-sm text-muted">
-        {camera?.name ?? "Камера"} · {formatMoment(detail.captured_at)} ·{" "}
-        {boxes.length > 0
-          ? `рамок в выводе: ${boxes.length}`
-          : "рамок нет: снимок показывает, что техники на участке не было"}
-        {" · "}
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+        <span className="flex items-center gap-1.5">
+          <Icon name="camera" size={14} />
+          {camera?.name ?? "Камера"} · {formatMoment(detail.captured_at)}
+        </span>
+        <span>
+          {boxes.length > 0 ? `рамок в выводе: ${boxes.length}` : "рамок нет: снимок показывает, что техники на участке не было"}
+        </span>
         <Link
           to={`/objects/${objectId}/cameras?camera=${camera?.code ?? ""}&image=${imageId}`}
-          className="text-accent underline"
+          className="ml-auto font-medium text-accent hover:underline"
         >
-          открыть на экране камер
+          открыть на экране камер →
         </Link>
       </p>
       {zones.isError && <ErrorBox error={zones.error} />}
@@ -322,7 +380,7 @@ function SessionsSection({
 }) {
   if (explain.sessions == null) {
     return (
-      <Section title="Проверенные сессии">
+      <Section title="Проверенные сессии" icon="clock">
         <p className="text-sm text-muted">
           Факты сессий сейчас недоступны
           {explain.sessions_unavailable_reason ? `: ${explain.sessions_unavailable_reason}` : ""}.
@@ -332,36 +390,50 @@ function SessionsSection({
   }
   const rows = sessionRows(explain.sessions, deviation.area ?? null, names);
   return (
-    <Section title={`Проверенные сессии: ${rows.length}`}>
-      <table className="w-full border-collapse text-left text-sm">
-        <thead className="text-muted">
-          <tr className="border-b border-ink/10">
-            <th className="py-1.5 pr-4 font-normal">Окно</th>
-            <th className="py-1.5 pr-4 font-normal">Участок</th>
-            <th className="py-1.5 font-normal">Техника на участке</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-b border-ink/10 align-top">
-              <td className="py-1.5 pr-4 tabular-nums">{row.at}</td>
-              <td className="py-1.5 pr-4">{row.visibility}</td>
-              <td className="py-1.5">{row.equipment}</td>
+    <Section title={`Проверенные сессии: ${rows.length}`} icon="clock">
+      <div className="overflow-hidden rounded-xl ring-1 ring-ink/[0.08]">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead className="bg-stone-50 text-xs text-muted">
+            <tr>
+              <th className="px-3 py-2 font-medium">Окно</th>
+              <th className="px-3 py-2 font-medium">Участок</th>
+              <th className="px-3 py-2 font-medium">Техника на участке</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {explain.sessions_truncated && (
-        <p className="mt-1 text-xs text-muted">Показаны не все сессии эпизода.</p>
-      )}
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id} className="border-t border-ink/[0.06] align-top">
+                <td className="whitespace-nowrap px-3 py-2 tabular-nums">{row.at}</td>
+                <td className="px-3 py-2">{row.visibility}</td>
+                <td className="px-3 py-2">{row.equipment}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {explain.sessions_truncated && <p className="mt-1.5 text-xs text-muted">Показаны не все сессии эпизода.</p>}
     </Section>
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  icon,
+  actions,
+  children,
+}: {
+  title: string;
+  icon: "gauge" | "rules" | "image" | "clock";
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <section>
-      <h4 className="mb-2 font-semibold">{title}</h4>
+      <div className="mb-3 flex items-center gap-2">
+        <Icon name={icon} size={16} className="text-muted" />
+        <h3 className="font-semibold">{title}</h3>
+        {actions && <div className="ml-auto">{actions}</div>}
+      </div>
       {children}
     </section>
   );

@@ -149,6 +149,32 @@ export const ru = {
     FAILED: "ошибка распознавания",
     NEEDS_TIME: "нет времени съёмки",
   } as Record<string, string>,
+  // Параметры правил D1–D10 (methodology.md, раздел 9): неизвестный ключ покажется как есть.
+  ruleParam: {
+    min_sessions: "Сессий подряд",
+    escalate_after_days: "Повысить через, раб. дн.",
+    escalate_to: "Повысить до",
+    k_days: "Допуск K, раб. дн.",
+    min_visible_share: "Мин. доля видимости",
+  } as Record<string, string>,
+  // enums.yaml: equipment_group — группа класса техники.
+  equipmentGroup: {
+    EARTHWORKS: "Земляные работы",
+    LIFTING: "Подъём",
+    CONCRETE: "Бетон",
+    TRANSPORT: "Транспорт",
+    ROAD: "Дорожные работы",
+    OTHER: "Прочее",
+  } as Record<string, string>,
+  // Фаза вехи (enums.yaml: construction_phase).
+  stagePhase: {
+    PREPARATORY: "Подготовка",
+    SUBSTRUCTURE: "Подземная часть",
+    SUPERSTRUCTURE: "Надземная часть",
+    ENVELOPE_ROOF: "Фасад и кровля",
+    NETWORKS: "Сети",
+    LANDSCAPING: "Благоустройство",
+  } as Record<string, string>,
 } as const;
 
 /** Название значения перечисления; неизвестное значение показывается как есть, а не пропадает. */

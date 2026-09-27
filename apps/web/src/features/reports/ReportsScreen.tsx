@@ -1,17 +1,24 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 
 import { formatMoment, formatPlanDate, formatSize } from "@/entities/format";
 import {
+  PERIOD_PRESETS,
   type Period,
   type ReportCreated,
   defaultPeriod,
   periodProblem,
   useCreateReport,
   useReports,
+  useSummary,
 } from "@/features/reports/useReports";
 import { label, ru } from "@/shared/locale/ru";
+import { Button, buttonClass } from "@/shared/ui/Button";
+import { Field, fieldClass } from "@/shared/ui/Field";
+import { Icon } from "@/shared/ui/Icon";
+import { PageHeader, Panel } from "@/shared/ui/Page";
 import { Empty, ErrorBox, Loading } from "@/shared/ui/QueryState";
+import { useToast } from "@/shared/ui/Toast";
 
 /**
  * Отчёты объекта: сформировать PDF за период и открыть готовые (apps/web/README.md, §3).
@@ -19,161 +26,157 @@ import { Empty, ErrorBox, Loading } from "@/shared/ui/QueryState";
  */
 export function ReportsScreen() {
   const { objectId = "" } = useParams();
-  const { object, status, reports } = useReports(objectId);
-
-  if (object.isPending) return <Loading />;
-  if (object.isError) return <ErrorBox error={object.error} onRetry={() => object.refetch()} />;
+  const { status, reports } = useReports(objectId);
 
   return (
-    <section className="space-y-6">
-      <div>
-        <Link to={`/objects/${objectId}`} className="text-sm text-muted hover:text-ink">
-          ← {object.data.name}
-        </Link>
-        <h2 className="text-xl font-semibold">Отчёты</h2>
-        <p className="text-sm text-muted">
-          PDF план-факт: статус и SPI, Гант, загрузка техники, отклонения со снимками-доказательствами,
-          резюме и раздел «Ограничения» — чего система за период не видела.
-        </p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Отчёты"
+        description="PDF план-факт: статус и SPI, Гант, загрузка техники, отклонения со снимками-доказательствами, резюме и раздел «Ограничения» — чего система за период не видела."
+      />
 
       {status.isPending && <Loading />}
       {status.isError && <ErrorBox error={status.error} onRetry={() => status.refetch()} />}
       {status.data === null && (
-        <Empty>
-          По объекту ещё не было анализа: отчёт оформляет его выводы, формировать пока нечего.
-          Анализ запускается кнопкой «Пересчитать» на дашборде.
+        <Empty icon="report" title="Формировать пока нечего">
+          Отчёт оформляет выводы анализа, а анализа по объекту ещё не было. Он запускается сам после
+          распознавания снимков; вручную — кнопкой «Пересчитать» вверху.
         </Empty>
       )}
       {status.data && (
-        <CreateForm
-          objectId={objectId}
-          asOf={status.data.as_of}
-          // Новый анализ — новый период по умолчанию.
-          key={status.data.as_of}
-        />
+        // Новый анализ — новый период по умолчанию.
+        <CreateForm key={status.data.as_of} objectId={objectId} asOf={status.data.as_of} />
       )}
 
-      <div>
-        <h3 className="mb-2 font-semibold">Сформированные отчёты</h3>
-        {reports.isPending && <Loading />}
-        {reports.isError && <ErrorBox error={reports.error} onRetry={() => reports.refetch()} />}
-        {reports.data?.total === 0 && (
-          <Empty>Отчётов по объекту ещё нет. Сформируйте первый формой выше.</Empty>
-        )}
+      <Panel title="Сформированные отчёты" icon="folder" bodyClassName="">
+        {reports.isPending && <div className="px-5"><Loading /></div>}
+        {reports.isError && <div className="p-5"><ErrorBox error={reports.error} onRetry={() => reports.refetch()} /></div>}
+        {reports.data?.total === 0 && <p className="px-5 py-6 text-sm text-muted">Отчётов по объекту ещё нет — сформируйте первый формой выше.</p>}
         {reports.data && reports.data.total > 0 && (
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="text-muted">
-              <tr className="border-b border-ink/10">
-                <th className="py-2 pr-4 font-normal">Период</th>
-                <th className="py-2 pr-4 font-normal">Сформирован</th>
-                <th className="py-2 pr-4 font-normal">Размер</th>
-                <th className="py-2 font-normal" />
-              </tr>
-            </thead>
-            <tbody>
-              {reports.data.items.map((report) => (
-                <tr key={report.key} className="border-b border-ink/10">
-                  <td className="py-2 pr-4">
+          <ul className="divide-y divide-ink/[0.06]">
+            {reports.data.items.map((report) => (
+              <li key={report.key} className="flex flex-wrap items-center gap-4 px-5 py-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-700">
+                  <Icon name="report" size={19} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium tabular-nums">
                     {formatPlanDate(report.period_from)} — {formatPlanDate(report.period_to)}
-                  </td>
-                  <td className="py-2 pr-4">{formatMoment(report.created_at)}</td>
-                  <td className="py-2 pr-4">{formatSize(report.size_bytes)}</td>
-                  <td className="py-2">
-                    <a
-                      href={report.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-accent underline"
-                    >
-                      Открыть PDF
-                    </a>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </p>
+                  <p className="text-xs text-muted">
+                    сформирован {formatMoment(report.created_at)} · {formatSize(report.size_bytes)}
+                  </p>
+                </div>
+                <a href={report.url} target="_blank" rel="noreferrer" className={buttonClass("secondary", "sm")}>
+                  <Icon name="external" size={15} />
+                  Открыть
+                </a>
+                <a href={report.url} download className={buttonClass("ghost", "sm")}>
+                  <Icon name="download" size={15} />
+                  Скачать
+                </a>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
-    </section>
+      </Panel>
+    </div>
   );
 }
 
 function CreateForm({ objectId, asOf }: { objectId: string; asOf: string }) {
   const [period, setPeriod] = useState<Period>(() => defaultPeriod(asOf));
   const create = useCreateReport(objectId);
+  const summary = useSummary(objectId);
+  const toast = useToast();
   const problem = periodProblem(period);
 
+  const submit = () => {
+    if (problem) return;
+    create.mutate(period, {
+      onSuccess: (report) => toast.success("Отчёт готов", `${formatPlanDate(report.period_from)} — ${formatPlanDate(report.period_to)}`),
+      onError: (error) => toast.error(error, "Отчёт не сформирован"),
+    });
+  };
+
   return (
-    <div className="space-y-3 rounded-lg border border-ink/10 bg-white/60 p-4">
-      <form
-        className="flex flex-wrap items-end gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!problem) create.mutate(period);
-        }}
-      >
-        <label className="text-sm">
-          <span className="block text-muted">С</span>
-          <input
-            type="date"
-            value={period.from}
-            onChange={(e) => setPeriod({ ...period, from: e.target.value })}
-            className="rounded border border-ink/20 px-2 py-1"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="block text-muted">По (включительно)</span>
-          <input
-            type="date"
-            value={period.to}
-            onChange={(e) => setPeriod({ ...period, to: e.target.value })}
-            className="rounded border border-ink/20 px-2 py-1"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={problem != null || create.isPending}
-          className="rounded bg-ink px-3 py-1.5 text-sm text-white hover:bg-ink/80 disabled:opacity-50"
-        >
-          {create.isPending ? "Формируем PDF…" : "Сформировать PDF"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setPeriod(defaultPeriod(asOf))}
-          className="text-sm text-muted underline"
-        >
-          Неделя по день анализа
-        </button>
-      </form>
+    <Panel title="Новый отчёт" icon="report" bodyClassName="p-5 space-y-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-wrap gap-1">
+          {PERIOD_PRESETS.map((preset) => {
+            const value = defaultPeriod(asOf, preset.days);
+            const active = value.from === period.from && value.to === period.to;
+            return (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => setPeriod(value)}
+                className={`h-9 rounded-lg px-3 text-sm font-medium ${active ? "bg-ink text-white" : "text-ink/70 ring-1 ring-ink/15 hover:bg-ink/[0.04]"}`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+        <Field label="С">
+          <input type="date" value={period.from} onChange={(e) => setPeriod({ ...period, from: e.target.value })} className={fieldClass("input", "md", "w-auto")} />
+        </Field>
+        <Field label="По (включительно)">
+          <input type="date" value={period.to} onChange={(e) => setPeriod({ ...period, to: e.target.value })} className={fieldClass("input", "md", "w-auto")} />
+        </Field>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button icon="sparkle" loading={summary.isPending} disabled={problem != null} onClick={() => summary.mutate(period)}>
+            Резюме за период
+          </Button>
+          <Button variant="primary" icon="report" loading={create.isPending} disabled={problem != null} onClick={submit}>
+            {create.isPending ? "Формируем PDF…" : "Сформировать PDF"}
+          </Button>
+        </div>
+      </div>
       <p className="text-xs text-muted">
-        Даты — сутки по Москве. Выводы в отчёте — на момент анализа {formatMoment(asOf)}; дни
-        периода позже него отчёт назовёт в «Ограничениях». Отчёт того же периода, сформированный
-        сегодня повторно, заменяет прежний.
+        Даты — сутки по Москве. Выводы — на момент анализа {formatMoment(asOf)}; дни периода позже
+        него отчёт назовёт в «Ограничениях». Отчёт того же периода, сформированный сегодня повторно,
+        заменяет прежний.
       </p>
-      {problem && <p className="text-sm text-red-800">{problem}</p>}
+      {problem && <p className="text-sm text-red-700">{problem}</p>}
       {create.isError && <ErrorBox error={create.error} />}
       {create.data && <Created report={create.data} />}
-    </div>
+      {summary.isError && <ErrorBox error={summary.error} />}
+      {summary.data && (
+        <div className="space-y-2 rounded-xl bg-canvas/60 p-4 text-sm ring-1 ring-ink/[0.06]">
+          <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
+            <Icon name="sparkle" size={14} />
+            Резюме за {formatPlanDate(summary.data.period_from)} — {formatPlanDate(summary.data.period_to)} ·
+            источник: {label(ru.summarySource, summary.data.generated_by)}
+          </p>
+          <p className="whitespace-pre-line leading-relaxed">{summary.data.text}</p>
+          {summary.data.llm_rejected.length > 0 && (
+            <p className="text-xs text-muted">Текст нейросети отброшен: {summary.data.llm_rejected.join("; ")}</p>
+          )}
+        </div>
+      )}
+    </Panel>
   );
 }
 
 function Created({ report }: { report: ReportCreated }) {
   return (
-    <div className="rounded border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-950">
-      <p className="font-medium">
-        Отчёт за {formatPlanDate(report.period_from)} — {formatPlanDate(report.period_to)} готов
-        ({formatSize(report.size_bytes)}).{" "}
-        <a href={report.url} target="_blank" rel="noreferrer" className="underline">
-          Открыть PDF
-        </a>
-      </p>
-      <p>
-        Снимков-доказательств: {report.evidence_images}
-        {report.evidence_missing > 0 &&
-          `, не вставлено: ${report.evidence_missing} — причины в разделе «Ограничения»`}
-        . Резюме: {label(ru.summarySource, report.summary_generated_by)}.
-      </p>
+    <div className="flex flex-wrap items-center gap-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-950 ring-1 ring-emerald-200">
+      <Icon name="check" size={18} className="text-emerald-700" />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium">
+          Отчёт за {formatPlanDate(report.period_from)} — {formatPlanDate(report.period_to)} готов ({formatSize(report.size_bytes)})
+        </p>
+        <p className="text-emerald-900/80">
+          Снимков-доказательств: {report.evidence_images}
+          {report.evidence_missing > 0 && `, не вставлено: ${report.evidence_missing} — причины в разделе «Ограничения»`}.
+          Резюме: {label(ru.summarySource, report.summary_generated_by)}.
+        </p>
+      </div>
+      <a href={report.url} target="_blank" rel="noreferrer" className={buttonClass("primary", "md")}>
+        <Icon name="external" size={16} />
+        Открыть PDF
+      </a>
     </div>
   );
 }

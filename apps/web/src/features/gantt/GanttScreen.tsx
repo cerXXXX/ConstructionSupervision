@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -15,9 +16,16 @@ import {
   type PlanStage,
 } from "@/features/gantt/useGantt";
 import { isWorkday, workdaysIn, type Dates } from "@/features/gantt/workdays";
+import { PlanSetupDialog, type PlanMode } from "@/features/objects/PlanSetupDialog";
+import { objectQuery } from "@/shared/api/queries";
 import { label, ru } from "@/shared/locale/ru";
 import { Badge } from "@/shared/ui/Badge";
+import { Button, IconButton } from "@/shared/ui/Button";
+import { fieldClass } from "@/shared/ui/Field";
+import { Icon } from "@/shared/ui/Icon";
+import { PageHeader, Segmented } from "@/shared/ui/Page";
 import { Empty, ErrorBox, Loading } from "@/shared/ui/QueryState";
+import { useToast } from "@/shared/ui/Toast";
 
 const ZOOMS: { label: string; value: Zoom }[] = [
   { label: "Весь график", value: "fit" },
@@ -31,10 +39,12 @@ const ZOOMS: { label: string; value: Zoom }[] = [
  */
 export function GanttScreen() {
   const { objectId = "" } = useParams();
+  const object = useQuery(objectQuery(objectId));
   const { plan, progress, rows, asOfDay } = useGantt(objectId);
   const { selected, select } = useSelectedRow(rows);
   const [zoom, setZoom] = useState<Zoom>("fit");
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [planMode, setPlanMode] = useState<PlanMode | null>(null);
   const activeDraft = draft && draft.stageId === selected?.stage.id ? draft : null;
   // Черновик — только у выбранной вехи: переход к другой вехе его сбрасывает.
   const choose = (stageId: string) => {
@@ -43,49 +53,69 @@ export function GanttScreen() {
   };
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Link to={`/objects/${objectId}`} className="text-sm text-muted hover:text-ink">
-            ← Дашборд
-          </Link>
-          <h2 className="text-xl font-semibold">График план-факт</h2>
-          {plan.data && (
-            <p className="text-sm text-muted">
-              {plan.data.object.name} · версия плана {plan.data.plan_version} · календарь{" "}
-              {plan.data.calendar.code}
-              {progress.data && ` · анализ на ${formatMoment(progress.data.as_of)}`}
-            </p>
-          )}
-        </div>
-        <div className="flex gap-1 text-sm">
-          {ZOOMS.map((z) => (
-            <button
-              key={z.label}
-              type="button"
-              onClick={() => setZoom(z.value)}
-              className={`rounded px-3 py-1 ${zoom === z.value ? "bg-ink text-white" : "border border-ink/20 hover:border-accent"}`}
-            >
-              {z.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div>
+      <PageHeader
+        title="График план-факт"
+        description="Плановые окна вех, фактический старт, выполнение и прогноз окончания. Полосу можно тянуть мышью — даты уйдут в черновик вехи."
+        meta={
+          plan.data &&
+          rows.length > 0 && (
+            <>
+              <span>версия плана {plan.data.plan_version}</span>
+              <span>·</span>
+              <span>календарь {plan.data.calendar.code}</span>
+              {progress.data && (
+                <>
+                  <span>·</span>
+                  <span>анализ на {formatMoment(progress.data.as_of)}</span>
+                </>
+              )}
+            </>
+          )
+        }
+        actions={
+          rows.length > 0 && (
+            <>
+              <Segmented size="sm" value={zoom} onChange={setZoom} options={ZOOMS} />
+              <Button size="sm" icon="refresh" onClick={() => setPlanMode("generate")}>
+                Перестроить
+              </Button>
+            </>
+          )
+        }
+      />
 
       {plan.isPending && <Loading />}
       {plan.isError && <ErrorBox error={plan.error} onRetry={() => plan.refetch()} />}
       {progress.isError && <ErrorBox error={progress.error} onRetry={() => progress.refetch()} />}
       {plan.isSuccess && rows.length === 0 && (
-        <Empty>У объекта нет графика: импортируйте его или сгенерируйте по МРР.</Empty>
+        <Empty
+          icon="gantt"
+          title="У объекта нет графика"
+          action={
+            <>
+              <Button variant="primary" icon="sparkle" onClick={() => setPlanMode("generate")}>
+                Сгенерировать по МРР
+              </Button>
+              <Button icon="upload" onClick={() => setPlanMode("import")}>
+                Импортировать CSV / XLSX
+              </Button>
+            </>
+          }
+        >
+          Без графика не с чем сверять факт. Сгенерируйте его по нормам МРР-3.2.81-12 из этажности и
+          площади или загрузите из файла — вехи придут вместе с правилами техники.
+        </Empty>
       )}
       {progress.data === null && rows.length > 0 && (
-        <Empty>
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-sky-50 px-4 py-2.5 text-sm text-sky-900 ring-1 ring-sky-200">
+          <Icon name="info" size={16} />
           Анализа по объекту ещё не было: показан только план, без факта и прогноза.
-        </Empty>
+        </div>
       )}
 
       {plan.data && rows.length > 0 && (
-        <>
+        <div className="space-y-4">
           <GanttChart
             rows={rows}
             asOfDay={asOfDay}
@@ -98,7 +128,7 @@ export function GanttScreen() {
           />
           <Legend />
           {selected ? (
-            <StagePanel row={selected} stages={rows.map((r) => r.stage)}>
+            <StagePanel row={selected} stages={rows.map((r) => r.stage)} objectId={objectId} onClose={() => select(null)}>
               <DatesEditor
                 key={selected.stage.id}
                 objectId={objectId}
@@ -109,13 +139,24 @@ export function GanttScreen() {
               />
             </StagePanel>
           ) : (
-            <p className="text-sm text-muted">
-              Щёлкните по вехе — откроется её карточка. Полосу можно тянуть: целиком или за край.
+            <p className="flex items-center gap-2 text-sm text-muted">
+              <Icon name="info" size={15} />
+              Щёлкните по вехе — откроется её карточка с фактом, прогнозом и правкой дат.
             </p>
           )}
-        </>
+        </div>
       )}
-    </section>
+
+      {planMode && object.data && (
+        <PlanSetupDialog
+          object={object.data}
+          stages={rows.length}
+          initialMode={planMode}
+          open
+          onClose={() => setPlanMode(null)}
+        />
+      )}
+    </div>
   );
 }
 
@@ -129,7 +170,7 @@ function Legend() {
     </span>
   );
   return (
-    <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted">
+    <div className="flex flex-wrap gap-x-5 gap-y-1.5 rounded-xl bg-white/60 px-4 py-2.5 text-[13px] text-muted ring-1 ring-ink/[0.06]">
       {item(<rect x="1" y="1" width="20" height="10" rx="2" className="fill-stone-200 stroke-stone-400" />, "плановое окно")}
       {item(<rect x="1" y="1" width="20" height="10" rx="2" className="fill-accent/20 stroke-accent" />, "критический путь")}
       {item(<rect x="1" y="3" width="14" height="6" className="fill-amber-500" />, "выполнено (цвет — статус)")}
@@ -141,72 +182,115 @@ function Legend() {
   );
 }
 
-function StagePanel({ row, stages, children }: { row: GanttRow; stages: PlanStage[]; children: ReactNode }) {
+function StagePanel({
+  row,
+  stages,
+  objectId,
+  onClose,
+  children,
+}: {
+  row: GanttRow;
+  stages: PlanStage[];
+  objectId: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   const { stage, progress } = row;
   const names = new Map(stages.map((s) => [s.id, `${s.code} ${s.name}`]));
   const facts = (progress?.facts ?? {}) as Record<string, unknown>;
   return (
-    <article className="grid gap-5 rounded-lg border border-ink/10 bg-white p-5 lg:grid-cols-2">
-      <div className="space-y-2 text-sm">
-        <h3 className="text-lg font-semibold">
-          {stage.code} {stage.name}
-        </h3>
-        <p>
-          По плану {formatPlanDate(stage.plan_start)} — {formatPlanDate(stage.plan_end)}, норма{" "}
-          {stage.norm_duration_days} {ru.units.workDays}
-        </p>
-        <p>
-          {stage.is_critical
-            ? "На критическом пути: задержка вехи сдвигает окончание объекта."
-            : stage.total_float_days < 0
-              ? `Резерв ${formatDelay(stage.total_float_days)} ${ru.units.workDays}: даты вехи нарушают связи с соседями.`
-              : `Резерв ${stage.total_float_days} ${ru.units.workDays}: на столько веха может сдвинуться без сдвига объекта.`}
-        </p>
-        {stage.basis && <p className="text-muted">Основание срока: {stage.basis}</p>}
-        {stage.predecessors.length > 0 && (
-          <div>
-            <p className="text-muted">Зависит от:</p>
-            <ul className="list-disc pl-5">
-              {stage.predecessors.map((p) => (
-                <li key={p.stage_id}>
-                  {names.get(p.stage_id) ?? p.stage_id} — {label(ru.linkType, p.type)}
-                  {p.lag_days !== 0 && `, лаг ${p.lag_days} ${ru.units.workDays}`}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+    <article className="animate-fade-in rounded-2xl bg-white shadow-sm ring-1 ring-ink/[0.07]">
+      <header className="flex flex-wrap items-start gap-3 border-b border-ink/[0.07] px-6 py-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold">
+            <span className={stage.is_critical ? "text-accent" : "text-muted"}>{stage.code}</span> {stage.name}
+          </h2>
+          <p className="text-sm text-muted">
+            {label(ru.stagePhase, stage.phase)} · по плану {formatPlanDate(stage.plan_start)} —{" "}
+            {formatPlanDate(stage.plan_end)}, норма {stage.norm_duration_days} {ru.units.workDays}
+          </p>
+        </div>
+        {progress && <Badge tone={stageStatusTone(progress.status)}>{label(ru.stageStatus, progress.status)}</Badge>}
+        <Link
+          to={`/objects/${objectId}/settings/rules?stage=${stage.id}`}
+          className="inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-ink/75 hover:bg-ink/[0.06]"
+        >
+          <Icon name="rules" size={15} />
+          Правило техники
+        </Link>
+        <IconButton icon="x" label="Закрыть карточку" size="sm" onClick={onClose} />
+      </header>
+      <div className="grid gap-6 p-6 lg:grid-cols-2">
+        <div className="space-y-3 text-sm">
+          <p className={`rounded-xl p-3 ${stage.is_critical ? "bg-accent/[0.06]" : stage.total_float_days < 0 ? "bg-red-50" : "bg-canvas/60"}`}>
+            {stage.is_critical
+              ? "На критическом пути: задержка вехи сдвигает окончание объекта."
+              : stage.total_float_days < 0
+                ? `Резерв ${formatDelay(stage.total_float_days)} ${ru.units.workDays}: даты вехи нарушают связи с соседями.`
+                : `Резерв ${stage.total_float_days} ${ru.units.workDays}: на столько веха может сдвинуться без сдвига объекта.`}
+          </p>
+          {stage.basis && <p className="text-muted">Основание срока: {stage.basis}</p>}
+          {stage.predecessors.length > 0 && (
+            <div>
+              <p className="mb-1 text-[13px] font-medium">Зависит от</p>
+              <ul className="space-y-0.5">
+                {stage.predecessors.map((p) => (
+                  <li key={p.stage_id} className="flex gap-2">
+                    <Icon name="chevronRight" size={14} className="mt-0.5 text-muted" />
+                    <span>
+                      {names.get(p.stage_id) ?? p.stage_id} — <span className="text-muted">{label(ru.linkType, p.type)}</span>
+                      {p.lag_days !== 0 && `, лаг ${p.lag_days} ${ru.units.workDays}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
 
-      <div className="space-y-2 text-sm">
-        {!progress ? (
-          <p className="text-muted">Факта по вехе нет: анализ её ещё не считал.</p>
-        ) : (
-          <>
-            <p>
-              <Badge tone={stageStatusTone(progress.status)}>{label(ru.stageStatus, progress.status)}</Badge>{" "}
-              <span className="text-muted">уверенность {label(ru.confidence, progress.confidence)}</span>
-            </p>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-              <dt className="text-muted">Фактический старт</dt>
-              <dd>{formatPlanDate(progress.actual_start)}</dd>
-              <dt className="text-muted">Прогресс</dt>
-              <dd>
-                {Math.round(progress.progress * 100)} % при плане {Math.round(progress.planned_progress * 100)} %
-              </dd>
-              <dt className="text-muted">SPI</dt>
-              <dd>{formatSpi(progress.spi)}</dd>
-              <dt className="text-muted">Прогноз окончания</dt>
-              <dd>
-                {formatPlanDate(progress.forecast_end)}, отставание {formatDelay(progress.delay_days)}{" "}
-                {ru.units.workDays} — при сохранении текущего темпа
-              </dd>
-            </dl>
-            <p className="text-muted">{basis(facts)}</p>
-          </>
-        )}
+        <div className="space-y-3 text-sm">
+          {!progress ? (
+            <p className="text-muted">Факта по вехе нет: анализ её ещё не считал.</p>
+          ) : (
+            <>
+              <div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-muted">Выполнено</span>
+                  <span>
+                    <b className="text-lg tabular-nums">{Math.round(progress.progress * 100)} %</b>
+                    <span className="text-muted"> при плане {Math.round(progress.planned_progress * 100)} %</span>
+                  </span>
+                </div>
+                <div className="relative mt-1.5 h-2 rounded-full bg-ink/[0.07]">
+                  <div className="h-full rounded-full bg-emerald-600" style={{ width: `${Math.round(progress.progress * 100)}%` }} />
+                  <div className="absolute -top-1 h-4 w-0.5 rounded bg-ink/70" style={{ left: `${Math.round(progress.planned_progress * 100)}%` }} />
+                </div>
+              </div>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5">
+                <dt className="text-muted">Фактический старт</dt>
+                <dd>{formatPlanDate(progress.actual_start)}</dd>
+                <dt className="text-muted">SPI</dt>
+                <dd className="tabular-nums">{formatSpi(progress.spi)}</dd>
+                <dt className="text-muted">Прогноз окончания</dt>
+                <dd>
+                  {formatPlanDate(progress.forecast_end)}
+                  {progress.delay_days != null && progress.delay_days !== 0 && (
+                    <b className={progress.delay_days > 0 ? "text-red-700" : "text-sky-700"}>
+                      {" "}
+                      ({formatDelay(progress.delay_days)} {ru.units.workDays})
+                    </b>
+                  )}
+                  <span className="block text-xs text-muted">
+                    при сохранении текущего темпа · уверенность {label(ru.confidence, progress.confidence)}
+                  </span>
+                </dd>
+              </dl>
+              <p className="text-xs text-muted">{basis(facts)}</p>
+            </>
+          )}
+        </div>
+        <div className="lg:col-span-2">{children}</div>
       </div>
-      <div className="lg:col-span-2">{children}</div>
     </article>
   );
 }
@@ -229,6 +313,7 @@ function DatesEditor({
   onDraft: (draft: Draft | null) => void;
 }) {
   const save = useSaveDates(objectId);
+  const toast = useToast();
   const dates = draft?.dates ?? { start: row.start, end: row.end };
   const set = (edge: keyof Dates, value: string) => {
     if (value) onDraft({ stageId: row.stage.id, dates: { ...dates, [edge]: dayNumber(value) } });
@@ -240,52 +325,58 @@ function DatesEditor({
   ].filter((issue): issue is string => typeof issue === "string");
 
   return (
-    <div className="space-y-3 border-t border-ink/10 pt-4 text-sm">
-      <p className="font-medium">Плановые даты</p>
+    <div className={`space-y-3 rounded-xl p-4 text-sm ring-1 ${draft ? "bg-accent/[0.04] ring-accent/30" : "bg-canvas/50 ring-ink/[0.06]"}`}>
+      <p className="flex items-center gap-2 font-medium">
+        <Icon name="calendar" size={16} className="text-muted" />
+        Плановые даты
+        {draft && <Badge tone="bg-accent/10 text-accent ring-1 ring-inset ring-accent/25" size="sm">черновик</Badge>}
+      </p>
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-muted">Начало</span>
-          <input
-            type="date"
-            value={isoDate(dates.start)}
-            onChange={(e) => set("start", e.target.value)}
-            className="rounded border border-ink/20 px-2 py-1"
-          />
+          <span className="text-xs text-muted">Начало</span>
+          <input type="date" value={isoDate(dates.start)} onChange={(e) => set("start", e.target.value)} className={fieldClass("input", "md", "w-auto")} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-muted">Окончание, включительно</span>
-          <input
-            type="date"
-            value={isoDate(dates.end)}
-            onChange={(e) => set("end", e.target.value)}
-            className="rounded border border-ink/20 px-2 py-1"
-          />
+          <span className="text-xs text-muted">Окончание, включительно</span>
+          <input type="date" value={isoDate(dates.end)} onChange={(e) => set("end", e.target.value)} className={fieldClass("input", "md", "w-auto")} />
         </label>
-        <p className="pb-1.5 text-muted">
-          {dates.end >= dates.start ? `${workdaysIn(dates, calendar)} ${ru.units.workDays}` : "—"} по
-          календарю {calendar.code}
+        <p className="pb-2 text-muted">
+          {dates.end >= dates.start ? `${workdaysIn(dates, calendar)} ${ru.units.workDays}` : "—"} по календарю {calendar.code}
         </p>
-        <button
-          type="button"
-          disabled={!draft || issues.length > 0 || save.isPending}
-          onClick={() => save.mutate({ stageId: row.stage.id, dates }, { onSuccess: () => onDraft(null) })}
-          className="rounded bg-accent px-3 py-1.5 text-white hover:bg-accent/85 disabled:opacity-40"
-        >
-          {save.isPending ? "Сохраняем и пересчитываем…" : "Сохранить и пересчитать"}
-        </button>
-        {draft && !save.isPending && (
-          <button type="button" onClick={() => onDraft(null)} className="rounded border border-ink/20 px-3 py-1.5 hover:border-accent">
-            Отменить
-          </button>
-        )}
+        <div className="ml-auto flex gap-2">
+          {draft && !save.isPending && (
+            <Button variant="ghost" onClick={() => onDraft(null)}>
+              Отменить
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            icon="check"
+            disabled={!draft || issues.length > 0}
+            loading={save.isPending}
+            onClick={() =>
+              save.mutate(
+                { stageId: row.stage.id, dates },
+                {
+                  onSuccess: () => {
+                    onDraft(null);
+                    toast.success("Даты вехи сохранены", "Анализ пересчитан — итог ниже");
+                  },
+                  onError: (error) => toast.error(error, "Даты не сохранены"),
+                },
+              )
+            }
+          >
+            {save.isPending ? "Сохраняем и пересчитываем…" : "Сохранить и пересчитать"}
+          </Button>
+        </div>
       </div>
-      {issues.length > 0 && <p className="text-red-800">Не сохранить: {issues.join("; ")}.</p>}
-      <p className="text-muted">
+      {issues.length > 0 && <p className="text-red-700">Не сохранить: {issues.join("; ")}.</p>}
+      <p className="text-xs text-muted">
         Полосу можно тянуть на диаграмме: целиком — длительность в рабочих днях сохраняется, за
         край — меняется начало или конец. Соседние вехи не сдвигаются: нарушенную связь покажет
         отрицательный резерв.
       </p>
-      {save.isError && <ErrorBox error={save.error} />}
       {save.data && <SaveSummary result={save.data} />}
     </div>
   );
@@ -298,16 +389,12 @@ function SaveSummary({ result }: { result: DatesSaveResult }) {
     s.status ? `${label(ru.objectStatus, s.status.status)}, ${formatDelay(s.status.delay_days)} ${ru.units.workDays}` : "—";
   const critical = (value: boolean | null) => (value == null ? "—" : value ? "да" : "нет");
   return (
-    <div className="rounded bg-emerald-50 p-3 text-emerald-950">
-      <p className="font-medium">Сохранено, анализ пересчитан ({formatMoment(result.run.as_of)}):</p>
-      <ul className="list-disc pl-5">
+    <div className="rounded-xl bg-emerald-50 p-4 text-emerald-950 ring-1 ring-emerald-200">
+      <p className="mb-1 font-medium">Сохранено, анализ пересчитан на {formatMoment(result.run.as_of)}:</p>
+      <ul className="space-y-0.5">
+        <li>прогноз окончания вехи: {change(formatPlanDate(before.stage?.forecast_end), formatPlanDate(after.stage?.forecast_end))}</li>
         <li>
-          прогноз окончания вехи:{" "}
-          {change(formatPlanDate(before.stage?.forecast_end), formatPlanDate(after.stage?.forecast_end))}
-        </li>
-        <li>
-          отставание вехи:{" "}
-          {change(formatDelay(before.stage?.delay_days), formatDelay(after.stage?.delay_days))} {ru.units.workDays}
+          отставание вехи: {change(formatDelay(before.stage?.delay_days), formatDelay(after.stage?.delay_days))} {ru.units.workDays}
         </li>
         <li>на критическом пути: {change(critical(before.critical), critical(after.critical))}</li>
         <li>объект: {change(objectDelay(before), objectDelay(after))}</li>

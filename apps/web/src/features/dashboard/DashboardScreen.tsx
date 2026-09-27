@@ -1,257 +1,165 @@
-import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { formatDelay, formatMoment, formatPlanDate, formatSpi } from "@/entities/format";
-import { SEVERITY_ORDER, objectStatusTone, openDeviations, severityTone } from "@/entities/status";
+import { SEVERITY_ORDER, objectStatusText, openDeviations, severityDot } from "@/entities/status";
 import {
-  stagesAtRisk,
-  useDashboard,
-  useLatestImages,
-  useRecompute,
-} from "@/features/dashboard/useDashboard";
+  ActiveStagesPanel,
+  AttentionPanel,
+  LatestImagesPanel,
+  SetupChecklist,
+  StagesPanel,
+} from "@/features/dashboard/DashboardPanels";
+import { useDashboard } from "@/features/dashboard/useDashboard";
 import type { ObjectStatus } from "@/shared/api/queries";
 import { label, ru } from "@/shared/locale/ru";
-import { Badge } from "@/shared/ui/Badge";
-import { Empty, ErrorBox, Loading } from "@/shared/ui/QueryState";
+import { Dot } from "@/shared/ui/Badge";
+import { ButtonLink } from "@/shared/ui/Button";
+import { Icon } from "@/shared/ui/Icon";
+import { PageHeader, Panel, Stat } from "@/shared/ui/Page";
+import { ErrorBox, Loading } from "@/shared/ui/QueryState";
 
 /**
- * Дашборд объекта: что не так и насколько можно верить выводу. Каждое число подписано,
+ * Обзор объекта: что не так и насколько можно верить выводу. Каждое число подписано,
  * откуда оно; прогноз — с уверенностью и оговоркой о темпе (apps/web/README.md, §5).
  */
 export function DashboardScreen() {
   const { objectId = "" } = useParams();
   const { object, status } = useDashboard(objectId);
-  const recompute = useRecompute(objectId, status.data?.as_of);
 
-  if (object.isPending) return <Loading />;
-  if (object.isError) return <ErrorBox error={object.error} onRetry={() => object.refetch()} />;
+  if (!object.data) return null;
+  const o = object.data;
 
   return (
-    <section className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Link to="/objects" className="text-sm text-muted hover:text-ink">
-            ← Объекты
-          </Link>
-          <h2 className="text-xl font-semibold">{object.data.name}</h2>
-          <p className="text-sm text-muted">
-            {label(ru.objectType, object.data.object_type)} · начало СМР{" "}
-            {formatPlanDate(object.data.plan_start)} · версия плана {object.data.plan_version}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            to={`/objects/${objectId}/deviations`}
-            className="rounded bg-ink px-3 py-1.5 text-sm text-white hover:bg-ink/80"
-          >
-            Предупреждения
-          </Link>
-          <Link
-            to={`/objects/${objectId}/gantt`}
-            className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent"
-          >
-            График
-          </Link>
-          <Link
-            to={`/objects/${objectId}/cameras`}
-            className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent"
-          >
-            Камеры
-          </Link>
-          <Link
-            to={`/objects/${objectId}/reports`}
-            className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent"
-          >
-            Отчёты
-          </Link>
-          <Link
-            to={`/objects/${objectId}/settings/rules`}
-            className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent"
-          >
-            Правила
-          </Link>
-          <Link
-            to={`/objects/${objectId}/settings/zones`}
-            className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent"
-          >
-            Зоны
-          </Link>
-          <button
-            type="button"
-            onClick={() => recompute.mutate()}
-            disabled={recompute.isPending}
-            title="Прогон анализа на тот же момент, что показан ниже"
-            className="rounded border border-ink/20 px-3 py-1.5 text-sm hover:border-accent disabled:opacity-50"
-          >
-            {recompute.isPending ? "Пересчитываем…" : "Пересчитать"}
-          </button>
-        </div>
-      </div>
-      {recompute.isError && <ErrorBox error={recompute.error} />}
+    <div className="space-y-5">
+      <PageHeader
+        title={o.name}
+        description={[
+          label(ru.objectType, o.object_type),
+          o.address,
+          o.plan_start && `начало СМР ${formatPlanDate(o.plan_start)}`,
+          `версия плана ${o.plan_version}`,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      />
+
+      <SetupChecklist object={o} />
 
       {status.isPending && <Loading />}
       {status.isError && <ErrorBox error={status.error} onRetry={() => status.refetch()} />}
-      {status.data === null && (
-        <Empty>
-          По объекту ещё не было анализа. Он запускается сам после распознавания снимков и правки
-          плана; можно запустить и вручную — кнопкой «Пересчитать».
-        </Empty>
-      )}
-      {status.data && <StatusPanels objectId={objectId} status={status.data} />}
+      {/* Анализа не было — об этом и о кнопке запуска говорит чек-лист подготовки выше. */}
+      {status.data && <StatusOverview objectId={objectId} status={status.data} />}
 
-      <LatestImages objectId={objectId} />
-    </section>
+      <ActiveStagesPanel objectId={objectId} />
+      <LatestImagesPanel objectId={objectId} />
+    </div>
   );
 }
 
-function StatusPanels({ objectId, status }: { objectId: string; status: ObjectStatus }) {
+function StatusOverview({ objectId, status }: { objectId: string; status: ObjectStatus }) {
   const facts = status.facts as Record<string, unknown>;
-  const risk = stagesAtRisk(status.stages_at_risk);
-  const total = openDeviations(status.deviations);
+  const visible = typeof facts.visible_share === "number" ? `${Math.round(facts.visible_share * 100)} %` : "—";
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Tile title="Статус">
-          <Badge tone={objectStatusTone(status.status)}>{label(ru.objectStatus, status.status)}</Badge>
-          <p className="mt-2 text-sm text-muted">
-            {status.delay_days != null
-              ? `${formatDelay(status.delay_days)} ${ru.units.workDays} по критическому пути, при сохранении текущего темпа`
-              : "Отставание не оценено: мало наблюдений или участки не видны"}
-          </p>
-        </Tile>
-        <Tile title="SPI">
-          <p className="text-2xl font-semibold">{formatSpi(status.spi)}</p>
-          <p className="text-sm text-muted">
-            Освоенный объём к плановому, веса — нормативные длительности вех. Меньше 1 — отстаём.
-          </p>
-        </Tile>
-        <Tile title="Уверенность">
-          <p className="text-2xl font-semibold">{label(ru.confidence, status.confidence)}</p>
-          <p className="text-sm text-muted">
-            Дней наблюдений: {String(facts.observation_days ?? "—")}, видимость участков:{" "}
-            {typeof facts.visible_share === "number"
-              ? `${Math.round(facts.visible_share * 100)} %`
-              : "—"}
-          </p>
-        </Tile>
-        <Tile title="На момент">
-          <p className="text-lg font-semibold">{formatMoment(status.as_of)}</p>
-          <p className="text-sm text-muted">Посчитано {formatMoment(status.computed_at)}</p>
-        </Tile>
+      <div className="grid gap-5 lg:grid-cols-3">
+        <Panel className="lg:col-span-2" bodyClassName="p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[13px] text-muted">Статус по графику</p>
+              <p className={`mt-1 text-3xl font-semibold tracking-tight ${objectStatusText(status.status)}`}>
+                {label(ru.objectStatus, status.status)}
+                {status.delay_days != null && status.delay_days !== 0 && (
+                  <span className="ml-2 tabular-nums">
+                    {formatDelay(status.delay_days)} {ru.units.workDays}
+                  </span>
+                )}
+              </p>
+              <p className="mt-1 max-w-xl text-sm text-muted">
+                {status.delay_days != null
+                  ? "Отставание по критическому пути при сохранении текущего темпа."
+                  : "Отставание не оценено: мало наблюдений или участки не видны."}
+                {status.status === "UNKNOWN" &&
+                  typeof facts.min_days_for_forecast === "number" &&
+                  ` Для прогноза нужно не меньше ${facts.min_days_for_forecast} дней наблюдений.`}
+              </p>
+            </div>
+            <div className="text-right text-xs text-muted">
+              <p className="flex items-center justify-end gap-1.5">
+                <Icon name="clock" size={13} />
+                на {formatMoment(status.as_of)}
+              </p>
+              <p>посчитано {formatMoment(status.computed_at)}</p>
+            </div>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-5 border-t border-ink/[0.07] pt-5 sm:grid-cols-4">
+            <Stat
+              label="SPI"
+              value={formatSpi(status.spi)}
+              hint="освоено к плану; меньше 1 — отстаём"
+              tone={status.spi != null && status.spi < 0.9 ? "text-red-700" : ""}
+            />
+            <Stat label="Уверенность" value={label(ru.confidence, status.confidence)} hint="по дням и видимости" />
+            <Stat label="Дней наблюдений" value={String(facts.observation_days ?? "—")} hint="с распознанными снимками" />
+            <Stat label="Видимость участков" value={visible} hint="доля видимых камерами" />
+          </div>
+        </Panel>
+        <DeviationSummary objectId={objectId} counts={status.deviations} />
       </div>
 
-      {status.status === "UNKNOWN" && typeof facts.min_days_for_forecast === "number" && (
-        <p className="text-sm text-muted">
-          Для прогноза нужно не меньше {facts.min_days_for_forecast} дней наблюдений.
-        </p>
-      )}
-
       {status.blind_areas > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-          Участков вне контроля ИИ: {status.blind_areas}. В последней рабочей сессии их не видела ни
-          одна камера — проверить вручную.
+        <div className="flex items-start gap-3 rounded-2xl bg-amber-50 p-4 text-amber-900 ring-1 ring-amber-200">
+          <Icon name="eye" size={18} className="mt-0.5 shrink-0" />
+          <div className="flex-1 text-sm">
+            <p className="font-medium">Участков вне контроля ИИ: {status.blind_areas} — проверить вручную</p>
+            <p>В последней рабочей сессии их не видела ни одна камера.</p>
+          </div>
+          <ButtonLink to={`/objects/${objectId}/deviations?code=D10`} size="sm">
+            Какие участки
+          </ButtonLink>
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Tile title={`Открытые отклонения: ${total}`}>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {SEVERITY_ORDER.map((severity) => (
-              <Link key={severity} to={`/objects/${objectId}/deviations?status=open&severity=${severity}`}>
-                <Badge tone={severityTone(severity)}>
-                  {label(ru.severity, severity)}: {status.deviations[severity] ?? 0}
-                </Badge>
-              </Link>
-            ))}
-          </div>
-          <Link to={`/objects/${objectId}/deviations`} className="mt-2 inline-block text-sm text-accent underline">
-            Вся лента, включая закрытые
-          </Link>
-        </Tile>
-        <Tile title={`Вехи: ${status.stages.total ?? 0}`}>
-          <ul className="mt-1 text-sm">
-            {Object.entries(status.stages)
-              .filter(([key]) => key !== "total")
-              .map(([key, count]) => (
-                <li key={key}>
-                  {label(ru.stageFactStatus, key.toUpperCase())}: {count}
-                </li>
-              ))}
-          </ul>
-        </Tile>
-      </div>
-
-      <div>
-        <h3 className="mb-2 font-semibold">Вехи в риске</h3>
-        {risk.length === 0 ? (
-          <Empty>Вех критического пути с прогнозом позже плана нет.</Empty>
-        ) : (
-          <table className="w-full border-collapse text-left text-sm">
-            <thead className="text-muted">
-              <tr className="border-b border-ink/10">
-                <th className="py-2 pr-4 font-normal">Веха</th>
-                <th className="py-2 pr-4 font-normal">Окончание по плану</th>
-                <th className="py-2 pr-4 font-normal">Прогноз</th>
-                <th className="py-2 font-normal">Отставание</th>
-              </tr>
-            </thead>
-            <tbody>
-              {risk.map((stage) => (
-                <tr key={stage.stageId} className="border-b border-ink/10">
-                  <td className="py-2 pr-4">
-                    <Link to={`/objects/${objectId}/gantt?stage=${stage.stageId}`} className="underline decoration-ink/30 hover:text-accent">
-                      {stage.name}
-                    </Link>
-                  </td>
-                  <td className="py-2 pr-4">{formatPlanDate(stage.planEnd)}</td>
-                  <td className="py-2 pr-4">{formatPlanDate(stage.forecastEnd)}</td>
-                  <td className="py-2">
-                    {formatDelay(stage.delayDays)} {ru.units.workDays}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+      <div className="grid gap-5 lg:grid-cols-3">
+        <AttentionPanel objectId={objectId} />
+        <StagesPanel objectId={objectId} status={status} />
       </div>
     </>
   );
 }
 
-function LatestImages({ objectId }: { objectId: string }) {
-  const latest = useLatestImages(objectId);
+/** Открытые отклонения по серьёзности: каждая строка — ссылка в ленту с этим фильтром. */
+function DeviationSummary({ objectId, counts }: { objectId: string; counts: Record<string, number> }) {
+  const total = openDeviations(counts);
+  const max = Math.max(1, ...SEVERITY_ORDER.map((s) => counts[s] ?? 0));
+  const base = `/objects/${objectId}/deviations`;
   return (
-    <div>
-      <h3 className="mb-2 font-semibold">Последние снимки</h3>
-      {latest.isPending && <Loading />}
-      {latest.error != null && <ErrorBox error={latest.error} />}
-      {!latest.isPending && latest.error == null && latest.total === 0 && (
-        <Empty>Распознанных снимков пока нет.</Empty>
-      )}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {latest.images.map((image) => (
-          <figure key={image.id} className="space-y-1">
-            <img
-              src={image.url}
-              alt={`Снимок ${formatMoment(image.captured_at)}`}
-              className="aspect-video w-full rounded object-cover"
-            />
-            <figcaption className="text-xs text-muted">
-              {formatMoment(image.captured_at)} · рамок: {image.detections.length}
-              {image.usable === false && ` · непригоден (${image.usable_reason ?? "?"})`}
-            </figcaption>
-          </figure>
-        ))}
+    <Panel bodyClassName="p-6 flex h-full flex-col">
+      <p className="text-[13px] text-muted">Открытые предупреждения</p>
+      <p className={`mt-1 text-3xl font-semibold tabular-nums ${total > 0 ? "" : "text-emerald-700"}`}>{total}</p>
+      <div className="mt-4 space-y-2">
+        {SEVERITY_ORDER.map((severity) => {
+          const n = counts[severity] ?? 0;
+          return (
+            <Link
+              key={severity}
+              to={`${base}?severity=${severity}`}
+              className="group flex items-center gap-3 rounded-lg px-2 py-1 -mx-2 text-sm hover:bg-canvas/70"
+            >
+              <Dot className={severityDot(severity)} />
+              <span className="w-20 shrink-0">{label(ru.severity, severity)}</span>
+              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink/[0.06]">
+                <span className={`block h-full rounded-full ${severityDot(severity)}`} style={{ width: `${(n / max) * 100}%` }} />
+              </span>
+              <span className="w-6 text-right font-medium tabular-nums">{n}</span>
+            </Link>
+          );
+        })}
       </div>
-    </div>
-  );
-}
-
-function Tile({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="rounded-lg border border-ink/10 bg-white/60 p-4">
-      <p className="mb-1 text-sm text-muted">{title}</p>
-      {children}
-    </div>
+      <div className="mt-auto pt-5">
+        <ButtonLink to={base} variant={total > 0 ? "primary" : "secondary"} icon="alert" className="w-full">
+          {total > 0 ? "Разобрать предупреждения" : "Открыть ленту"}
+        </ButtonLink>
+      </div>
+    </Panel>
   );
 }

@@ -1,18 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useRef } from "react";
+import { useParams } from "react-router-dom";
 
 import { formatClock, formatDay } from "@/entities/format";
-import { SEVERITY_ORDER, deviationStatusTone, severityTone } from "@/entities/status";
+import { SEVERITY_ORDER, deviationStatusTone, severityDot } from "@/entities/status";
 import { DeviationCard } from "@/features/deviations/DeviationCard";
 import {
+  DEFAULT_PRESET,
   STATUS_PRESETS,
+  neighbour,
   useDeviationFilter,
   useDeviations,
   type StatusPreset,
 } from "@/features/deviations/useDeviations";
-import { objectQuery, type DeviationRead } from "@/shared/api/queries";
+import type { DeviationRead } from "@/shared/api/queries";
 import { label, ru } from "@/shared/locale/ru";
-import { Badge } from "@/shared/ui/Badge";
+import { Badge, Dot } from "@/shared/ui/Badge";
+import { Button } from "@/shared/ui/Button";
+import { fieldClass } from "@/shared/ui/Field";
+import { PageHeader, Segmented } from "@/shared/ui/Page";
 import { Empty, ErrorBox, Loading } from "@/shared/ui/QueryState";
 
 const CODES = Object.keys(ru.deviationCode);
@@ -20,115 +25,148 @@ const CODES = Object.keys(ru.deviationCode);
 /**
  * Лента предупреждений (T30) — главный экран: правило, числа и снимок-доказательство
  * (apps/web/README.md, §3). Слева лента по дням, справа карточка выбранного отклонения.
+ * ↑/↓ листают ленту; после вердикта открывается следующая карточка.
  */
 export function DeviationsScreen() {
   const { objectId = "" } = useParams();
-  const object = useQuery(objectQuery(objectId));
   const { filter, preset, selectedId, update } = useDeviationFilter();
   const { feed, items, selected } = useDeviations(objectId, filter, selectedId);
+  const filtered = filter.codes.length > 0 || filter.severities.length > 0 || filter.from != null || filter.to != null;
+
+  const go = (step: 1 | -1) => {
+    const next = neighbour(items, selected, step);
+    if (next) update({ id: next.id });
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key === "ArrowDown" || e.key === "j") {
+        e.preventDefault();
+        go(1);
+      }
+      if (e.key === "ArrowUp" || e.key === "k") {
+        e.preventDefault();
+        go(-1);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   return (
-    <section className="space-y-4">
-      <div>
-        <Link to={`/objects/${objectId}`} className="text-sm text-muted hover:text-ink">
-          ← Дашборд
-        </Link>
-        <h2 className="text-xl font-semibold">Предупреждения</h2>
-        {object.data && <p className="text-sm text-muted">{object.data.name}</p>}
-      </div>
-
-      <Filters
-        preset={preset}
-        code={filter.codes[0] ?? ""}
-        severity={filter.severities[0] ?? ""}
-        from={filter.from ?? ""}
-        to={filter.to ?? ""}
-        onChange={(changes) => update({ ...changes, id: null })}
+    <div>
+      <PageHeader
+        title="Предупреждения"
+        description="Что нарушено, по какому правилу, на каких числах и снимках. Подтвердите или отметьте ложным — вердикт остаётся в истории."
       />
 
-      {feed.isPending && <Loading />}
-      {feed.isError && <ErrorBox error={feed.error} onRetry={() => feed.refetch()} />}
-      {feed.isSuccess && items.length === 0 && (
-        <Empty>
-          {preset === "all" && !filter.codes.length && !filter.severities.length && !filter.from
-            ? "Отклонений нет. Лента заполняется прогоном анализа: он идёт сам после распознавания снимков и правки плана, вручную — кнопкой «Пересчитать» на дашборде."
-            : "Под фильтр ничего не попало. Сбросьте часть условий."}
-        </Empty>
-      )}
-      {items.length > 0 && (
-        <div className="grid items-start gap-4 lg:grid-cols-[22rem_1fr]">
-          <Feed items={items} total={feed.data?.total ?? items.length} selected={selected} onSelect={(id) => update({ id })} />
-          {selected && <DeviationCard key={selected.id} objectId={objectId} deviation={selected} />}
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-ink/[0.07]">
+        <Segmented
+          value={preset}
+          onChange={(key: StatusPreset) => update({ status: key === DEFAULT_PRESET ? null : key, id: null })}
+          options={(Object.keys(STATUS_PRESETS) as StatusPreset[]).map((key) => ({
+            value: key,
+            label: STATUS_PRESETS[key].label,
+          }))}
+        />
+        <div className="flex flex-wrap items-center gap-1">
+          {SEVERITY_ORDER.map((s) => {
+            const active = filter.severities.includes(s);
+            return (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={active}
+                onClick={() => update({ severity: active ? null : s, id: null })}
+                className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm transition-colors ${
+                  active ? "bg-ink text-white" : "text-ink/70 hover:bg-ink/[0.06]"
+                }`}
+              >
+                <Dot className={severityDot(s)} />
+                {label(ru.severity, s)}
+              </button>
+            );
+          })}
         </div>
-      )}
-    </section>
-  );
-}
-
-function Filters({
-  preset,
-  code,
-  severity,
-  from,
-  to,
-  onChange,
-}: {
-  preset: StatusPreset;
-  code: string;
-  severity: string;
-  from: string;
-  to: string;
-  onChange: (changes: Record<string, string | null>) => void;
-}) {
-  const field = "rounded border border-ink/20 bg-white px-2 py-1";
-  return (
-    <div className="flex flex-wrap items-end gap-3 rounded-lg border border-ink/10 bg-white/60 p-3 text-sm">
-      <div className="flex gap-1">
-        {(Object.keys(STATUS_PRESETS) as StatusPreset[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onChange({ status: key === "all" ? null : key })}
-            className={`rounded px-2 py-1 ${key === preset ? "bg-ink text-white" : "hover:bg-ink/10"}`}
-          >
-            {STATUS_PRESETS[key].label}
-          </button>
-        ))}
-      </div>
-      <label className="flex flex-col gap-0.5">
-        <span className="text-muted">Код</span>
-        <select value={code} onChange={(e) => onChange({ code: e.target.value || null })} className={field}>
-          <option value="">все</option>
+        <select
+          value={filter.codes[0] ?? ""}
+          onChange={(e) => update({ code: e.target.value || null, id: null })}
+          className={fieldClass("select", "sm", "w-auto max-w-60")}
+          aria-label="Код отклонения"
+        >
+          <option value="">Все коды</option>
           {CODES.map((c) => (
             <option key={c} value={c}>
               {c} — {label(ru.deviationCode, c)}
             </option>
           ))}
         </select>
-      </label>
-      <label className="flex flex-col gap-0.5">
-        <span className="text-muted">Серьёзность</span>
-        <select
-          value={severity}
-          onChange={(e) => onChange({ severity: e.target.value || null })}
-          className={field}
+        <div className="flex items-center gap-1.5 text-sm text-muted">
+          <input
+            type="date"
+            value={filter.from ?? ""}
+            onChange={(e) => update({ from: e.target.value || null, id: null })}
+            className={fieldClass("input", "sm", "w-auto")}
+            aria-label="С даты"
+          />
+          —
+          <input
+            type="date"
+            value={filter.to ?? ""}
+            onChange={(e) => update({ to: e.target.value || null, id: null })}
+            className={fieldClass("input", "sm", "w-auto")}
+            aria-label="По дату"
+          />
+        </div>
+        {filtered && (
+          <Button size="sm" variant="ghost" icon="x" onClick={() => update({ code: null, severity: null, from: null, to: null, id: null })}>
+            Сбросить
+          </Button>
+        )}
+      </div>
+
+      {feed.isPending && <Loading />}
+      {feed.isError && <ErrorBox error={feed.error} onRetry={() => feed.refetch()} />}
+      {feed.isSuccess && items.length === 0 && (
+        <Empty
+          icon={preset === "open" && !filtered ? "check" : "filter"}
+          title={preset === "open" && !filtered ? "Открытых предупреждений нет" : "Под фильтр ничего не попало"}
+          action={
+            (filtered || preset !== "all") && (
+              <Button onClick={() => update({ status: "all", code: null, severity: null, from: null, to: null, id: null })}>
+                Показать всю ленту
+              </Button>
+            )
+          }
         >
-          <option value="">любая</option>
-          {SEVERITY_ORDER.map((s) => (
-            <option key={s} value={s}>
-              {label(ru.severity, s)}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="flex flex-col gap-0.5">
-        <span className="text-muted">С</span>
-        <input type="date" value={from} onChange={(e) => onChange({ from: e.target.value || null })} className={field} />
-      </label>
-      <label className="flex flex-col gap-0.5">
-        <span className="text-muted">По</span>
-        <input type="date" value={to} onChange={(e) => onChange({ to: e.target.value || null })} className={field} />
-      </label>
+          {preset === "open" && !filtered
+            ? "Лента заполняется прогоном анализа: он идёт сам после распознавания снимков и правки плана."
+            : "Сбросьте часть условий или посмотрите всю ленту, включая закрытые."}
+        </Empty>
+      )}
+      {items.length > 0 && (
+        <div className="grid items-start gap-5 lg:grid-cols-[24rem_minmax(0,1fr)]">
+          <Feed
+            items={items}
+            total={feed.data?.total ?? items.length}
+            selected={selected}
+            onSelect={(id) => update({ id })}
+          />
+          {selected && (
+            <DeviationCard
+              key={selected.id}
+              objectId={objectId}
+              deviation={selected}
+              onVerdict={() => {
+                const next = neighbour(items, selected, 1);
+                if (next) update({ id: next.id });
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -145,44 +183,62 @@ function Feed({
   selected: DeviationRead | null;
   onSelect: (id: string) => void;
 }) {
+  const active = useRef<HTMLButtonElement>(null);
+  // Тело блоком: в новых браузерах scrollIntoView возвращает Promise, а эффект — только очистку.
+  useEffect(() => {
+    active.current?.scrollIntoView({ block: "nearest" });
+  }, [selected?.id]);
+
   const days = new Map<string, DeviationRead[]>();
   for (const item of items) {
     const day = formatDay(item.first_seen_at);
     days.set(day, [...(days.get(day) ?? []), item]);
   }
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted">
-        Отклонений: {total}
-        {total > items.length && `, показаны последние ${items.length}`}
+    <div className="rounded-2xl bg-white shadow-sm ring-1 ring-ink/[0.07] lg:sticky lg:top-20 lg:max-h-[calc(100vh-6.5rem)] lg:overflow-y-auto">
+      <p className="sticky top-0 z-10 flex items-center justify-between border-b border-ink/[0.07] bg-white/95 px-4 py-2.5 text-xs text-muted backdrop-blur">
+        <span>
+          {total} {total > items.length && `· показаны последние ${items.length}`}
+        </span>
+        <span className="hidden lg:inline">↑ ↓ — листать</span>
       </p>
       {[...days].map(([day, group]) => (
-        <div key={day} className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted">{day}</p>
-          {group.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onSelect(item.id)}
-              className={`block w-full rounded-lg border p-3 text-left text-sm ${
-                item.id === selected?.id
-                  ? "border-accent bg-white"
-                  : "border-ink/10 bg-white/60 hover:border-ink/30"
-              }`}
-            >
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Badge tone={severityTone(item.severity)}>{item.code}</Badge>
-                <Badge tone={deviationStatusTone(item.status)}>{label(ru.deviationStatus, item.status)}</Badge>
-                {item.verdict && item.status === "RESOLVED" && (
-                  <Badge tone={deviationStatusTone(item.verdict)}>{label(ru.verdict, item.verdict)}</Badge>
-                )}
-                <span className="ml-auto text-xs tabular-nums text-muted">
-                  {formatClock(item.first_seen_at)}–{formatClock(item.last_seen_at)}
-                </span>
-              </div>
-              <p className="mt-1 font-medium">{item.title}</p>
-            </button>
-          ))}
+        <div key={day}>
+          <p className="px-4 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted">{day}</p>
+          <ul className="px-2 pb-1">
+            {group.map((item) => {
+              const current = item.id === selected?.id;
+              return (
+                <li key={item.id}>
+                  <button
+                    ref={current ? active : undefined}
+                    type="button"
+                    onClick={() => onSelect(item.id)}
+                    className={`relative block w-full rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
+                      current ? "bg-accent/[0.07] ring-1 ring-accent/40" : "hover:bg-canvas/70"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Dot className={severityDot(item.severity)} />
+                      <span className="font-mono text-xs font-semibold text-ink/70">{item.code}</span>
+                      <Badge tone={deviationStatusTone(item.status)} size="sm">
+                        {label(ru.deviationStatus, item.status)}
+                      </Badge>
+                      {item.verdict && item.status === "RESOLVED" && (
+                        <Badge tone={deviationStatusTone(item.verdict)} size="sm">
+                          {item.verdict === "REJECTED" ? "ложное" : "подтверждено"}
+                        </Badge>
+                      )}
+                      <span className="ml-auto text-xs tabular-nums text-muted">
+                        {formatClock(item.first_seen_at)}–{formatClock(item.last_seen_at)}
+                      </span>
+                    </span>
+                    <span className={`mt-1 block leading-snug ${current ? "font-medium" : ""}`}>{item.title}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       ))}
     </div>

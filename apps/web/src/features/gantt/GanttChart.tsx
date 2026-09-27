@@ -85,9 +85,9 @@ export function GanttChart(props: Props) {
   }, [pxPerDay]);
 
   return (
-    <div className="flex rounded-lg border border-ink/10 bg-white">
+    <div className="flex overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-ink/[0.07]">
       <ul className="w-72 shrink-0 border-r border-ink/10 text-sm">
-        <li style={{ height: HEADER_HEIGHT }} className="border-b border-ink/10 px-3 py-1.5 text-muted">
+        <li style={{ height: HEADER_HEIGHT }} className="flex items-end border-b border-ink/10 px-3 pb-1.5 text-xs font-medium uppercase tracking-wide text-muted">
           Веха
         </li>
         {rows.map((r) => (
