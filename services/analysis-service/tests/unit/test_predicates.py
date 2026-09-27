@@ -83,6 +83,21 @@ def test_d1_срабатывает_после_min_sessions_пустых_сесс
     assert finding.evidence[0]["detection_ids"] == []
 
 
+def test_d1_после_дня_отметки_выполнена_не_ищется(enums):
+    """Раздел 10.3b: экскаватор уехал после приёмки котлована — это не «нет техники»."""
+    pit = PLAN.stages[1].model_copy(update={"completed_on": DAY})
+    plan = PLAN.model_copy(update={"stages": (PLAN.stages[0], pit, PLAN.stages[2])})
+    sessions = _day_sessions([_empty, _empty]) + _day_sessions(
+        [_empty, _empty], day=date(2026, 10, 21)
+    )
+
+    ctx = build_context(plan, make_facts(*sessions), enums=enums, params=PARAMS)
+    (finding,) = evaluate(ctx, D1_D2)
+
+    # В день отметки работы ещё идут: D1 за 20.10 остаётся, но на 21.10 уже закрыт.
+    assert (finding.code, finding.occurrences, finding.active) == ("D1", 2, False)
+
+
 def test_одна_пустая_сессия_это_ещё_не_d1(enums):
     assert _findings(make_facts(*_day_sessions([_empty, _full])), enums) == []
 

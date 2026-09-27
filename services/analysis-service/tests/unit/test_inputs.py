@@ -4,6 +4,8 @@
 фикстуры (tests/fixtures/build_fixtures.py), потом всё остальное.
 """
 
+from datetime import date
+
 import pytest
 from pydantic import ValidationError
 from src.core.inputs import Facts, Plan
@@ -108,6 +110,21 @@ def test_неизвестные_поля_поставщика_игнорирую
     raw["stages"][0]["another"] = {"x": 1}
 
     assert Plan.model_validate(raw).stages[0].name == "Подготовка территории"
+
+
+def test_отметка_выполнена_разбирается_и_необязательна():
+    """Контракт 1: поля отметки новые и необязательные — старый ответ плана тоже разбирается."""
+    raw = load_plan().model_dump(mode="json")
+    raw["stages"][1] |= {
+        "completed_on": "2026-11-18",
+        "completed_by": "Петров П. П.",
+        "completion_note": "акт приёмки",
+    }
+
+    pit = Plan.model_validate(raw).stages[1]
+
+    assert (pit.completed_on, pit.completed_by) == (date(2026, 11, 18), "Петров П. П.")
+    assert load_plan().stages[1].completed_on is None
 
 
 def test_техника_без_доказательств_не_проходит_разбор():

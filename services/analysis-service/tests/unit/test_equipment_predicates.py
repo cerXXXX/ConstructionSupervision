@@ -17,6 +17,7 @@ from tests.factories import (
     make_facts,
     make_plan,
     make_session,
+    make_stage,
     windows,
 )
 
@@ -110,6 +111,33 @@ def test_d3_без_будущей_вехи_ключ_без_вехи(enums):
     assert (finding.code, finding.stage_id) == ("D3", None)
     assert "template_variant" not in finding.facts
     assert describe(finding, RULES["D3"], NAMES).title == "Техника не по этапу: Автобетононасос"
+
+
+def test_закрытая_отметкой_веха_не_бывает_будущей_для_d3(enums):
+    """Раздел 10.3b: веху уже закрыли — насос на котловане не «опережение» по ней."""
+    done = FOUNDATION_STAGE.model_copy(update={"completed_on": date(2026, 10, 19)})
+
+    (finding,) = _findings(
+        make_facts(*_series(PIT, "concrete_pump", 2)), enums, make_plan(PIT_STAGE, done)
+    )
+
+    assert (finding.code, finding.stage_id) == ("D3", None)
+
+
+def test_после_отметки_техника_на_участке_вехи_не_по_её_правилу(enums):
+    """Раздел 10.3b: правило закрытой вехи не участвует в D3 и D5 — экскаватор уже не нужен."""
+    done = PIT_STAGE.model_copy(update={"completed_on": date(2026, 10, 19)})
+    # Параллельно идёт веха на другом участке: без единой активной вехи статус — UNKNOWN.
+    frame = make_stage(
+        "Каркас", date(2026, 10, 1), date(2026, 10, 31), seq=3, zone_type="BUILDING_FOOTPRINT"
+    )
+
+    (finding,) = _findings(
+        make_facts(*_series(PIT, "excavator", 2, static=0)), enums, make_plan(done, frame)
+    )
+
+    assert (finding.code, finding.area, finding.equipment_class) == ("D5", PIT, "excavator")
+    assert finding.facts["active_stages"] == ["Каркас"]
 
 
 def test_одна_сессия_с_чужой_техникой_это_ещё_не_d3(enums):

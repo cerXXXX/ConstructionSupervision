@@ -91,6 +91,21 @@ def test_ранний_старт_даёт_отрицательное_откло�
     assert start.start_deviation_days == -1
 
 
+def test_после_отметки_выполнена_старт_не_собирается_и_активность_не_считается(enums):
+    """Раздел 10.3b: сигнатура после дня отметки — уже не работы этой вехи."""
+    stage = PIT_STAGE.model_copy(update={"completed_on": date(2026, 10, 16)})
+    sessions = [
+        *_sessions(_excavator, date(2026, 10, 15), 2),
+        *_sessions(_excavator, date(2026, 10, 16), 2),
+        *_sessions(_full, date(2026, 10, 17), 2),
+    ]
+    ctx = _ctx(make_facts(*sessions), enums, make_plan(stage))
+
+    assert actual_start(ctx, stage) is None
+    rows = daily_activity(ctx, stage)
+    assert [r.day for r in rows] == [date(2026, 10, 15), date(2026, 10, 16)]
+
+
 def test_у_вехи_без_правила_нет_ни_старта_ни_активности(enums):
     stage = PIT_STAGE.model_copy(update={"rule": None})
     ctx = _ctx(load_facts("facts_normal_day.json"), enums, make_plan(stage))

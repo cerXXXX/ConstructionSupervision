@@ -20,6 +20,8 @@ from src.report.model import DeviationSnapshot, ReportInput
 REJECTED = "REJECTED"
 # Код отклонения «участок вне контроля ИИ» — его эпизоды перечисляются в «Ограничениях».
 BLIND_CODE = "D10"
+# Веха закрыта отметкой оператора (stage_fact.facts.basis, methodology.md, 10.3b).
+OPERATOR = "OPERATOR"
 
 
 @dataclass(frozen=True)
@@ -227,6 +229,7 @@ def limitations(inp: ReportInput, deviations: Sequence[DeviationSnapshot]) -> li
             f"Вех, прогресс которых взят по плану, а не по наблюдениям: {len(by_plan)} — они "
             "прошли до начала наблюдений или их участки не были видны; снимками они не проверены."
         )
+    out.extend(_marked_stages(inp))
 
     if inp.images_without_time is None:
         out.append("Число снимков без времени съёмки неизвестно: site-service не ответил.")
@@ -264,6 +267,28 @@ def limitations(inp: ReportInput, deviations: Sequence[DeviationSnapshot]) -> li
         "раз в 30 минут, машины между снимками не видны."
     )
     return out
+
+
+def _marked_stages(inp: ReportInput) -> list[str]:
+    """Вехи, закрытые отметкой оператора: отметка сильнее снимков, поэтому видно, кем и когда."""
+    plan = {s.id: s for s in inp.plan.stages}
+    marked = [
+        plan[f.stage_id]
+        for f in inp.stages
+        if f.basis == OPERATOR and f.stage_id in plan and plan[f.stage_id].completed_on
+    ]
+    if not marked:
+        return []
+    items = [
+        f"«{s.name}» — {s.completed_on:%d.%m.%Y}"
+        + (f", {s.completed_by}" if s.completed_by else "")
+        for s in marked
+    ]
+    return [
+        f"Вех, закрытых отметкой оператора «выполнена»: {len(marked)} ({'; '.join(items)}). "
+        "Их окончание подтвердил человек, а не снимки; со следующего дня после отметки "
+        "отклонения по ним не ищутся."
+    ]
 
 
 def _blind_areas(inp: ReportInput) -> list[str]:

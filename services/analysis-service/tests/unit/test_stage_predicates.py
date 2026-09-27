@@ -165,6 +165,13 @@ def test_веха_без_правила_d8_не_даёт(enums):
     assert _findings(load_facts("facts_normal_day.json"), enums, ["D8"], plan) == []
 
 
+def test_после_отметки_выполнена_d8_нет(enums):
+    """Раздел 10.3b: веху закрыли в плановый срок — техника после него этап не затягивает."""
+    marked = OVERRUN_PLAN.stages[0].model_copy(update={"completed_on": date(2026, 10, 16)})
+
+    assert _findings(load_facts("facts_normal_day.json"), enums, ["D8"], make_plan(marked)) == []
+
+
 # --- D9: не начат в срок ------------------------------------------------------------------
 
 # Котлован начинается 15.10; первые три рабочих дня — 15, 16 и 17 октября.
@@ -231,6 +238,37 @@ def test_без_наблюдений_в_первые_дни_d9_нет(enums):
     later = _sessions(_excavator, date(2026, 10, 20), 3)
 
     assert _findings(make_facts(*later), enums, ["D9"]) == []
+
+
+def _marked_pit(day):
+    return make_plan(PIT_STAGE.model_copy(update={"completed_on": day}))
+
+
+def test_отмеченная_до_срока_старта_веха_d9_не_даёт(enums):
+    facts = make_facts(*_first_days(_excavator))
+
+    assert _findings(facts, enums, ["D9"], _marked_pit(FIRST_DAYS[1]), as_of=AFTER) == []
+
+
+def test_отметка_после_срока_закрывает_d9_последней_сессией_дня_отметки(enums):
+    marked_day = date(2026, 10, 19)
+    later = _sessions(_excavator, marked_day, 2) + _sessions(_excavator, date(2026, 10, 20), 2)
+
+    (finding,) = _findings(
+        make_facts(*_first_days(_excavator), *later), enums, ["D9"], _marked_pit(marked_day)
+    )
+
+    assert not finding.active
+    assert finding.last_seen_at == later[1].window_end
+    assert finding.facts["completed_on"] == "2026-10-19"
+
+
+def test_отметка_позже_момента_анализа_d9_не_закрывает(enums):
+    facts = make_facts(*_first_days(_excavator))
+
+    (finding,) = _findings(facts, enums, ["D9"], _marked_pit(date(2026, 10, 22)), as_of=AFTER)
+
+    assert finding.active and finding.facts["completed_on"] is None
 
 
 # --- D10: вне контроля ИИ -----------------------------------------------------------------
@@ -301,6 +339,13 @@ def test_d10_по_вехе_без_размеченного_участка(enums)
     deviation = describe(finding, RULES["D10"], NAMES)
     assert deviation.title == "Вне контроля ИИ: «Подготовка территории»"
     assert "(BUILDING_FOOTPRINT) не размечен" in deviation.message
+
+
+def test_у_закрытой_отметкой_вехи_без_участка_d10_нет(enums):
+    marked = PREPARATION.model_copy(update={"completed_on": date(2026, 9, 30)})
+    sessions = _sessions(_excavator, date(2026, 10, 1), 2)
+
+    assert _findings(make_facts(*sessions), enums, ["D10"], make_plan(marked, PIT_STAGE)) == []
 
 
 def test_вне_рабочего_времени_d10_нет(enums):

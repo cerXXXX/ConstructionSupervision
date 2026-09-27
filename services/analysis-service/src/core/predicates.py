@@ -25,6 +25,7 @@ import yaml
 from src.core.calendar import local_date, working_days_between
 from src.core.context import Context, Streak, find_streaks
 from src.core.inputs import Evidence, Stage
+from src.core.plan_on_date import closed
 from src.core.rules import RuleCheck, check_rule
 
 
@@ -168,7 +169,10 @@ def _stage_findings(
     *,
     when: Callable[[Stage, date], bool] = _planned,
 ) -> list[Finding]:
-    """D1, D2, D8: серии сессий в дни `when`, где правило вехи в состоянии `condition`."""
+    """D1, D2, D8: серии сессий в дни `when`, где правило вехи в состоянии `condition`.
+
+    Со следующего дня после отметки «выполнена» веха не проверяется (раздел 10.3b).
+    """
     findings = []
     for stage in ctx.plan.stages:
         if stage.rule is None:
@@ -176,7 +180,7 @@ def _stage_findings(
         rows = []
         for i, session in enumerate(ctx.sessions):
             day = local_date(ctx.calendar, session.window_start)
-            if not when(stage, day):
+            if not when(stage, day) or closed(stage, day):
                 rows.append((session, False))
                 continue
             check = check_rule(

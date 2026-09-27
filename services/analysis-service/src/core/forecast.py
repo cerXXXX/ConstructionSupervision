@@ -24,11 +24,14 @@ from src.core.calendar import (
 from src.core.context import Context
 from src.core.equipment_state import BLIND
 from src.core.inputs import Stage
+from src.core.plan_on_date import completion
 
 PARTIAL = "PARTIAL"
 HIGH, MEDIUM, LOW = "HIGH", "MEDIUM", "LOW"
 NOT_STARTED, IN_PROGRESS, DONE, LATE, AHEAD = "NOT_STARTED", "IN_PROGRESS", "DONE", "LATE", "AHEAD"
 ON_TRACK, DELAY, UNKNOWN = "ON_TRACK", "DELAY", "UNKNOWN"
+# Откуда прогресс вехи (facts.basis): снимки, план или отметка оператора «выполнена».
+OBSERVED, BY_PLAN, OPERATOR = "OBSERVED", "PLAN", "OPERATOR"
 # «В основном» — больше половины: это определение слова, а не калибруемый порог.
 MOSTLY = 0.5
 
@@ -322,7 +325,51 @@ def _unobservable(
         delay_days=working_days_between(ctx.calendar, stage.plan_end, end),
         status=status,
         confidence=LOW,
-        facts={"basis": "PLAN", "basis_reason": reason},
+        facts={"basis": BY_PLAN, "basis_reason": reason},
+    )
+
+
+def _by_mark(
+    ctx: Context,
+    stage: Stage,
+    today: date,
+    by_plan_start: date,
+    marked: date,
+    obs: _Observed | None,
+) -> StageForecast:
+    """Веха закрыта отметкой оператора (раздел 10.3b): выполнена в дату отметки.
+
+    Отметка сильнее снимков, но старт — только по снимкам: если сигнатура не собралась
+    до отметки или веха шла до начала наблюдений, он неизвестен, а для связей — плановый.
+    """
+    before_observation = obs is not None and obs.credited_days > 0
+    start = obs.start if obs is not None and not before_observation else None
+    planned = planned_progress(ctx.calendar, stage, today)
+    last_activity = [r.last_working_at for r in obs.rows if r.last_working_at] if obs else []
+    return StageForecast(
+        stage_id=stage.id,
+        actual_start=start.day if start else None,
+        last_activity_at=last_activity[-1] if last_activity else None,
+        effective_days=round(obs.effective_days, 3) if obs else 0.0,
+        progress=1.0,
+        planned_progress=round(planned, 4) if planned is not None else None,
+        spi=round(1 / planned, 3) if planned else None,
+        expected_start=start.day if start else min(by_plan_start, marked),
+        expected_end=marked,
+        forecast_end=marked,
+        delay_days=working_days_between(ctx.calendar, stage.plan_end, marked),
+        status=DONE,
+        # Окончание подтвердил человек, а не темп по снимкам.
+        confidence=HIGH,
+        facts={
+            "basis": OPERATOR,
+            "completed_on": marked.isoformat(),
+            "completed_by": stage.completed_by,
+            "completion_note": stage.completion_note,
+            "norm_duration_days": stage.norm_duration_days,
+            "start_deviation_days": start.start_deviation_days if start else None,
+            "started_before_observation": before_observation,
+        },
     )
 
 
@@ -340,6 +387,13 @@ def _stage_forecast(
     by_plan_end = max(
         add_working_days(ctx.calendar, by_plan_start, duration - 1), end_min or by_plan_start
     )
+    marked = completion(stage, today)
+    if marked is not None:
+        obs = None
+        if stage.rule is not None:
+            observed_from = observation_start(ctx, stage.zone_type)
+            obs = _observe(ctx, fp, stage, today, last_label, observed_from)
+        return _by_mark(ctx, stage, today, by_plan_start, marked, obs)
     if stage.rule is None:
         reason = "у вехи нет правила: по снимкам её не проверить, прогресс — по плану"
         return _unobservable(ctx, stage, today, by_plan_start, by_plan_end, reason)
@@ -411,7 +465,7 @@ def _stage_forecast(
             fp, obs.observed_days, seen, consistent=not obs.restricted, floored=floored
         ),
         facts={
-            "basis": "OBSERVED",
+            "basis": OBSERVED,
             "norm_duration_days": stage.norm_duration_days,
             "start_deviation_days": (
                 obs.start.start_deviation_days if obs.start and not before_observation else None
@@ -455,7 +509,10 @@ def _object_forecast(
         for r in sorted(critical, key=lambda r: -r.delay_days)
         if r.delay_days > 0 and r.status != DONE
     )
-    observable = [r for r in results if r.facts["basis"] == "OBSERVED" and r.planned_progress]
+    # Веха по отметке оператора входит в SPI: её освоенный объём подтверждён (раздел 10.3b).
+    observable = [
+        r for r in results if r.facts["basis"] in (OBSERVED, OPERATOR) and r.planned_progress
+    ]
     earned = sum(r.progress * stages[r.stage_id].norm_duration_days for r in observable)
     scheduled = sum(r.planned_progress * stages[r.stage_id].norm_duration_days for r in observable)
     spi = round(earned / scheduled, 3) if scheduled else None

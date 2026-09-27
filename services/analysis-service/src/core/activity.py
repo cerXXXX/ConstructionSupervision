@@ -13,7 +13,7 @@ from src.core.calendar import local_date, working_days_between
 from src.core.context import Context, find_streaks
 from src.core.equipment_state import PERSON, ROLE_SAFETY, WORKING, equipment_states
 from src.core.inputs import SessionFact, Stage
-from src.core.plan_on_date import active_stages
+from src.core.plan_on_date import active_stages, closed
 from src.core.rules import RuleCheck, check_rule
 
 
@@ -71,7 +71,8 @@ def actual_start(
     """Фактический старт (раздел 10.1); None — сигнатура ещё не держалась серией.
 
     Сессии, где участок вехи не виден, серию не рвут и в неё не входят. `checks` —
-    готовые проверки из `rule_checks`, чтобы не проверять правило дважды.
+    готовые проверки из `rule_checks`, чтобы не проверять правило дважды. Старт
+    собирается только до отметки «выполнена» включительно (раздел 10.3b).
     """
     if stage.rule is None:
         return None
@@ -79,6 +80,7 @@ def actual_start(
     rows = [
         (s, None if not c.evaluated else (c if c.signature_met else False))
         for s, c in zip(ctx.sessions, checks, strict=True)
+        if not closed(stage, local_date(ctx.calendar, s.window_start))
     ]
     for streak in find_streaks(rows):
         if len(streak.sessions) >= stage.rule.min_sessions:
@@ -130,7 +132,8 @@ def daily_activity(
     """Индекс активности вехи по местным дням с `since` (раздел 10.2).
 
     `since` по умолчанию — раньшее из `plan_start` и фактического старта. У вехи без
-    правила или без групп `required` комплекта нет, и индекс не считается.
+    правила или без групп `required` комплекта нет, и индекс не считается. После дня
+    отметки «выполнена» — тоже: работы вехи кончились (раздел 10.3b).
     """
     if stage.rule is None or not stage.rule.required:
         return ()
@@ -142,7 +145,7 @@ def daily_activity(
     last_working: dict[date, datetime] = {}
     for session, check in zip(ctx.sessions, checks, strict=True):
         day = local_date(ctx.calendar, session.window_start)
-        if day < since:
+        if day < since or closed(stage, day):
             continue
         total_working_blind = days.setdefault(day, [0, 0, 0])
         if not check.evaluated:

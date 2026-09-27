@@ -99,6 +99,10 @@ class Stage(_Input):
     basis: str | None = None
     # null — по вехе не проверяются D1, D2, D8, D9.
     rule: StageRule | None = None
+    # Отметка оператора «веха выполнена» — последний день работ (methodology.md, 10.3b).
+    completed_on: date | None = None
+    completed_by: str | None = None
+    completion_note: str | None = None
 
 
 class Plan(_Input):

@@ -164,6 +164,22 @@ def test_ограничения_честно_говорят_когда_site_не
     assert "Число снимков без времени съёмки неизвестно" in text
 
 
+def test_ограничения_называют_вехи_закрытые_отметкой_кем_и_когда(report_input):
+    """ADR-0015: отметка сильнее снимков, поэтому в отчёте видно, кто и когда её поставил."""
+    pit = PLAN.stages[1].model_copy(
+        update={"completed_on": date(2026, 10, 21), "completed_by": "Петров П. П."}
+    )
+    plan = PLAN.model_copy(update={"stages": (PLAN.stages[0], pit, PLAN.stages[2])})
+    stages = [
+        replace(s, basis="OPERATOR") if s.stage_id == pit.id else s for s in report_input.stages
+    ]
+
+    text = "\n".join(build_context(replace(report_input, plan=plan, stages=stages))["limitations"])
+
+    assert "закрытых отметкой оператора «выполнена»: 1" in text
+    assert "«Разработка котлована» — 21.10.2026, Петров П. П." in text
+
+
 def test_период_отбирает_пересекающиеся_эпизоды(report_input):
     only_day1 = replace(report_input, period_from=date(2026, 10, 20), period_to=date(2026, 10, 20))
 

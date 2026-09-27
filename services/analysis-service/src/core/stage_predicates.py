@@ -16,7 +16,7 @@ from src.core.calendar import add_working_days, is_working_day, local_date
 from src.core.context import Context, Streak, find_streaks
 from src.core.equipment_state import BLIND
 from src.core.inputs import AreaFact, SessionFact, Stage, StageObservation
-from src.core.plan_on_date import visual_milestone
+from src.core.plan_on_date import closed, completion, visual_milestone
 from src.core.predicates import (
     DeviationRule,
     Finding,
@@ -144,7 +144,8 @@ def late_start(ctx: Context, rule: DeviationRule) -> list[Finding]:
     """D9: за `k_days` рабочих дней с `plan_start` сигнатура не собралась в фактический старт.
 
     Проверяется, только когда эти дни прошли к `as_of` и участок вехи был виден хотя бы
-    в доле `min_visible_share` рабочих сессий этих дней: не видели — не обвиняем.
+    в доле `min_visible_share` рабочих сессий этих дней: не видели — не обвиняем. Веху,
+    отмеченную выполненной не позже срока, выполнили — D9 по ней нет (раздел 10.3b).
     """
     k, min_share = rule.params["k_days"], rule.params["min_visible_share"]
     today = local_date(ctx.calendar, ctx.as_of)
@@ -153,7 +154,8 @@ def late_start(ctx: Context, rule: DeviationRule) -> list[Finding]:
         if stage.rule is None:
             continue
         days = _first_working_days(ctx, stage.plan_start, k)
-        if today <= days[-1]:
+        marked = completion(stage, today)
+        if today <= days[-1] or (marked is not None and marked <= days[-1]):
             continue
         checks = rule_checks(ctx, stage)
         start = actual_start(ctx, stage, checks)
@@ -182,6 +184,7 @@ def late_start(ctx: Context, rule: DeviationRule) -> list[Finding]:
             "signature_names": _signature_names(ctx, stage),
             "actual_start": start.day.isoformat() if start else None,
             "start_deviation_days": start.start_deviation_days if start else None,
+            "completed_on": marked.isoformat() if marked else None,
             "stage_rule_id": str(stage.rule.id),
             "stage_rule_version": stage.rule.version,
         }
@@ -193,6 +196,17 @@ def late_start(ctx: Context, rule: DeviationRule) -> list[Finding]:
         ]
         # Рамок сигнатуры нет — доказательство сами снимки участка: на них видно, что пусто.
         images = [i for cam in last.cameras if cam.usable for i in cam.image_ids]
+        # Старт так и не собрался — условие держится до последней сессии; собрался с
+        # опозданием — отклонение закрылось в момент старта; веху закрыли отметкой без
+        # наблюдённого старта — последней сессией дня отметки.
+        if start is not None:
+            ended_at = start.window_start
+        elif marked is not None:
+            ended_at = [
+                s for s in ctx.sessions if local_date(ctx.calendar, s.window_start) <= marked
+            ][-1].window_end
+        else:
+            ended_at = ctx.sessions[-1].window_end
         findings.append(
             Finding(
                 code=rule.code,
@@ -202,11 +216,9 @@ def late_start(ctx: Context, rule: DeviationRule) -> list[Finding]:
                 equipment_class=None,
                 session_id=last.session_id,
                 first_seen_at=window[0][0].window_start,
-                # Старт так и не собрался — условие держится до последней сессии; собрался
-                # с опозданием — отклонение закрылось в момент старта.
-                last_seen_at=start.window_start if start else ctx.sessions[-1].window_end,
+                last_seen_at=ended_at,
                 occurrences=len(visible),
-                active=start is None,
+                active=start is None and marked is None,
                 facts=facts,
                 evidence=evidence_refs(detections, images),
                 rule_ref={
@@ -325,7 +337,7 @@ def _unmarked_stages(ctx: Context, rule: DeviationRule, min_sessions: int) -> li
         rows = []
         for session in ctx.sessions:
             day = local_date(ctx.calendar, session.window_start)
-            planned = stage.plan_start <= day <= stage.plan_end
+            planned = stage.plan_start <= day <= stage.plan_end and not closed(stage, day)
             marked = any(a.zone_type == stage.zone_type for a in session.areas)
             rows.append((session, planned and not marked))
         findings += [

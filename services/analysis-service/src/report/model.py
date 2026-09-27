@@ -43,7 +43,8 @@ class StageSnapshot:
     delay_days: int | None
     status: str
     confidence: str
-    # PLAN — прогресс по плану (участок не видели), OBSERVED — по наблюдениям.
+    # PLAN — прогресс по плану (участок не видели), OBSERVED — по наблюдениям,
+    # OPERATOR — веха закрыта отметкой оператора «выполнена».
     basis: str | None = None
 
 

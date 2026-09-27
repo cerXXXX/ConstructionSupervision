@@ -27,7 +27,7 @@ from src.core.equipment_state import (
     equipment_states,
 )
 from src.core.inputs import Evidence, SessionFact, Stage
-from src.core.plan_on_date import active_stages
+from src.core.plan_on_date import active_stages, closed
 from src.core.predicates import (
     DeviationRule,
     Finding,
@@ -121,11 +121,15 @@ def _equipment_finding(
 
 
 def _future_stage(ctx: Context, day: date, zone_type: str, cls: str) -> Stage | None:
-    """Ближайшая по плану будущая веха того же типа участка, чьё правило ждёт этот класс."""
+    """Ближайшая по плану будущая веха того же типа участка, чьё правило ждёт этот класс.
+
+    Веха, уже закрытая отметкой «выполнена», будущей не бывает (раздел 10.3b).
+    """
     future = [
         s
         for s in ctx.plan.stages
         if s.plan_start > day
+        and not closed(s, day)
         and s.zone_type == zone_type
         and s.rule is not None
         and cls in expected_classes(s.rule)

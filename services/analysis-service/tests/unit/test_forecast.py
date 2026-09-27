@@ -220,6 +220,91 @@ def test_завершённая_веха(enums):
     assert result.object.stages_at_risk == ()
 
 
+# --- Отметка оператора «веха выполнена» (раздел 10.3b) --------------------------------------
+
+
+def _marked(stage, day):
+    return stage.model_copy(
+        update={"completed_on": day, "completed_by": "Петров П. П.", "completion_note": "акт"}
+    )
+
+
+def test_отметка_выполнена_закрывает_веху_раньше_плана(enums):
+    marked_day = date(2026, 10, 19)
+    plan = make_plan(PREPARATION, _marked(PIT_STAGE, marked_day), FOUNDATION)
+
+    result = _run(enums, _days(FIRST_WEEK), plan=plan)
+    pit = _stage(result, PIT_STAGE)
+
+    assert (pit.status, pit.progress, pit.confidence) == ("DONE", 1.0, "HIGH")
+    assert pit.forecast_end == pit.expected_end == marked_day
+    # Отметка 19.10 при плане по 20.11: с 20.10 по 20.11 — 27 рабочих дней.
+    assert pit.delay_days == -27
+    assert pit.actual_start == date(2026, 10, 15)
+    assert pit.facts["basis"] == "OPERATOR"
+    assert pit.facts["completed_on"] == "2026-10-19"
+    assert (pit.facts["completed_by"], pit.facts["completion_note"]) == ("Петров П. П.", "акт")
+    # Освоенный объём подтверждён: в SPI веха входит с прогрессом 1.
+    assert pit.spi == result.object.spi == round(31 / 5, 3)
+    assert result.object.stages_at_risk == ()
+
+
+def test_поздняя_отметка_сдвигает_последователя(enums):
+    first = _marked(
+        make_stage(
+            "Котлован",
+            date(2026, 10, 15),
+            date(2026, 10, 16),
+            norm_duration_days=2,
+            rule=PIT_STAGE.rule,
+        ),
+        date(2026, 10, 20),
+    )
+    second = make_stage("Плита", date(2026, 10, 17), date(2026, 10, 22), seq=2).model_copy(
+        update={"predecessors": (Predecessor(stage_id=first.id, type="FS"),)}
+    )
+
+    result = _run(enums, _days(FIRST_WEEK), plan=make_plan(first, second))
+    done, after = _stage(result, first), _stage(result, second)
+
+    # Закончили 20.10 вместо 16.10: 17, 19 и 20 октября.
+    assert (done.status, done.delay_days) == ("DONE", 3)
+    # FS от даты отметки: плита — с 21.10, пять рабочих дней, по 26.10 (25-е — воскресенье).
+    assert (after.expected_start, after.expected_end) == (date(2026, 10, 21), date(2026, 10, 26))
+    assert after.delay_days == 3
+
+
+def test_отметка_без_наблюдённого_старта(enums):
+    marked_day = date(2026, 10, 19)
+    plan = make_plan(PREPARATION, _marked(PIT_STAGE, marked_day), FOUNDATION)
+
+    pit = _stage(_run(enums, _days(FIRST_WEEK, trucks=False), plan=plan), PIT_STAGE)
+
+    assert (pit.status, pit.forecast_end) == ("DONE", marked_day)
+    # Старт по снимкам не собрался — он неизвестен, для связей берётся плановый.
+    assert pit.actual_start is None and pit.facts["start_deviation_days"] is None
+    assert pit.expected_start == PIT_STAGE.plan_start
+
+
+def test_отметка_у_вехи_без_правила(enums):
+    stage = _marked(
+        make_stage("Без правила", date(2026, 10, 15), date(2026, 10, 30)), FIRST_WEEK[-1]
+    )
+
+    (result,) = _run(enums, _days(FIRST_WEEK), plan=make_plan(stage)).stages
+
+    assert (result.status, result.facts["basis"]) == ("DONE", "OPERATOR")
+    assert result.actual_start is None and result.effective_days == 0
+
+
+def test_отметка_позже_момента_анализа_не_действует(enums):
+    plan = make_plan(PREPARATION, _marked(PIT_STAGE, date(2026, 10, 22)), FOUNDATION)
+
+    pit = _stage(_run(enums, _days(FIRST_WEEK), plan=plan), PIT_STAGE)
+
+    assert pit.facts["basis"] == "OBSERVED" and pit.status == "IN_PROGRESS"
+
+
 def test_не_начатая_при_видимом_участке_веха_опаздывает(enums):
     # Экскаватор без самосвалов: сигнатура «экскаватор + самосвал» не выполнена.
     pit = _stage(_run(enums, _days(FIRST_WEEK, trucks=False)), PIT_STAGE)
