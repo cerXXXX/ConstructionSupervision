@@ -78,6 +78,25 @@ def migrated_database(alembic_config) -> str:
     return TEST_DSN
 
 
+@pytest.fixture(autouse=True)
+def contracts_dir(monkeypatch):
+    """Справочники из рабочей копии — во всех тестах, а не только в тех, что берут `client`.
+
+    Иначе сервис ищет их в `CONTRACTS_DIR` по умолчанию (`/contracts`): в контейнере
+    `scripts/test.py` переменная задана, в CI — нет, и тест, запустивший прогон без `client`,
+    падал только там. Кеши сбрасываются, чтобы справочник не пережил тест.
+    """
+    from src.config import settings
+    from src.services import reports, runs
+
+    monkeypatch.setattr(settings, "contracts_dir", str(CONTRACTS_DIR))
+    runs.enums.cache_clear()
+    reports.labels.cache_clear()
+    yield
+    runs.enums.cache_clear()
+    reports.labels.cache_clear()
+
+
 @pytest.fixture(scope="session")
 def enums():
     """Перечисления из настоящего enums.yaml: тесты сверяются с контрактом, а не с копией."""
@@ -258,7 +277,7 @@ def upstream():
 
 
 @pytest.fixture
-async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
+async def client(session_factory, upstream) -> AsyncIterator:
     """HTTP-клиент поверх приложения с тестовой базой, заглушками и рабочим ключом."""
     from httpx import ASGITransport, AsyncClient
     from lct_common.db import session_dependency
@@ -271,7 +290,6 @@ async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
     )
     from src.config import settings
     from src.main import app
-    from src.services import reports, runs
     from src.services.reports import ReportService
     from src.services.runs import RunService
     from src.services.summary import Summarizer
@@ -290,9 +308,6 @@ async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
             now=lambda: upstream.clock(),
         )
 
-    monkeypatch.setattr(settings, "contracts_dir", str(CONTRACTS_DIR))
-    runs.enums.cache_clear()
-    reports.labels.cache_clear()
     app.dependency_overrides[get_session] = _session_override
     app.dependency_overrides[get_site_client] = lambda: upstream.site
     app.dependency_overrides[get_run_service] = lambda: RunService(
@@ -306,7 +321,6 @@ async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
     ) as http_client:
         yield http_client
     app.dependency_overrides.clear()
-    runs.enums.cache_clear()
 
 
 DEMO_OBJECT_ID = "0f3a6c1e-8d4b-4c2a-9e71-5b0d2f6a8c31"
