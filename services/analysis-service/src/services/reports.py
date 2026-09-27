@@ -136,7 +136,8 @@ class ReportService:
         context = await run_in_threadpool(build_context, inp)
         summary, _ = await self._summarizer.summarize(context)
         pdf = await self._render(context, summary)
-        key = ReportKey(object_id, inp.generated_at.astimezone(tz).date(), *_period(inp))
+        local = inp.generated_at.astimezone(tz)
+        key = ReportKey(object_id, local.date(), *_period(inp), local.time().replace(microsecond=0))
         await self._storage.put(str(key), pdf, PDF)
         log.info("report.created", key=str(key), size=len(pdf), evidence=len(inp.evidence))
         return CreatedReport(

@@ -184,7 +184,7 @@ export interface paths {
         };
         /**
          * Ссылка на готовый отчёт
-         * @description `key` — ключ из списка, вида `{object_id}/{дата}-{начало}_{конец}.pdf`.
+         * @description `key` — ключ из списка, вида `{object_id}/{дата}T{ЧЧММСС}-{начало}_{конец}.pdf`.
          */
         get: operations["get_report_api_v1_analysis_reports__key__get"];
         put?: never;

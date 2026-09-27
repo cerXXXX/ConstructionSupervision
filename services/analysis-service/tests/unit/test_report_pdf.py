@@ -3,7 +3,7 @@
 import base64
 import io
 from dataclasses import replace
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from uuid import UUID
 
 import pytest
@@ -68,12 +68,25 @@ def test_выделены_только_рамки_из_доказательст�
 
 
 def test_ключ_отчёта_туда_и_обратно():
-    key = ReportKey(OBJECT_ID, date(2026, 9, 26), date(2026, 10, 16), date(2026, 10, 22))
+    key = ReportKey(
+        OBJECT_ID, date(2026, 9, 26), date(2026, 10, 16), date(2026, 10, 22), time(20, 15, 7)
+    )
 
-    assert str(key) == f"{OBJECT_ID}/2026-09-26-2026-10-16_2026-10-22.pdf"
+    assert str(key) == f"{OBJECT_ID}/2026-09-26T201507-2026-10-16_2026-10-22.pdf"
     assert parse_report_key(str(key)) == key
     assert parse_report_key(f"{OBJECT_ID}/notes.txt") is None
     assert parse_report_key(f"{OBJECT_ID}/2026-13-40-2026-10-16_2026-10-22.pdf") is None
+    assert parse_report_key(f"{OBJECT_ID}/2026-09-26T256000-2026-10-16_2026-10-22.pdf") is None
+
+
+def test_старый_ключ_без_времени_читается():
+    """Отчёты до 27.09 лежат в бакете с ключом без времени и должны остаться в списке."""
+    old = f"{OBJECT_ID}/2026-09-26-2026-10-16_2026-10-22.pdf"
+
+    key = parse_report_key(old)
+
+    assert key == ReportKey(OBJECT_ID, date(2026, 9, 26), date(2026, 10, 16), date(2026, 10, 22))
+    assert str(key) == old
 
 
 def test_pdf_по_демо_дням_со_снимком(report_input):  # noqa: F811

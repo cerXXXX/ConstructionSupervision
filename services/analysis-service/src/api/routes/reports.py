@@ -39,7 +39,7 @@ async def list_reports(
     "/{key:path}",
     response_model=ReportRead,
     summary="Ссылка на готовый отчёт",
-    description="`key` — ключ из списка, вида `{object_id}/{дата}-{начало}_{конец}.pdf`.",
+    description="`key` — ключ из списка, вида `{object_id}/{дата}T{ЧЧММСС}-{начало}_{конец}.pdf`.",
 )
 async def get_report(key: str, service: ReportServiceDep):
     return ReportRead.of(await service.get(key))

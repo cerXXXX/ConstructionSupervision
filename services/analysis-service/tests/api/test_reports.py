@@ -22,7 +22,8 @@ async def test_отчёт_по_умолчанию_за_неделю_до_дня_
     body = response.json()
     # as_of 22.10 12:00 UTC — 22.10 по Москве; неделя — с 16.10 по 22.10 включительно.
     assert (body["period_from"], body["period_to"]) == ("2026-10-16", "2026-10-22")
-    assert body["key"] == f"{DEMO_OBJECT_ID}/{body['generated_on']}-2026-10-16_2026-10-22.pdf"
+    assert body["key"].startswith(f"{DEMO_OBJECT_ID}/{body['generated_on']}T")
+    assert body["key"].endswith("-2026-10-16_2026-10-22.pdf")
     assert body["as_of"] == "2026-10-22T12:00:00Z"
     assert body["summary_generated_by"] == "TEMPLATE"
     assert body["evidence_images"] >= 1 and body["evidence_missing"] == 0
@@ -57,6 +58,23 @@ async def test_список_и_ссылка_на_отчёт(client, analyzed):
     missing = await client.get(f"{BASE}/{DEMO_OBJECT_ID}/2026-01-01-2026-01-01_2026-01-02.pdf")
     assert missing.status_code == 404
     assert missing.json()["error"]["code"] == "REPORT_NOT_FOUND"
+
+
+async def test_повтор_того_же_периода_не_затирает_прежний_отчёт(client, analyzed, upstream):
+    # 27.09 20:15:00 и 20:15:07 по Москве: тот же день, тот же период по умолчанию.
+    moments = iter(
+        [datetime(2026, 9, 27, 17, 15, 0, tzinfo=UTC), datetime(2026, 9, 27, 17, 15, 7, tzinfo=UTC)]
+    )
+    upstream.clock = lambda: next(moments)
+
+    first = (await client.post(BASE, json={"object_id": DEMO_OBJECT_ID})).json()
+    second = (await client.post(BASE, json={"object_id": DEMO_OBJECT_ID})).json()
+    page = (await client.get(BASE, params={"object_id": DEMO_OBJECT_ID})).json()
+
+    assert first["key"] == f"{DEMO_OBJECT_ID}/2026-09-27T201500-2026-10-16_2026-10-22.pdf"
+    assert second["key"] == f"{DEMO_OBJECT_ID}/2026-09-27T201507-2026-10-16_2026-10-22.pdf"
+    assert page["total"] == 2
+    assert {item["key"] for item in page["items"]} == {first["key"], second["key"]}
 
 
 async def test_без_site_отчёт_выходит_и_говорит_о_пробелах(client, analyzed, upstream):

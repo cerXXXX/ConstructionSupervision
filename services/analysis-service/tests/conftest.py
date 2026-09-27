@@ -243,11 +243,17 @@ async def seeded_rules(session_factory) -> None:
 @pytest.fixture
 def upstream():
     """Заглушки plan и site: внешние сервисы в тестах не вызываются (AGENTS.md, раздел 10)."""
+    from datetime import UTC, datetime
     from types import SimpleNamespace
 
     # llm = None — нейросеть выключена, резюме по шаблону; тест резюме подставляет StubLlm.
+    # clock — часы отчётов: тест подменяет их, чтобы момент формирования не зависел от скорости.
     return SimpleNamespace(
-        plan=StubPlanClient(), site=StubSiteClient(), storage=StubStorage(), llm=None
+        plan=StubPlanClient(),
+        site=StubSiteClient(),
+        storage=StubStorage(),
+        llm=None,
+        clock=lambda: datetime.now(UTC),
     )
 
 
@@ -276,7 +282,12 @@ async def client(session_factory, upstream, monkeypatch) -> AsyncIterator:
 
     def _report_service(session: SessionDep) -> ReportService:
         return ReportService(
-            session, upstream.plan, upstream.site, upstream.storage, Summarizer(upstream.llm)
+            session,
+            upstream.plan,
+            upstream.site,
+            upstream.storage,
+            Summarizer(upstream.llm),
+            now=lambda: upstream.clock(),
         )
 
     monkeypatch.setattr(settings, "contracts_dir", str(CONTRACTS_DIR))
