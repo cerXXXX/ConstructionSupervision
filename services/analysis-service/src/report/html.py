@@ -2,15 +2,21 @@
 
 Тексты для человека живут в шаблонах, а не в коде (AGENTS.md, раздел 3). Резюме по
 шаблону — не заглушка на случай без LLM, а полноценный текст по тем же фактам; LLM-вариант
-(T35) заменяет только его, остальной отчёт не меняется.
+(T35) заменяет только его, остальной отчёт не меняется. Резюме стоит сразу за титулом, а его
+ссылки на отклонения ведут к строкам таблицы отклонений.
 """
 
+import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from markupsafe import Markup, escape
+
+from src.report.summary import DEVIATION_REF
 
 TEMPLATES = Path(__file__).parent / "templates"
 TEMPLATE = "TEMPLATE"
@@ -24,16 +30,34 @@ class Summary:
     source: str
 
 
+def link_refs(text: str, ids: Iterable[str]) -> Markup:
+    """Ссылки резюме на отклонения (`bac02fc0`) — внутренние ссылки PDF на строку таблицы.
+
+    Текст сначала экранируется целиком, потом ID из таблицы отчёта оборачиваются ссылкой:
+    разметку из текста модели так не протащить. ID, которого в таблице нет, остаётся текстом —
+    ссылка в никуда хуже её отсутствия.
+    """
+    known = set(ids)
+
+    def link(match: re.Match[str]) -> str:
+        ref = match.group()
+        return f'<a href="#dev-{ref}">{ref}</a>' if ref in known else ref
+
+    return Markup(DEVIATION_REF.sub(link, str(escape(text))))
+
+
 @cache
 def _env() -> Environment:
     # StrictUndefined: опечатка в шаблоне — ошибка сборки, а не пустое место в отчёте заказчику.
-    return Environment(
+    env = Environment(
         loader=FileSystemLoader(TEMPLATES),
         autoescape=select_autoescape(enabled_extensions=("html.j2",), default=False),
         undefined=StrictUndefined,
         trim_blocks=True,
         lstrip_blocks=True,
     )
+    env.filters["link_refs"] = link_refs
+    return env
 
 
 def template_summary(context: dict[str, Any]) -> Summary:

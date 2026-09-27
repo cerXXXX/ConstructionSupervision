@@ -11,7 +11,7 @@ from src.core.predicates import load_rules
 from src.core.rules import RuleParams
 from src.core.run import analyze
 from src.report.context import build_context, deviations_in_period, pick_evidence
-from src.report.html import render_html, template_summary
+from src.report.html import link_refs, render_html, template_summary
 from src.report.labels import load_labels
 from src.report.model import (
     Box,
@@ -31,13 +31,14 @@ RULES = load_rules(SERVICE / "data" / "deviation_rules.yaml")
 LABELS = load_labels(SERVICE / "data" / "report_labels.yaml", CONTRACTS_DIR)
 PLAN = load_plan()
 DAYS = ["facts_normal_day.json", "facts_day1.json", "facts_day2.json", "facts_day3.json"]
+# Разделы в порядке отчёта: резюме читают первым — оно сразу за титулом.
 SECTIONS = (
+    "Резюме",
     "Сводка",
     "Диаграмма Ганта план-факт",
     "Загрузка техники по дням",
     "Отклонения за период",
     "Снимки-доказательства",
-    "Резюме",
     "Ограничения",
 )
 
@@ -212,9 +213,34 @@ def test_резюме_шаблонное_ссылается_на_id_и_берё�
     assert summary.generated_by == "TEMPLATE"
     assert all(f"[{row['id']}]" in summary.text for row in context["deviations"][:5])
     numbers = set(re.findall(r"\d+(?:[.,]\d+)?", summary.text))
-    # Каждое число резюме есть в остальном отчёте — резюме ничего не считает само.
-    rest = render_html(context, summary).replace(summary.text, "")
+    # Каждое число резюме есть в остальном отчёте — резюме ничего не считает само. Блок
+    # резюме вырезается целиком: ссылки на отклонения меняют его текст внутри HTML.
+    html = render_html(context, summary)
+    rest = re.sub(r'<div class="summary">.*?</div>', "", html, flags=re.S)
+    assert rest != html
     assert numbers <= set(re.findall(r"\d+(?:[.,]\d+)?", rest))
+
+
+def test_резюме_сразу_за_титулом_и_ссылается_на_строки_таблицы(report_input):
+    context = build_context(report_input)
+    html = render_html(context, template_summary(context))
+
+    order = [html.index(f"<h2>{section}</h2>") for section in SECTIONS]
+    assert order == sorted(order)
+    block = re.search(r'<div class="summary">(.*?)</div>', html, flags=re.S).group(1)
+    for row in context["deviations"][:5]:
+        assert f'<a href="#dev-{row["id"]}">{row["id"]}</a>' in block
+        assert f'<tr id="dev-{row["id"]}">' in html
+
+
+def test_ссылки_резюме_только_на_известные_id_и_текст_экранирован():
+    text = "См. [bac02fc0] и [deadbeef] <script>alert(1)</script>"
+
+    html = str(link_refs(text, ["bac02fc0"]))
+
+    assert '<a href="#dev-bac02fc0">bac02fc0</a>' in html
+    assert "[deadbeef]" in html and "#dev-deadbeef" not in html
+    assert "<script>" not in html and "&lt;script&gt;" in html
 
 
 def test_гант_по_полосе_на_веху_загрузка_по_клетке_на_класс_и_день(report_input):
