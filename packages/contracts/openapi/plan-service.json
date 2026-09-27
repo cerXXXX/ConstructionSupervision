@@ -1097,6 +1097,41 @@
             "title": "Code",
             "type": "string"
           },
+          "completed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed By"
+          },
+          "completed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Отметка оператора «веха выполнена» — последний день работ, включительно; как её учитывает анализ — methodology.md, 10.3b",
+            "title": "Completed On"
+          },
+          "completion_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completion Note"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1547,6 +1582,43 @@
             "title": "Code",
             "type": "string"
           },
+          "completed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Кто поставил отметку",
+            "title": "Completed By"
+          },
+          "completed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Отметка «веха выполнена»: последний день работ (ADR-0015)",
+            "title": "Completed On"
+          },
+          "completion_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Комментарий к отметке",
+            "title": "Completion Note"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1704,6 +1776,32 @@
       "StageUpdate": {
         "description": "Частичное изменение. Связи и критический путь здесь не правятся (T19).",
         "properties": {
+          "completed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Отметка «веха выполнена» — последний день работ; автор — из `X-Actor`. null — снять отметку вместе с автором и комментарием",
+            "title": "Completed On"
+          },
+          "completion_note": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Комментарий к отметке: акт, кто принял",
+            "title": "Completion Note"
+          },
           "norm_duration_days": {
             "anyOf": [
               {
@@ -3284,7 +3382,7 @@
     },
     "/api/v1/plan/stages/{stage_id}": {
       "patch": {
-        "description": "Даты (включительно), тип участка, нормативная длительность, стадия по фото. `plan_version` объекта растёт, в analysis уходит сигнал «пересчитай».",
+        "description": "Даты (включительно), тип участка, нормативная длительность, стадия по фото, отметка «веха выполнена» (`completed_on`, `completion_note`; автор — из `X-Actor`, `completed_on: null` снимает отметку). `plan_version` объекта растёт, в analysis уходит сигнал «пересчитай».",
         "operationId": "update_stage_api_v1_plan_stages__stage_id__patch",
         "parameters": [
           {
@@ -3305,6 +3403,22 @@
               "default": "",
               "title": "X-Api-Key",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Actor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Actor"
             }
           }
         ],

@@ -15,7 +15,7 @@ CLASS_KEYS = {"code", "name_ru", "group", "transient", "works_in_place"}
 STAGE_KEYS = {
     "id", "code", "name", "phase", "seq", "work_codes", "zone_type", "visual_stage",
     "plan_start", "plan_end", "norm_duration_days", "predecessors", "is_critical",
-    "total_float_days", "basis", "rule",
+    "total_float_days", "basis", "rule", "completed_on", "completed_by", "completion_note",
 }  # fmt: skip
 RULE_KEYS = {"id", "version", "required", "allowed", "signature", "min_sessions"}
 

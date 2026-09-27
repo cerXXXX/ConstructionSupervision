@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends
 from lct_common import Page, PageParams
 
-from src.api.deps import AnalysisDep, SessionDep
+from src.api.deps import ActorDep, AnalysisDep, SessionDep
 from src.api.schemas.stages import StageRead, StageUpdate
 from src.services.stages import StageService
 
@@ -35,12 +35,14 @@ async def list_stages(
     "/stages/{stage_id}",
     response_model=StageRead,
     summary="Изменить веху",
-    description="Даты (включительно), тип участка, нормативная длительность, стадия по фото. "
-    "`plan_version` объекта растёт, в analysis уходит сигнал «пересчитай».",
+    description="Даты (включительно), тип участка, нормативная длительность, стадия по фото, "
+    "отметка «веха выполнена» (`completed_on`, `completion_note`; автор — из `X-Actor`, "
+    "`completed_on: null` снимает отметку). `plan_version` объекта растёт, в analysis уходит "
+    "сигнал «пересчитай».",
 )
 async def update_stage(
-    stage_id: UUID, payload: StageUpdate, session: SessionDep, signal: AnalysisDep
+    stage_id: UUID, payload: StageUpdate, session: SessionDep, signal: AnalysisDep, actor: ActorDep
 ):
     service = StageService(session, signal)
-    stage = await service.update(stage_id, payload)
+    stage = await service.update(stage_id, payload, actor)
     return StageRead.of(stage, await service.rule_of(stage))

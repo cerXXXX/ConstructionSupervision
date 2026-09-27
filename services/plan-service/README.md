@@ -49,7 +49,7 @@ flowchart LR
 | `POST` | `/objects/{id}/plan/import` | Импорт графика из CSV/XLSX: код, наименование, начало, окончание (+ необязательно тип участка, визуальная стадия, связи, фаза); недостающее и правила — из шаблона вех; `force=true` заменяет существующий график |
 | `POST` | `/objects/{id}/plan/generate` | Сгенерировать график по МРР из типа объекта и параметров. Тело необязательно: `{tep, start_date}` дополняют карточку объекта и сохраняются в ней. `force=true` перезаписывает ручные правки. Ответ: `{object_id, plan_version, stages, rules, critical_stages, plan_start, plan_end, total_months, basis}` |
 | `GET` | `/objects/{id}/stages` | Вехи объекта по `seq`, в общем формате страницы |
-| `PATCH` | `/stages/{id}` | Изменить даты, тип участка (только роль `WORK`), нормативную длительность, `visual_stage` (`null` снимает); `plan_version` растёт, уходит сигнал «пересчитай» |
+| `PATCH` | `/stages/{id}` | Изменить даты, тип участка (только роль `WORK`), нормативную длительность, `visual_stage` (`null` снимает); отметка «веха выполнена» — `completed_on` (последний день работ) и `completion_note`, автор — из `X-Actor`, `completed_on: null` снимает отметку с автором и комментарием ([ADR-0015](../../docs/decisions/0015-stage-completion-mark.md)); `plan_version` растёт, уходит сигнал «пересчитай» |
 
 ### Правила и справочники
 
@@ -60,7 +60,10 @@ flowchart LR
 
 Коды классов в `required`, `allowed` и `signature.equipment` сверяются с
 `equipment_classes.yaml`, повтор класса в одном списке — опечатка (`core/stage_rules.py`).
-`X-Actor` (имя в URL-кодировке) попадает в журнал правок: в лог `stage_rule.*`.
+`X-Actor` (имя в URL-кодировке) попадает в журнал правок: в лог `stage_rule.*`, а у отметки
+выполнения — ещё и в поле `completed_by` вехи (лог `stage.completed` / `stage.reopened`).
+Отметка уходит в analysis в составе «всего плана»; замена графика генерацией или импортом
+создаёт новые вехи, и отметки старых пропадают вместе с ними.
 `GET /objects/{id}/stages` и `PATCH /stages/{id}` отдают веху вместе с её правилом (`rule`).
 | `GET` | `/equipment-classes` | Классы техники из `equipment_classes.yaml` (только чтение), в порядке файла; фильтры `group`, `transient` |
 | `GET` | `/work-types` | Справочник работ в порядке файла; фильтры `level` (1…4), `parent_code` |
@@ -81,6 +84,7 @@ flowchart LR
 `WORK_TYPES_IMPORT_INVALID` (справочник работ не разобран; `details.errors` — строки и столбцы),
 `STAGE_RULE_ALREADY_EXISTS` (второе правило у вехи), `STAGE_RULE_INVALID` (класс повторяется
 в группе, `allowed` или сигнатуре), `INVALID_ZONE_TYPE` (веха на участке не с ролью `WORK`),
+`INVALID_COMPLETION` (комментарий к отметке «выполнена» без её даты),
 `CALENDAR_NOT_FOUND`,
 `CALENDAR_ALREADY_EXISTS` (повтор кода), `CALENDAR_INVALID` (неизвестный часовой пояс,
 выходные вне 1…7 или все семь дней, конец рабочих часов не позже начала).

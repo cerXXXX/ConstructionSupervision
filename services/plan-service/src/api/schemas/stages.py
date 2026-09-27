@@ -41,6 +41,11 @@ class StageRead(BaseModel):
     total_float_days: int
     source: StageSource
     basis: str | None
+    completed_on: date | None = Field(
+        default=None, description="Отметка «веха выполнена»: последний день работ (ADR-0015)"
+    )
+    completed_by: str | None = Field(default=None, description="Кто поставил отметку")
+    completion_note: str | None = Field(default=None, description="Комментарий к отметке")
     rule: RuleRead | None = Field(default=None, description="Правило «веха → техника»")
     created_at: datetime
     updated_at: datetime
@@ -62,4 +67,12 @@ class StageUpdate(BaseModel):
     visual_stage: StageLabel | None = Field(default=None, description="null — снять стадию")
     norm_duration_days: int | None = Field(
         default=None, gt=0, description="Нормативная длительность в рабочих днях"
+    )
+    completed_on: date | None = Field(
+        default=None,
+        description="Отметка «веха выполнена» — последний день работ; автор — из `X-Actor`. "
+        "null — снять отметку вместе с автором и комментарием",
+    )
+    completion_note: str | None = Field(
+        default=None, max_length=2000, description="Комментарий к отметке: акт, кто принял"
     )

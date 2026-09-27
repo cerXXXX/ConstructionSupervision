@@ -157,6 +157,11 @@ class Stage(Base, TimestampMixin):
     source: Mapped[str] = mapped_column(String(16), server_default=text("'MANUAL'"))
     # Откуда длительность: норматив и доля вехи для генератора, «импорт» для файла.
     basis: Mapped[str | None] = mapped_column(Text)
+    # Отметка оператора «веха выполнена» — факт о работах, а не правка плана (ADR-0015):
+    # последний день работ включительно, кто отметил и почему.
+    completed_on: Mapped[date | None] = mapped_column(Date)
+    completed_by: Mapped[str | None] = mapped_column(Text)
+    completion_note: Mapped[str | None] = mapped_column(Text)
 
 
 class StageRule(Base, TimestampMixin):

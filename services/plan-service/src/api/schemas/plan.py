@@ -73,6 +73,13 @@ class PlanStage(BaseModel):
         default=None,
         description="null — правила нет или оно выключено: D1, D2, D8, D9 по вехе не проверяются",
     )
+    completed_on: date | None = Field(
+        default=None,
+        description="Отметка оператора «веха выполнена» — последний день работ, включительно; "
+        "как её учитывает анализ — methodology.md, 10.3b",
+    )
+    completed_by: str | None = None
+    completion_note: str | None = None
 
 
 class PlanImportResult(BaseModel):

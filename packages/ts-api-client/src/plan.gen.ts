@@ -241,7 +241,7 @@ export interface paths {
         head?: never;
         /**
          * Изменить веху
-         * @description Даты (включительно), тип участка, нормативная длительность, стадия по фото. `plan_version` объекта растёт, в analysis уходит сигнал «пересчитай».
+         * @description Даты (включительно), тип участка, нормативная длительность, стадия по фото, отметка «веха выполнена» (`completed_on`, `completion_note`; автор — из `X-Actor`, `completed_on: null` снимает отметку). `plan_version` объекта растёт, в analysis уходит сигнал «пересчитай».
          */
         patch: operations["update_stage_api_v1_plan_stages__stage_id__patch"];
         trace?: never;
@@ -802,6 +802,15 @@ export interface components {
             basis: string | null;
             /** Code */
             code: string;
+            /** Completed By */
+            completed_by?: string | null;
+            /**
+             * Completed On
+             * @description Отметка оператора «веха выполнена» — последний день работ, включительно; как её учитывает анализ — methodology.md, 10.3b
+             */
+            completed_on?: string | null;
+            /** Completion Note */
+            completion_note?: string | null;
             /**
              * Id
              * Format: uuid
@@ -995,6 +1004,21 @@ export interface components {
             /** Code */
             code: string;
             /**
+             * Completed By
+             * @description Кто поставил отметку
+             */
+            completed_by?: string | null;
+            /**
+             * Completed On
+             * @description Отметка «веха выполнена»: последний день работ (ADR-0015)
+             */
+            completed_on?: string | null;
+            /**
+             * Completion Note
+             * @description Комментарий к отметке
+             */
+            completion_note?: string | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -1064,6 +1088,16 @@ export interface components {
          * @description Частичное изменение. Связи и критический путь здесь не правятся (T19).
          */
         StageUpdate: {
+            /**
+             * Completed On
+             * @description Отметка «веха выполнена» — последний день работ; автор — из `X-Actor`. null — снять отметку вместе с автором и комментарием
+             */
+            completed_on?: string | null;
+            /**
+             * Completion Note
+             * @description Комментарий к отметке: акт, кто принял
+             */
+            completion_note?: string | null;
             /**
              * Norm Duration Days
              * @description Нормативная длительность в рабочих днях
@@ -1839,6 +1873,7 @@ export interface operations {
             query?: never;
             header?: {
                 "x-api-key"?: string;
+                "X-Actor"?: string | null;
             };
             path: {
                 stage_id: string;
