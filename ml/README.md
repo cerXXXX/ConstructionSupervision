@@ -242,6 +242,9 @@ cp ml/runs/world-s-ulima-v3/weights/last.pt data/models/yolov8s-worldv2-ulima-v3
 # в .env: VISION_DET_WEIGHTS=/models/yolov8s-worldv2-ulima-v3.pt, затем поднять vision-service
 ```
 
+Остановленный прогон продолжается с `last.pt` последней завершённой эпохи тем же
+`docker run`, но с аргументами `ml/training/train.py --name <прогон> --resume`.
+
 Дообучается сам YOLO-World, а не обычный YOLO. Имена классов в `data-world.yaml` — первые
 промпты **всех** классов системы, и после обучения словарь по-прежнему задаётся промптами из
 `equipment_classes.yaml`. vision-service получает веса через `VISION_DET_WEIGHTS` без правки
