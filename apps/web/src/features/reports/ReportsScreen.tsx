@@ -137,8 +137,7 @@ function CreateForm({ objectId, asOf }: { objectId: string; asOf: string }) {
       </div>
       <p className="text-xs text-muted">
         Даты — сутки по Москве. Выводы — на момент анализа {formatMoment(asOf)}; дни периода позже
-        него отчёт назовёт в «Ограничениях». Отчёт того же периода, сформированный сегодня повторно,
-        заменяет прежний.
+        него отчёт назовёт в «Ограничениях». Каждый сформированный отчёт сохраняется отдельно.
       </p>
       {problem && <p className="text-sm text-red-700">{problem}</p>}
       {create.isError && <ErrorBox error={create.error} />}
