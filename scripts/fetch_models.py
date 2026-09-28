@@ -86,7 +86,7 @@ ASSETS = [
         path=MODELS / "clip" / "ViT-B-32.pt",
         sha256="40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af",
     ),
-    # Детектор стенда (VISION_DET_WEIGHTS): дообучен на Лиме и Construction Equipment (ml/README.md).
+    # Детектор стенда (VISION_DET_WEIGHTS): дообучен на Лиме и Construction Equipment (ml/README).
     Asset(
         group="demo",
         name="YOLO-World v2 s, дообученный на Лиме и ConstructionEquipment (ce-ulima-v1)",
