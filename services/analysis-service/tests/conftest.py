@@ -246,7 +246,7 @@ class StubStorage:
         return found[0] if found else None
 
     async def presigned_url(self, key):
-        return f"http://localhost:8333/reports/{key}?X-Amz-Signature=stub"
+        return f"/storage/reports/{key}?X-Amz-Signature=stub"
 
 
 @pytest.fixture

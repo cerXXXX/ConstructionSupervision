@@ -293,7 +293,7 @@ S3-хранилища сервис стартует и считает анали
 | `CONFIDENCE_HIGH_DAYS` | `5` | Дней наблюдений для уверенности `HIGH` |
 | `CONFIDENCE_HIGH_VISIBLE` / `CONFIDENCE_MEDIUM_VISIBLE` | `0.8` / `0.5` | Доля видимых сессий для `HIGH` / `MEDIUM` |
 | `UNKNOWN_BLIND_SHARE` | `0.5` | Больше этой доли слепых сессий — статус объекта `UNKNOWN` |
-| `S3_ENDPOINT`, `S3_PUBLIC_ENDPOINT`, `S3_BUCKET_REPORTS` | `http://s3:8333`, `http://localhost:8333`, `reports` | Хранилище отчётов; ссылка для браузера подписывается на публичный адрес |
+| `S3_ENDPOINT`, `S3_PUBLIC_PATH`, `S3_BUCKET_REPORTS` | `http://s3:8333`, `/storage`, `reports` | Хранилище отчётов; ссылка для браузера — путь `/storage/reports/…` на gateway без хоста ([ADR-0017](../../docs/decisions/0017-storage-through-gateway.md)) |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | `s3admin` / — | Ключи S3 (в стенде — из `.env`) |
 | `S3_PRESIGN_TTL_S` | `3600` | Срок жизни ссылки на отчёт |
 | `REPORT_LABELS_FILE` | `data/report_labels.yaml` | Русские названия значений перечислений в отчёте |
