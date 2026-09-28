@@ -86,8 +86,7 @@ py -3.12 -m venv .venv
 (`docker compose pull`, раздел 10).
 
 **Переход со стенда на MinIO** (`.env` с `S3_ENDPOINT=http://minio:9000`). Адреса в `.env`
-поменять на `S3_ENDPOINT=http://s3:8333` и `S3_PUBLIC_ENDPOINT=http://localhost:8333`, ключи
-оставить. Снимки и отчёты из старого тома переносятся зеркалом, пока контейнер MinIO ещё
+поменять на `S3_ENDPOINT=http://s3:8333` и `S3_PUBLIC_PATH=/storage`, ключи оставить. Снимки и отчёты из старого тома переносятся зеркалом, пока контейнер MinIO ещё
 запущен (`docker compose up -d s3` поднимает новое хранилище рядом):
 
 ```powershell
@@ -119,6 +118,10 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 | <http://localhost:8080/docs> | Сводный Swagger с выбором сервиса; страница грузит Swagger UI с cdnjs, нужен интернет |
 | <http://localhost:8001/docs> … <http://localhost:8004/docs> | Swagger отдельных сервисов |
 | <http://localhost:23646> | Веб-интерфейс SeaweedFS (вход — `S3_ACCESS_KEY` / `S3_SECRET_KEY`) |
+
+С другой машины (локальная сеть, Tailscale, Cloudflare Tunnel) достаточно открыть наружу один
+порт gateway: снимки и отчёты тоже идут через него, по пути `/storage/`
+([ADR-0017](decisions/0017-storage-through-gateway.md)). Порт 8333 для этого не нужен.
 
 ## 3. Команды
 
@@ -204,7 +207,7 @@ py -3.12 -m venv .venv
 | Переменная | По умолчанию | Смысл |
 | :--- | :--- | :--- |
 | `S3_ENDPOINT` | `http://s3:8333` | S3-хранилище (SeaweedFS) внутри сети Docker |
-| `S3_PUBLIC_ENDPOINT` | `http://localhost:8333` | Адрес хранилища для браузера: на него подписываются ссылки, которые открывает интерфейс |
+| `S3_PUBLIC_PATH` | `/storage` | Путь на gateway, под которым браузер получает ссылки на снимки и отчёты (без хоста) |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY` | задаются в `.env` | Ключи S3 и вход в веб-интерфейс SeaweedFS |
 | `S3_BUCKET_IMAGES` / `S3_BUCKET_REPORTS` | `images` / `reports` | |
 | `S3_PRESIGN_TTL_S` | `3600` | Срок жизни ссылок |
@@ -333,7 +336,7 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
 | Снимки в статусе `NEEDS_TIME` | Нет EXIF и время не распознано из имени файла | Указать время при загрузке или переименовать по шаблону `YYYYMMDD_HHMMSS.jpg` |
 | Анализ не находит отклонений | Нет активных этапов на дату снимков, не размечены зоны или участок невидим | Проверить `GET /api/v1/plan/objects/{id}/plan`, зоны камер и `as_of` прогона |
 | Все участки `BLIND` | Зоны не размечены или кадры непригодны | Проверить `data/seed/cameras.json` и `usable` у снимков |
-| Снимки не открываются в браузере | Ссылка подписана на внутренний адрес хранилища | Проверить `S3_PUBLIC_ENDPOINT` (`http://localhost:8333`) |
+| Снимки не открываются в браузере | `SignatureDoesNotMatch` от хранилища: хост в `S3_ENDPOINT` не совпадает с `Host` в `location /storage/` gateway, или прокси перед gateway переписывает путь | Хост `S3_ENDPOINT` и `proxy_set_header Host` в `services/gateway/nginx.conf` — одинаковые (`s3:8333`); путь `/storage/…` до gateway доходит без изменений |
 | Отчёт без LLM-резюме | Нет сети, неверный ключ или таймаут | Проверить `LLM_BASE_URL` и `LLM_API_KEY`; `LLM_ENABLED=false` — резюме станет шаблонным |
 | Распознавание идёт на CPU, хотя есть карта | Docker не видит GPU | `docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi`; обновить драйвер NVIDIA; проверить `GET /api/v1/vision/model` |
 | Скрипт (`seed.py`, `e2e.py`) пишет `HTTP 401` или не видит сервисы | Скрипт стучится не в тот порт: `GATEWAY_PORT` не в `.env`, а задан только при `docker compose up` | Записать `GATEWAY_PORT` в `.env`; на стенде 8080 занят AdGuard, отвечает он |
