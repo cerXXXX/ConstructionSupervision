@@ -1,4 +1,4 @@
-"""DTO этапа графика. Поля совпадают с этапом в контракте «весь план» (interservice.md, раздел 1)."""
+"""DTO этапа графика. Поля совпадают с этапом в контракте «весь план» (interservice.md, р. 1)."""
 
 from datetime import date, datetime
 from uuid import UUID
