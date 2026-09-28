@@ -83,18 +83,6 @@ zero-shot, а он технику Лимы почти не узнаёт (mAP50 0
 с CUDA идёт 26 минут (образ 12,4 ГБ); готовые образы быстрее скачать (`docker compose pull`,
 раздел 10).
 
-**Переход со стенда на MinIO** (`.env` с `S3_ENDPOINT=http://minio:9000`). Адреса в `.env`
-поменять на `S3_ENDPOINT=http://s3:8333` и `S3_PUBLIC_PATH=/storage`, ключи оставить. Снимки и отчёты из старого тома переносятся зеркалом, пока контейнер MinIO ещё
-запущен (`docker compose up -d s3` поднимает новое хранилище рядом):
-
-```powershell
-docker exec lct-minio-1 sh -c 'mc alias set old http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; mc alias set new http://s3:8333 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; for b in images reports; do mc mb --ignore-existing new/$b; mc mirror --quiet old/$b new/$b; done'
-docker compose up -d --remove-orphans      # сервисы на новом адресе, контейнер MinIO удалён
-```
-
-Том `lct_miniodata` после этого не нужен: `docker volume rm lct_miniodata`. Без переноса
-данные загружаются заново `seed.py`.
-
 ```powershell
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 .venv\Scripts\python scripts\health.py        # все готовы; vision грузит модели ~40 с
@@ -190,7 +178,6 @@ py -3.12 -m venv .venv
 
 | Переменная | По умолчанию |
 | :--- | :--- |
-| `POSTGRES_HOST` / `POSTGRES_PORT` | `postgres` / `5432` |
 | `POSTGRES_SUPERUSER` / `POSTGRES_PASSWORD` | `postgres` / задаётся в `.env` |
 | `PLAN_DB_DSN` | `postgresql+asyncpg://plan_user:***@postgres:5432/plandb` |
 | `SITE_DB_DSN` | `postgresql+asyncpg://site_user:***@postgres:5432/sitedb` |
