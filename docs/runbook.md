@@ -39,8 +39,10 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 
 ## 2. Первый запуск
 
-Команды — для PowerShell на демо-стенде, из корня репозитория; Docker Desktop запущен. В Linux
-и macOS вместо `.venv\Scripts\python` — `.venv/bin/python`.
+**Готовые образы, только Docker** — [README](../README.md#3-быстрый-старт), раздел 3: команды
+для Linux и Windows копируются как есть и поднимают то же, что на демо-стенде. Ниже — путь
+разработчика: `.venv` на хосте и сборка образов из исходников. Команды — для PowerShell, из
+корня репозитория; в Linux и macOS вместо `.venv\Scripts\python` — `.venv/bin/python`.
 
 **1. Настройки.**
 
@@ -48,14 +50,20 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 copy .env.example .env
 ```
 
-В `.env` поменять пароли и `API_KEY`, а также:
+Что можно поменять в `.env`:
 
 - `GATEWAY_PORT` — если порт 8080 занят. На стенде его держит AdGuard, там `8088`;
-- `VISION_DET_WEIGHTS` — дообученные веса, если они есть (шаг 3);
-- `LLM_BASE_URL` и `LLM_MODEL` — если будет LLM (раздел 4). Без них резюме шаблонное.
+- пароли баз — каждый в двух местах: `*_DB_PASSWORD` и внутри `*_DB_DSN`. Меняются до первого
+  `up`: роли создаются при первом запуске Postgres, потом смена пароля в `.env` их не касается;
+- `API_KEY` — **не менять**, пока интерфейс собирается с ключом `dev-key-change-me` (board.md,
+  раздел 9): с другим ключом интерфейс получит 401 на каждый запрос;
+- LLM — раздел 4. По умолчанию резюме пишет Gemma в контейнере `llm`.
 
-**2. Окружение хоста и веса моделей.** `fetch_models.py` скачивает zero-shot детектор
-`yolov8s-worldv2.pt`, OpenCLIP и текстовый CLIP в `data/models/`, около 940 МБ.
+**2. Окружение хоста, модели и демо-кадры.** `fetch_models.py` скачивает в `data/models/`
+zero-shot детектор, OpenCLIP, текстовый CLIP, дообученные веса `ulima-v3` и `ce-ulima-v1` и
+Gemma 4 E4B, а
+56 демо-кадров — в `data/seed/images/`; всего около 7 ГБ, с проверкой sha256. Дообученные веса
+и кадры — ассеты релиза `demo-data-v1` (раздел 10), Gemma — с закреплённого коммита Hugging Face.
 
 ```powershell
 py -3.12 -m venv .venv
@@ -63,27 +71,17 @@ py -3.12 -m venv .venv
 .venv\Scripts\python scripts\fetch_models.py
 ```
 
-**3. Дообученные веса — нужны для демо.** Сценарий раздела 6 на чистом стенде проходит с
-`yolov8s-worldv2-ulima-v3.pt` (репетиция 27.09, board.md, T38). С `ce-ulima-v1` в «нормальный
-день» 19.10 добавляется лишнее D4 «простой» башенного крана вне зон: рамка крана у этих весов
-другая, и её нижняя точка не попадает ни в один участок. Скрипт весов не скачивает, в git их
-нет: файл переносится со стенда в `data/models/`, в `.env` —
-`VISION_DET_WEIGHTS=/models/yolov8s-worldv2-ulima-v3.pt`. Без дообученных весов vision работает
-на zero-shot, а он технику Лимы почти не узнаёт (mAP50 0,07, [metrics.md](metrics.md), §3).
+Без дообученных весов (`VISION_DET_WEIGHTS=/models/yolov8s-worldv2.pt`) vision работает на
+zero-shot, а он технику Лимы почти не узнаёт (mAP50 0,07, [metrics.md](metrics.md), §3).
+Демо-кадры можно собрать и из самого датасета Лимы ([ml/README.md](../ml/README.md), «Датасет
+Лимы»): архив распаковывается в `ml/datasets/ulima/`, затем
+`.venv\Scripts\python scripts\seed_images.py` раскладывает 56 кадров по `data/seed/images/cam-*/`.
 
-**4. Демо-снимки.** Их нет в git: это кадры открытого датасета Лимы
-([ml/README.md](../ml/README.md), «Датасет Лимы», ссылка на DOI). Архив распаковывается как есть
-в `ml/datasets/ulima/`, затем:
-
-```powershell
-.venv\Scripts\python scripts\seed_images.py   # 56 кадров → data/seed/images/cam-*/
-```
-
-**5. Стек.** На машине с картой NVIDIA — с оверлеем GPU (раздел 1). Все сторонние образы
+**3. Стек.** На машине с картой NVIDIA — с оверлеем GPU (раздел 1). Все сторонние образы
 скачиваются из публичных реестров; S3-хранилище — SeaweedFS с Docker Hub
 ([ADR-0016](decisions/0016-seaweedfs-instead-of-minio.md)). Сборка образа vision-service
-с CUDA идёт 26 минут (образ 12,4 ГБ); если образы опубликованы, быстрее их скачать
-(`docker compose pull`, раздел 10).
+с CUDA идёт 26 минут (образ 12,4 ГБ); готовые образы быстрее скачать (`docker compose pull`,
+раздел 10).
 
 **Переход со стенда на MinIO** (`.env` с `S3_ENDPOINT=http://minio:9000`). Адреса в `.env`
 поменять на `S3_ENDPOINT=http://s3:8333` и `S3_PUBLIC_PATH=/storage`, ключи оставить. Снимки и отчёты из старого тома переносятся зеркалом, пока контейнер MinIO ещё
@@ -102,7 +100,7 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 .venv\Scripts\python scripts\health.py        # все готовы; vision грузит модели ~40 с
 ```
 
-**6. Демо-данные и проверка.**
+**4. Демо-данные и проверка.**
 
 ```powershell
 .venv\Scripts\python scripts\seed.py          # объект, график, правила, снимки, зоны, анализ
@@ -253,20 +251,28 @@ py -3.12 -m venv .venv
 
 | Переменная | По умолчанию | Смысл |
 | :--- | :--- | :--- |
+| `COMPOSE_PROFILES` | `llm` | Поднимать ли контейнер `llm` с Gemma; пусто — не поднимать |
 | `LLM_ENABLED` | `true` | `false` → шаблонные резюме без модели |
-| `LLM_BASE_URL` | — | Адрес OpenAI-совместимого API с `/v1`; пусто — шаблонные резюме |
+| `LLM_BASE_URL` | `http://llm:8080/v1` | Адрес OpenAI-совместимого API с `/v1`; пусто — шаблонные резюме |
 | `LLM_API_KEY` | — | **Настоящий секрет.** Только в `.env`, никогда в git |
-| `LLM_MODEL` | — | Имя модели у провайдера |
-| `LLM_TIMEOUT_S` | `30` | По истечении — шаблонное резюме |
+| `LLM_MODEL` | `gemma-4-e4b` | Имя модели у провайдера |
+| `LLM_TIMEOUT_S` | `60` | По истечении — шаблонное резюме; на CPU без видеокарты разумно 180 |
+
+Значения по умолчанию — из `.env.example`; без них в коде сервиса модель выключена.
 
 Годится любой OpenAI-совместимый API: облачный провайдер или локальный сервер. В модель уходят
 только структурированные факты — названия этапов, даты, числа, коды отклонений; ни снимков, ни
 персональных данных. Прямой доступ к OpenAI и Anthropic из РФ без прокси не работает:
 облачного провайдера нужно проверить **с той машины, на которой будет демонстрация**, заранее.
 
-**Локальная модель на демо-стенде** (26.09, платного API нет): llama.cpp на хосте, Gemma 4 E4B
-Q4_K_M. Модель занимает ~3,3 ГБ видеопамяти и помещается на 6 ГБ рядом с vision; резюме —
-3–5 с. Запуск до показа, в отдельном окне PowerShell:
+**Локальная модель по умолчанию — контейнер `llm`** (сервис compose с профилем `llm`):
+llama.cpp `server-cuda-b11096` и Gemma 4 E4B Q4_K_M из `data/models/llm/` (её качает
+`fetch_models.py`). Модель занимает ~3,3 ГБ видеопамяти и помещается на 6 ГБ рядом с vision;
+резюме — 3–5 с. Без видеокарты тот же образ считает на процессоре, резюме заметно дольше.
+Своя модель или облако — таблица в [README](../README.md#своя-llm-вместо-gemma), раздел 3.
+
+**Та же модель на хосте** (так стенд работал 26–28.09): llama.cpp под Windows, запуск до показа
+в отдельном окне PowerShell:
 
 ```powershell
 D:\localllamacpp\bin\b11099\llama-server.exe `
@@ -275,8 +281,8 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
   --chat-template-kwargs '{\"enable_thinking\":false}'
 ```
 
-В `.env`: `LLM_BASE_URL=http://host.docker.internal:8091/v1`, `LLM_MODEL=gemma-4-e4b`,
-`LLM_TIMEOUT_S=60`, затем `docker compose up -d analysis-service`. Режим рассуждений Gemma
+В `.env`: `COMPOSE_PROFILES=` (контейнер не нужен), `LLM_BASE_URL=http://host.docker.internal:8091/v1`,
+`LLM_MODEL=gemma-4-e4b`, затем `docker compose up -d analysis-service`. Режим рассуждений Gemma
 выключен: для пересказа фактов он только тратит время. Порт 8080 на стенде занят (AdGuard),
 поэтому 8091. Сервер не запущен — отчёт выйдет с шаблонным резюме, это не ошибка.
 
@@ -288,8 +294,9 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
 
 | Профиль | Что добавит | Когда | Состояние |
 | :--- | :--- | :--- | :--- |
-| `llm` | Ollama + загрузка модели | Закрытый контур без внешнего API | не делается: локальная модель — любой OpenAI-совместимый сервер на хосте через `LLM_BASE_URL` (раздел 4) |
-| `gpu` | `vision-service` с пробросом видеокарты | Целевой стенд | сделан **оверлеем** `docker-compose.gpu.yml`: профиль добавляет сервисы, но не дополняет описанный |
+| `llm` | llama.cpp с Gemma 4 E4B для резюме отчётов | По умолчанию (`COMPOSE_PROFILES=llm` в `.env.example`) | сделан (раздел 4); модель качает `fetch_models.py` |
+| `tools` | Контейнер со скриптами `scripts/` | `docker compose run --rm tools python scripts/<скрипт>.py` — без Python на хосте | сделан; `run` запускает его и без включённого профиля |
+| `gpu` | Видеокарта для `vision-service` и `llm` | Машина с NVIDIA | сделан **оверлеем** `docker-compose.gpu.yml`: профиль добавляет сервисы, но не дополняет описанный. Включается `-f` или строкой `COMPOSE_FILE` в `.env` (README, раздел 3) |
 
 ## 6. Демо-сценарий (5 минут)
 
@@ -422,16 +429,31 @@ gh workflow run Release                    # вручную: только latest
 | `v0.2.0` | Конкретный релиз — точка отката |
 | `main` | Последний зелёный коммит `main`, без релиза |
 | `sha-<полный хэш>` | Конкретный коммит `main`; мог и не пройти тесты — только для отладки |
-Реестр приватный, поэтому на машине, которая их забирает, нужен вход:
+
+Пакеты публичные — `docker compose pull` работает без входа. Пока пакет приватный (новый
+пакет GitHub создаёт приватным, видимость меняется в «Package settings» каждого пакета),
+нужен вход токеном с правом `read:packages`:
 
 ```bash
 echo "$GITHUB_TOKEN" | docker login ghcr.io -u <логин> --password-stdin
-docker compose pull
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --no-build
 ```
 
-Токену достаточно права `read:packages`. Репетиция 27.09 (`v0.1.0`): `pull` — 9 минут, из них
-почти всё — образ vision-service 12,4 ГБ; от `up` до «готовы 5 из 5» — 109 с.
+Репетиция 27.09 (`v0.1.0`): `pull` — 9 минут, из них почти всё — образ vision-service 12,4 ГБ;
+от `up` до «готовы 5 из 5» — 109 с.
+
+**Ассеты релиза `demo-data-v1`** — то, что `fetch_models.py` скачивает вместо git: дообученные
+веса детектора (`ulima-v3`, `ce-ulima-v1`) и архив 56 демо-кадров. Тег не начинается с `v`,
+поэтому workflow Release на нём не запускается. Ассеты собирает скрипт, а загружает человек:
+
+```powershell
+.venv\Scripts\python scripts\pack_assets.py      # → dist\demo-data-v1\, печатает sha256
+```
+
+На GitHub: Releases → Draft a new release → тег `demo-data-v1` на `main` → три файла из
+`dist\demo-data-v1\` → отметить «Set as a pre-release», чтобы он не стал «Latest» → Publish.
+Архив воспроизводим: те же кадры дают тот же sha256. Новые кадры или веса — новый тег
+(`demo-data-v2`) и новые контрольные суммы в `fetch_models.py`: старый релиз не переписывается,
+иначе у тех, кто уже скачал, сломается проверка.
 
 `IMAGE_REGISTRY` и `IMAGE_TAG` в `.env` задают, откуда и какую версию тянуть. Имя образа в
 `docker-compose.yml` стоит рядом с `build:`, поэтому собранный локально образ получает то же имя,

@@ -1,7 +1,7 @@
 """Общее для скриптов: корень репозитория, чтение .env, честная заглушка.
 
-Только стандартная библиотека: скрипты запускаются системным Python на демо-стенде,
-где ничего «ради одного скрипта» не ставится (scripts/README.md).
+Только стандартная библиотека: этот модуль нужен и скриптам без зависимостей
+(fetch_models, health), которые идут на любом Python 3.12 (scripts/README.md).
 """
 
 import os
@@ -28,6 +28,11 @@ def load_env() -> dict[str, str]:
             values[key.strip()] = value.strip().strip("\"'")
     values.update(os.environ)
     return values
+
+
+def gateway_url(env: dict[str, str]) -> str:
+    """Адрес gateway: с хоста — localhost и GATEWAY_PORT, из контейнера tools — GATEWAY_URL."""
+    return env.get("GATEWAY_URL") or f"http://localhost:{env.get('GATEWAY_PORT', '8080')}"
 
 
 def use_utf8_output() -> None:

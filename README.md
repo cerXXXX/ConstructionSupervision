@@ -12,7 +12,7 @@
 | :--- | :--- |
 | **Вход** | Снимки с камер (JPEG/PNG), календарный график (CSV/XLSX) или тип и параметры объекта для генерации графика по МРР, справочник работ (XLSX) |
 | **Выход** | Статус объекта «в графике / отставание N дней / опережение», лента объяснимых отклонений со снимками-доказательствами, Гант план-факт, прогноз завершения, PDF-отчёт |
-| **Запуск** | `docker compose up -d` (или `make up`) → `make seed` → `http://localhost:8080` |
+| **Запуск** | Только Docker: скачать модели и кадры → `docker compose up` → демо-данные → `http://localhost:8080` ([раздел 3](#3-быстрый-старт), Linux и Windows) |
 | **Интеграция** | Единая точка входа `http://localhost:8080/api/v1/...`, OpenAPI/Swagger по каждому сервису |
 
 ---
@@ -85,24 +85,114 @@ flowchart LR
 
 ## 3. Быстрый старт
 
+Команды ниже поднимают ровно то, что показываем мы: готовые образы из ghcr, дообученный
+детектор, 56 демо-кадров, локальную LLM Gemma 4 E4B для резюме отчётов и демо-объект
+с графиком, камерами, зонами и отклонениями. Python на машине не нужен: скрипты идут
+в контейнере `tools`.
+
+**Что нужно.** git и Docker: на Linux — Docker Engine с плагином compose, на Windows —
+Docker Desktop с бэкендом WSL2. Место на диске — около 35 ГБ: образы около 22 ГБ, модели
+и кадры около 7 ГБ. Память — от 16 ГБ. Видеокарта NVIDIA не обязательна, но без неё
+распознавание и резюме считаются в разы дольше. Для карты на Linux нужны драйвер и
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html),
+на Windows — только свежий драйвер.
+
+### Linux
+
 ```bash
-cp .env.example .env          # секреты и адреса сервисов
-make models                   # скачать веса моделей в data/models
-docker compose up -d --build  # поднять весь стек (то же, что make up)
-make seed                     # демо-объект, график, камеры, зоны, снимки, анализ
-make health                   # проверить, что все сервисы живы
-make e2e                      # лента демо-объекта совпадает со сценарием
+git clone https://github.com/cerXXXX/ConstructionSupervision.git
+cd ConstructionSupervision
+cp .env.example .env
 ```
 
-Для демо нужны ещё две вещи, которых нет в git: дообученные веса детектора и кадры датасета
-Лимы для демо-хронологии. Полный порядок с нуля, для Windows и GPU — [docs/runbook.md](docs/runbook.md),
-раздел 2; эквиваленты команд `make` для PowerShell — там же, раздел 3.
+Только если есть видеокарта NVIDIA:
 
-Открыть:
+```bash
+echo "COMPOSE_FILE=docker-compose.yml:docker-compose.gpu.yml" >> .env
+```
 
-- UI — <http://localhost:8080>
+Модели и демо-кадры, стек, демо-данные:
+
+```bash
+docker compose run --rm tools python scripts/fetch_models.py
+docker compose pull
+docker compose up -d --wait
+docker compose run --rm tools python scripts/seed.py
+```
+
+### Windows (PowerShell)
+
+```powershell
+chcp 65001
+git clone https://github.com/cerXXXX/ConstructionSupervision.git
+cd ConstructionSupervision
+copy .env.example .env
+```
+
+Только если есть видеокарта NVIDIA:
+
+```powershell
+Add-Content .env "COMPOSE_FILE=docker-compose.yml;docker-compose.gpu.yml"
+```
+
+Модели и демо-кадры, стек, демо-данные:
+
+```powershell
+docker compose run --rm tools python scripts/fetch_models.py
+docker compose pull
+docker compose up -d --wait
+docker compose run --rm tools python scripts/seed.py
+```
+
+`chcp 65001` включает UTF-8 в консоли: без него русский вывод скриптов из контейнера
+превращается в кракозябры.
+
+### Что происходит и что открыть
+
+| Шаг | Что делает | Время |
+| :--- | :--- | :--- |
+| `fetch_models.py` | Веса детектора и стадии, 56 демо-кадров, Gemma 4 E4B (~7 ГБ) с проверкой sha256 | зависит от сети |
+| `pull` | Образы сервисов из ghcr и llama.cpp для LLM (~22 ГБ распакованными: vision с CUDA — 12, llama.cpp с CUDA — 7) | зависит от сети |
+| `up -d --wait` | Поднимает стек и ждёт, пока все сервисы ответят готовностью | 2–4 мин |
+| `seed.py` | Демо-объект, график, правила, кадры, зоны; ждёт распознавания и прогоняет анализ | около минуты |
+
+- Интерфейс — <http://localhost:8080>
 - Сводный Swagger по всем сервисам — <http://localhost:8080/docs>
-- Веб-интерфейс хранилища SeaweedFS — <http://localhost:23646>
+- Веб-интерфейс хранилища SeaweedFS — <http://localhost:23646> (вход — `S3_ACCESS_KEY` /
+  `S3_SECRET_KEY` из `.env`)
+
+Проверить, что система нашла ровно заложенные в демо отклонения:
+
+```bash
+docker compose run --rm tools python scripts/e2e.py
+```
+
+**Если порт 8080 занят**, поставьте в `.env` другой `GATEWAY_PORT` до `up`. **`API_KEY`
+не меняйте**: интерфейс в опубликованном образе ходит с ключом из `.env.example`. Для работы
+с другой машины (локальная сеть, туннель) достаточно открыть наружу один этот порт.
+Остановить стек — `docker compose down`, удалить ещё и данные — `docker compose down -v`.
+
+### Своя LLM вместо Gemma
+
+Резюме отчёта пишет любая модель с OpenAI-совместимым API. В модель уходят только готовые
+факты — названия этапов, даты, числа, коды отклонений; ни снимков, ни персональных данных.
+Не ответила за `LLM_TIMEOUT_S` — в отчёте шаблонное резюме, это не ошибка. Настройки —
+в `.env`, после правки — `docker compose up -d`:
+
+| Вариант | Что поставить в `.env` |
+| :--- | :--- |
+| Gemma в контейнере (по умолчанию) | ничего менять не нужно |
+| Облачный API: OpenAI, OpenRouter, шлюз к GigaChat или YandexGPT | `COMPOSE_PROFILES=`, `LLM_BASE_URL=https://api.openai.com/v1`, `LLM_MODEL=gpt-4o-mini`, `LLM_API_KEY=<ключ>` |
+| Свой сервер на этой машине: Ollama, LM Studio, llama.cpp | `COMPOSE_PROFILES=`, `LLM_BASE_URL=http://host.docker.internal:11434/v1` (порт вашего сервера), `LLM_MODEL=<имя модели>` |
+| Без модели | `COMPOSE_PROFILES=`, `LLM_ENABLED=false` |
+
+Пустой `COMPOSE_PROFILES` выключает контейнер с Gemma: он занимает ~3,3 ГБ видеопамяти или
+~5 ГБ памяти. Тогда `fetch_models.py` можно запускать с `--skip llm`, и Gemma не скачается.
+Кто и как написал резюме, видно в отчёте и в поле `summary_generated_by` API.
+
+**Сборка из исходников** вместо готовых образов — `docker compose up -d --build` вместо
+`pull` и `up`. Образ vision-service с CUDA собирается около 30 минут. Подробности,
+разработка и эквиваленты команд `make` для PowerShell — [docs/runbook.md](docs/runbook.md).
 
 ## 4. Карта репозитория
 
@@ -159,9 +249,9 @@ ConstructionSupervision/
   под подходящей лицензией нет ([docs/board.md](docs/board.md), T42).
 - Демо построено на датасете Лимы: одна стройка, лето, день. Часть демо-кадров из обучающих
   серий, поэтому демо показывает работу системы, а качество распознавания — только тест.
-- Дообученные веса и демо-кадры не раздаются скриптами: веса переносятся со стенда, кадры
-  собираются из датасета ([docs/runbook.md](docs/runbook.md), раздел 2). Сценарий демо
-  проверен на весах `ulima-v3`; с `ce-ulima-v1` в нём появляется лишний простой крана.
+- Дообученные веса и демо-кадры раздаются ассетами релиза `demo-data-v1`, их скачивает
+  `fetch_models.py`. Сценарий демо проверен на весах `ulima-v3`; с более поздними
+  `ce-ulima-v1` в нём появляется лишний простой крана вне зон.
 - Качество классификатора стадии не измерено; процента готовности по снимку (F13) нет.
 
 **Методика и интерфейс** ([docs/traceability.md](docs/traceability.md)).
@@ -172,10 +262,13 @@ ConstructionSupervision/
   параллельный этап может дать ложное D7 (board.md, раздел 9).
 - Зоны рассчитаны на неподвижные камеры: снимки одной папки-камеры должны быть сделаны с
   одной точки.
-- LLM-резюме пишет локальная Gemma 4 E4B. Текст с числом или ссылкой, которых нет в фактах,
-  отбрасывается, и резюме становится шаблонным.
+- LLM-резюме пишет локальная Gemma 4 E4B (контейнер `llm`) или любая OpenAI-совместимая модель
+  из `.env` (раздел 3). Текст с числом или ссылкой, которых нет в фактах, отбрасывается, и
+  резюме становится шаблонным.
 
 **Эксплуатация.**
 - Контейнеры сервисов получают весь `.env`, включая пароли чужих баз (runbook, раздел 9).
+- Интерфейс ходит в API с ключом `dev-key-change-me`, вшитым при сборке: другой `API_KEY`
+  в `.env` закрывает API и для интерфейса ([docs/board.md](docs/board.md), раздел 9).
 - `scripts/backup.py` не реализован; дамп баз — вручную (runbook, раздел 8).
 - Сводный Swagger (`/docs`) грузит Swagger UI с CDN и без интернета не откроется.

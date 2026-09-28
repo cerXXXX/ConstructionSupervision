@@ -37,6 +37,7 @@ ml/runs/
 backup/
 *.sql.gz
 data/seed/images/
+data/seed/*.zip
 /reports/
 
 # --- ОС и редакторы ---
