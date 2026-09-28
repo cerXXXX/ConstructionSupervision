@@ -146,7 +146,6 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 | `make migrate s=plan m="…"` | `cd services/plan-service; $env:PYTHONPATH='.'; alembic revision --autogenerate -m "…"` | Создать миграцию Alembic |
 | `make models` | `.venv\Scripts\python scripts/fetch_models.py` | Скачать веса моделей |
 | `make dev` | `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build` | Стек с hot-reload |
-| `make backup` | — | Не реализовано: `backup.py` — заготовка (раздел 8) |
 
 **Окружение хоста — `.venv` в корне репозитория, глобальный Python не используется.** В нём
 всё, что запускается вне контейнеров: скрипты `scripts/` и `ml/prepare`, ruff той же версии,
@@ -358,8 +357,7 @@ D:\localllamacpp\bin\b11099\llama-server.exe `
 
 - Данные: тома `pgdata` (три базы) и `s3data`. `docker compose down` их сохраняет,
   `docker compose down -v` стирает.
-- `scripts/backup.py` не реализован (заготовка, задачи на него нет). Дамп базы вручную,
-  по одной на команду (`plandb`, `sitedb`, `analysisdb`):
+- Дамп базы — вручную, по одной на команду (`plandb`, `sitedb`, `analysisdb`):
 
   ```powershell
   New-Item -ItemType Directory -Force backup   # в .gitignore

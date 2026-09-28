@@ -47,7 +47,7 @@ Thumbs.db
 .vscode/
 *.swp
 
-# --- repowise: локальный индекс кода для ИИ-агентов ---
-# Пересобирается командой repowise update (и post-commit хуком), поэтому не коммитится.
+# --- Локальные инструменты разработчика ---
 .repowise/
-.claude/CLAUDE.md
+.claude/
+.mcp.json

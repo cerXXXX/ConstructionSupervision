@@ -1,4 +1,4 @@
-"""Общее для скриптов: корень репозитория, чтение .env, честная заглушка.
+"""Общее для скриптов: корень репозитория, чтение .env, адрес gateway, вывод в UTF-8.
 
 Только стандартная библиотека: этот модуль нужен и скриптам без зависимостей
 (fetch_models, health), которые идут на любом Python 3.12 (scripts/README.md).
@@ -40,11 +40,3 @@ def use_utf8_output() -> None:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
-
-
-def not_implemented(script: str, task: str, what: str) -> int:
-    """Заглушка ещё не написанного скрипта: сообщение и код 1 вместо тихого успеха."""
-    use_utf8_output()
-    print(f"Скрипт «{script}» не реализован, задача {task} (docs/board.md).")
-    print(f"Что он будет делать: {what}")
-    return 1
