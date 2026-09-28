@@ -52,7 +52,7 @@ def upgrade() -> None:
             "WHERE code = :code"
         ).bindparams(holidays=json.dumps(holidays), code=CALENDAR)
     )
-    # Объекты, заведённые до T18, создавались без календаря.
+    # Объекты, заведённые до этой миграции, создавались без календаря.
     op.execute(
         sa.text(
             "UPDATE object SET calendar_id = (SELECT id FROM work_calendar WHERE code = :code) "
