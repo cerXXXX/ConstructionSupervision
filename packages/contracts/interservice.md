@@ -426,9 +426,10 @@ analysis нет: он читает их у site теми же эндпоинта
 
 Карточка снимка — та же, что отдаётся интерфейсу (`ImageDetail` в OpenAPI site): время
 съёмки, размер кадра, пригодность, рамки `detections[]` с `id`, `equipment_class`, `bbox`,
-`conf`. `link=internal` меняет только поле `url`: ссылка подписана на `S3_ENDPOINT`
-(`http://s3:8333`), а не на публичный адрес — из сети Docker публичный `localhost:8333` не
-открывается (architecture.md, 7.2). По умолчанию `link=public`.
+`conf`. `link=internal` меняет только поле `url`: полная ссылка на `S3_ENDPOINT`
+(`http://s3:8333/images/…`), а не путь для браузера `/storage/images/…` — он открывается
+только относительно адреса gateway, которого в сети Docker у сервиса нет (architecture.md,
+7.2). По умолчанию `link=public`.
 
 `GET /api/v1/site/images?object_id={id}&status=NEEDS_TIME&limit=1`
 
