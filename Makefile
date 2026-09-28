@@ -18,7 +18,7 @@ NAME_gateway := gateway
 help: ## Показать список команд
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
-pull: .env ## Забрать опубликованные образы из ghcr (нужен docker login ghcr.io)
+pull: .env ## Забрать опубликованные образы из ghcr (пакеты публичные, вход не нужен)
 	$(COMPOSE) pull
 
 third-party: .env ## Сторонние образы (Postgres, S3, Redis) скачиваются и поднимаются — как в CI
