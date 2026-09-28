@@ -6,7 +6,7 @@
 Что и куда:
 - `models` — базовые веса vision-service в `data/models/` (монтируется как /models): YOLO-World,
   OpenCLIP для стадии, текстовый CLIP для промптов YOLO-World;
-- `demo` — дообученные детекторы `ulima-v3` (стоит в VISION_DET_WEIGHTS) и `ce-ulima-v1`
+- `demo` — дообученный детектор `yolov8s-worldv2-ce-ulima-v1.pt` (стоит в VISION_DET_WEIGHTS)
   и 56 демо-кадров датасета Лимы в `data/seed/images/` — ассеты релиза `demo-data-v1` на GitHub;
 - `llm` — Gemma 4 E4B Q4_K_M для сервиса `llm` (llama.cpp) в `data/models/llm/`, около 5 ГБ.
 
@@ -86,16 +86,7 @@ ASSETS = [
         path=MODELS / "clip" / "ViT-B-32.pt",
         sha256="40d365715913c9da98579312b702a82c18be219cc2a73407c4526f58eba950af",
     ),
-    # Детектор демо: на нём распознаны демо-кадры стенда и проходит сценарий e2e (board.md, T41).
-    Asset(
-        group="demo",
-        name="YOLO-World v2 s, дообученный на Лиме (ulima-v3, стоит в VISION_DET_WEIGHTS)",
-        url=f"{ASSETS_URL}/yolov8s-worldv2-ulima-v3.pt",
-        path=MODELS / "yolov8s-worldv2-ulima-v3.pt",
-        sha256="245dfa65ec5ad4dd26451dda9c4170364b8155d1025e8192e3ec15cf10c5269f",
-    ),
-    # Поздний вариант (T42–T43): лучше на снимках организаторов, но в сценарии демо даёт лишний
-    # простой крана вне зон (board.md, раздел 9). Для переключения через VISION_DET_WEIGHTS.
+    # Детектор стенда (VISION_DET_WEIGHTS): дообучен на Лиме и ConstructionEquipment (T41–T43).
     Asset(
         group="demo",
         name="YOLO-World v2 s, дообученный на Лиме и ConstructionEquipment (ce-ulima-v1)",

@@ -84,9 +84,8 @@ flowchart LR
   `yolov8s-worldv2-ce-ulima-v1.pt` (ещё и Construction Equipment): 0,81 на тесте Лимы. На снимках
   организаторов он находит каждую седьмую машину (metrics.md, §2). Дообучается сам
   YOLO-World ([`ml/`](../../ml/README.md)), поэтому классы по-прежнему задаются промптами, а
-  веса подставляются переменной `VISION_DET_WEIGHTS` без правки кода. Оба дообученных файла
-  скачивает `fetch_models.py` из релиза `demo-data-v1`; в `.env.example` стоит `ulima-v3`: на
-  нём распознано демо и проходит сценарий e2e, а `ce-ulima-v1` даёт в нём лишний простой крана.
+  веса подставляются переменной `VISION_DET_WEIGHTS` без правки кода. `ce-ulima-v1` скачивает
+  `fetch_models.py` из релиза `demo-data-v1`, он же стоит в `.env.example`.
 
 ## 5. Конфигурация
 

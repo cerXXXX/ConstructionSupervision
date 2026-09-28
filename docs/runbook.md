@@ -60,8 +60,7 @@ copy .env.example .env
 - LLM — раздел 4. По умолчанию резюме пишет Gemma в контейнере `llm`.
 
 **2. Окружение хоста, модели и демо-кадры.** `fetch_models.py` скачивает в `data/models/`
-zero-shot детектор, OpenCLIP, текстовый CLIP, дообученные веса `ulima-v3` и `ce-ulima-v1` и
-Gemma 4 E4B, а
+zero-shot детектор, OpenCLIP, текстовый CLIP, дообученные веса `ce-ulima-v1` и Gemma 4 E4B, а
 56 демо-кадров — в `data/seed/images/`; всего около 7 ГБ, с проверкой sha256. Дообученные веса
 и кадры — ассеты релиза `demo-data-v1` (раздел 10), Gemma — с закреплённого коммита Hugging Face.
 
@@ -442,14 +441,14 @@ echo "$GITHUB_TOKEN" | docker login ghcr.io -u <логин> --password-stdin
 от `up` до «готовы 5 из 5» — 109 с.
 
 **Ассеты релиза `demo-data-v1`** — то, что `fetch_models.py` скачивает вместо git: дообученные
-веса детектора (`ulima-v3`, `ce-ulima-v1`) и архив 56 демо-кадров. Тег не начинается с `v`,
+веса детектора `ce-ulima-v1` и архив 56 демо-кадров. Тег не начинается с `v`,
 поэтому workflow Release на нём не запускается. Ассеты собирает скрипт, а загружает человек:
 
 ```powershell
 .venv\Scripts\python scripts\pack_assets.py      # → dist\demo-data-v1\, печатает sha256
 ```
 
-На GitHub: Releases → Draft a new release → тег `demo-data-v1` на `main` → три файла из
+На GitHub: Releases → Draft a new release → тег `demo-data-v1` на `main` → файлы из
 `dist\demo-data-v1\` → отметить «Set as a pre-release», чтобы он не стал «Latest» → Publish.
 Архив воспроизводим: те же кадры дают тот же sha256. Новые кадры или веса — новый тег
 (`demo-data-v2`) и новые контрольные суммы в `fetch_models.py`: старый релиз не переписывается,

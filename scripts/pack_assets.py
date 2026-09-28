@@ -2,8 +2,7 @@
 
     python scripts/pack_assets.py [--out dist/demo-data-v1]
 
-Кладёт в каталог дообученные веса детектора (оба варианта) и архив демо-кадров из
-data/seed/images и печатает
+Кладёт в каталог дообученные веса детектора и архив демо-кадров из data/seed/images и печатает
 их sha256 — они же должны стоять в fetch_models.py. Архив воспроизводим: порядок файлов и дата
 в заголовках фиксированы, сжатия нет (JPEG не сжимается), поэтому те же кадры дают тот же
 sha256. Загружает ассеты в релиз человек (runbook, раздел 10).
@@ -18,12 +17,8 @@ from pathlib import Path
 
 from _common import ROOT, use_utf8_output
 
-# ulima-v3 — на них распознано демо стенда и проходит сценарий e2e; ce-ulima-v1 — поздний
-# вариант с ConstructionEquipment, даёт в сценарии лишний простой крана (board.md, раздел 9).
-WEIGHTS = [
-    ROOT / "data" / "models" / "yolov8s-worldv2-ulima-v3.pt",
-    ROOT / "data" / "models" / "yolov8s-worldv2-ce-ulima-v1.pt",
-]
+# Одна модель на весь проект — та, что стоит в VISION_DET_WEIGHTS стенда.
+WEIGHTS = [ROOT / "data" / "models" / "yolov8s-worldv2-ce-ulima-v1.pt"]
 IMAGES = ROOT / "data" / "seed" / "images"
 # Дата в заголовках zip: от mtime файлов sha256 архива зависеть не должен.
 FIXED_TIME = (2026, 10, 19, 0, 0, 0)
