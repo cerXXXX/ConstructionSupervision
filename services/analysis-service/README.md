@@ -37,7 +37,6 @@ flowchart LR
 
 Префикс: `/api/v1/analysis`. Контракт прогона —
 [packages/contracts/interservice.md](../../packages/contracts/interservice.md), раздел 4.
-Что уже реализовано, видно по [docs/board.md](../../docs/board.md).
 
 | Метод | Путь | Описание |
 | :--- | :--- | :--- |

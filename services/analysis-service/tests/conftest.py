@@ -261,7 +261,7 @@ async def seeded_rules(session_factory) -> None:
 
 @pytest.fixture
 def upstream():
-    """Заглушки plan и site: внешние сервисы в тестах не вызываются (AGENTS.md, раздел 10)."""
+    """Заглушки plan и site: внешние сервисы в тестах не вызываются (CONTRIBUTING.md, раздел 10)."""
     from datetime import UTC, datetime
     from types import SimpleNamespace
 

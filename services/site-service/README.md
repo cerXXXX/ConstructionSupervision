@@ -38,7 +38,6 @@ flowchart LR
 
 Префикс: `/api/v1/site`. Межсервисный контракт «факты за период» —
 [packages/contracts/interservice.md](../../packages/contracts/interservice.md), раздел 2.
-Что уже реализовано, видно по [docs/board.md](../../docs/board.md).
 
 ### Камеры и зоны
 

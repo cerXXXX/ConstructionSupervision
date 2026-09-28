@@ -27,7 +27,7 @@ flowchart LR
 ## 3. API
 
 Префикс: `/api/v1/vision`. Контракт — [packages/contracts/interservice.md](../../packages/contracts/interservice.md),
-раздел 3. Что уже реализовано, видно по [docs/board.md](../../docs/board.md).
+раздел 3.
 
 | Метод | Путь | Описание |
 | :--- | :--- | :--- |
@@ -125,7 +125,7 @@ flowchart LR
 (`MODEL_NOT_LOADED`) ждут. Если загрузка упала, сервис остаётся живым и не готовым, причина —
 в логе `vision.models_failed`.
 
-Код устроен как у остальных сервисов (AGENTS.md, раздел 3) плюс слой `src/models/`: адаптеры
+Код устроен как у остальных сервисов (CONTRIBUTING.md, раздел 3) плюс слой `src/models/`: адаптеры
 к Ultralytics и OpenCLIP. torch и модели импортируются только там, поэтому тесты с заглушками
 идут без них, а тяжёлые зависимости — в `requirements-ml.txt`, который ставится только в образ.
 
