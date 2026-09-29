@@ -24,38 +24,42 @@ html_template = """<!DOCTYPE html>
 <meta charset="utf-8">
 <title>Сопроводительная документация проекта «СтройКонтроль»</title>
 <style>
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm 12mm 14mm;
+  }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.55;
+    line-height: 1.5;
     color: #1f2328;
-    margin: 40px auto;
+    margin: 30px auto;
     max-width: 960px;
-    padding: 0 24px;
-    font-size: 13.5px;
+    padding: 0 20px;
+    font-size: 13px;
   }
   h1, h2, h3, h4 {
     border-bottom: 1px solid #d8dee4;
     padding-bottom: .3em;
-    margin-top: 28px;
-    margin-bottom: 14px;
+    margin-top: 24px;
+    margin-bottom: 12px;
     font-weight: 600;
     color: #1f2328;
   }
-  h1 { font-size: 24px; }
-  h2 { font-size: 18px; margin-top: 32px; border-bottom: 2px solid #0969da; }
-  h3 { font-size: 15px; }
-  h4 { font-size: 14px; border-bottom: none; }
+  h1 { font-size: 22px; }
+  h2 { font-size: 17px; margin-top: 28px; border-bottom: 2px solid #0969da; }
+  h3 { font-size: 14.5px; }
+  h4 { font-size: 13.5px; border-bottom: none; }
   p {
     margin-top: 6px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
   ul, ol {
     margin-top: 4px;
-    margin-bottom: 12px;
-    padding-left: 26px;
+    margin-bottom: 10px;
+    padding-left: 24px;
   }
   li {
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
   li > p {
     margin: 2px 0;
@@ -63,16 +67,19 @@ html_template = """<!DOCTYPE html>
   table {
     border-collapse: collapse;
     width: 100%;
-    margin-top: 10px;
-    margin-bottom: 18px;
-    font-size: 12.5px;
-    line-height: 1.4;
+    max-width: 100%;
+    margin-top: 8px;
+    margin-bottom: 16px;
+    font-size: 11.5px;
+    line-height: 1.35;
+    word-break: normal;
+    overflow-wrap: break-word;
   }
   table, th, td {
     border: 1px solid #d0d7de;
   }
   th, td {
-    padding: 7px 10px;
+    padding: 5px 8px;
     text-align: left;
     vertical-align: top;
   }
@@ -82,20 +89,21 @@ html_template = """<!DOCTYPE html>
   }
   code {
     background-color: #eff1f3;
-    padding: .2em .4em;
-    border-radius: 4px;
+    padding: .15em .35em;
+    border-radius: 3px;
     font-family: 'Consolas', 'Courier New', monospace;
     font-size: 88%;
     color: #1f2328;
+    word-break: break-word;
   }
   pre {
     background-color: #f6f8fa;
     border: 1px solid #d0d7de;
     border-radius: 6px;
-    padding: 12px 14px;
+    padding: 10px 12px;
     overflow-x: auto;
-    line-height: 1.45;
-    margin: 10px 0 16px 0;
+    line-height: 1.4;
+    margin: 8px 0 14px 0;
   }
   pre code {
     background-color: transparent;
@@ -104,29 +112,57 @@ html_template = """<!DOCTYPE html>
     display: block;
   }
   blockquote {
-    padding: 6px 14px;
+    padding: 5px 12px;
     color: #59636e;
     border-left: 4px solid #0969da;
     background-color: #f6f8fa;
-    margin: 0 0 16px 0;
+    margin: 0 0 14px 0;
     border-radius: 0 4px 4px 0;
   }
   blockquote p {
-    margin: 4px 0;
+    margin: 3px 0;
+  }
+  a {
+    color: #0969da;
+    text-decoration: underline;
+    word-break: break-all;
   }
   hr {
     border: 0;
     height: 1px;
     background: #d8dee4;
-    margin: 24px 0;
+    margin: 20px 0;
   }
   @media print {
-    body { max-width: 100%; margin: 12mm 15mm; font-size: 11.5px; line-height: 1.45; }
-    h1, h2, h3 { page-break-after: avoid; }
-    table, pre { page-break-inside: avoid; }
-    tr { page-break-inside: avoid; }
-    table { font-size: 10.5px; }
-    pre code { font-size: 10px; }
+    body {
+      margin: 0;
+      padding: 0;
+      max-width: 100%;
+      font-size: 10.5px;
+      line-height: 1.35;
+    }
+    h1, h2, h3, h4 {
+      page-break-after: avoid;
+    }
+    table {
+      page-break-inside: auto;
+      font-size: 9.5px;
+      line-height: 1.25;
+      margin-top: 6px;
+      margin-bottom: 12px;
+    }
+    tr {
+      page-break-inside: avoid;
+    }
+    thead {
+      display: table-header-group;
+    }
+    pre {
+      page-break-inside: avoid;
+    }
+    pre code {
+      font-size: 9px;
+    }
   }
 </style>
 </head>

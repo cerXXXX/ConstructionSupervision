@@ -51,3 +51,8 @@ Thumbs.db
 .repowise/
 .claude/
 .mcp.json
+
+# --- Сгенерированная документация ---
+docs/*.html
+docs/*_updated.pdf
+docs/*.tmp.pdf
