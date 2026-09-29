@@ -39,39 +39,44 @@ html_template = """<!DOCTYPE html>
   }
   h1, h2, h3, h4 {
     border-bottom: 1px solid #d8dee4;
-    padding-bottom: .3em;
-    margin-top: 24px;
-    margin-bottom: 12px;
+    padding-bottom: .2em;
+    margin-top: 18px;
+    margin-bottom: 8px;
     font-weight: 600;
     color: #1f2328;
   }
-  h1 { font-size: 22px; }
-  h2 { font-size: 17px; margin-top: 28px; border-bottom: 2px solid #0969da; }
-  h3 { font-size: 14.5px; }
-  h4 { font-size: 13.5px; border-bottom: none; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 16px; margin-top: 22px; border-bottom: 2px solid #0969da; }
+  h3 { font-size: 14px; }
+  h4 { font-size: 13px; border-bottom: none; }
   p {
-    margin-top: 6px;
-    margin-bottom: 8px;
+    margin-top: 4px;
+    margin-bottom: 6px;
   }
   ul, ol {
-    margin-top: 4px;
-    margin-bottom: 10px;
-    padding-left: 24px;
+    margin-top: 3px;
+    margin-bottom: 8px;
+    padding-left: 22px;
+  }
+  ul ul, ol ol, ul ol, ol ul {
+    margin-top: 2px;
+    margin-bottom: 3px;
+    padding-left: 18px;
   }
   li {
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
   li > p {
-    margin: 2px 0;
+    margin: 1px 0;
   }
   table {
     border-collapse: collapse;
     width: 100%;
     max-width: 100%;
-    margin-top: 8px;
-    margin-bottom: 16px;
-    font-size: 11.5px;
-    line-height: 1.35;
+    margin-top: 6px;
+    margin-bottom: 12px;
+    font-size: 11px;
+    line-height: 1.3;
     word-break: normal;
     overflow-wrap: break-word;
   }
