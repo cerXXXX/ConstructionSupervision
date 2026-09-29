@@ -1,9 +1,9 @@
 """Скрипт генерации сопроводительной документации в формате PDF (по разделу 5 ТЗ)."""
 
-import os
 import shutil
 import subprocess
 from pathlib import Path
+
 import markdown
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -18,7 +18,8 @@ pdf_alt = DOCS / "documentation_updated.pdf"
 text = md_path.read_text(encoding="utf-8")
 body = markdown.markdown(text, extensions=["tables", "fenced_code"])
 
-html_template = """<!DOCTYPE html>
+html_template = (
+    """<!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -29,7 +30,8 @@ html_template = """<!DOCTYPE html>
     margin: 12mm 14mm 12mm 14mm;
   }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+      sans-serif;
     line-height: 1.5;
     color: #1f2328;
     margin: 30px auto;
@@ -172,9 +174,12 @@ html_template = """<!DOCTYPE html>
 </style>
 </head>
 <body>
-""" + body + """
+"""
+    + body
+    + """
 </body>
 </html>"""
+)
 
 html_path.write_text(html_template, encoding="utf-8")
 
@@ -188,7 +193,7 @@ cmd = [
     "--disable-gpu",
     "--no-pdf-header-footer",
     f"--print-to-pdf={pdf_tmp.resolve()}",
-    str(html_path.resolve())
+    str(html_path.resolve()),
 ]
 subprocess.run(cmd, check=True)
 
@@ -203,7 +208,7 @@ try:
     print(f"Generated PDF: {pdf_path} (size: {pdf_path.stat().st_size} bytes)")
 except OSError as err:
     shutil.copy2(str(pdf_tmp), str(pdf_alt))
-    pdf_tmp.unlink()
-    print(f"[ВНИМАНИЕ] Целевой файл {pdf_path.name} заблокирован внешним приложением (просмотрщиком): {err}")
+    msg = f"[ВНИМАНИЕ] Файл {pdf_path.name} заблокирован внешним приложением: {err}"
+    print(msg)
     print(f"Свежий PDF успешно сохранен как: {pdf_alt} (size: {pdf_alt.stat().st_size} bytes)")
     print(f"Чтобы обновить {pdf_path.name}, закройте просмотрщик и перезапустите скрипт.")
